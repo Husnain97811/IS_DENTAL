@@ -8,6 +8,8 @@ class Env {
 
   static String get supabaseUrl => _require('SUPABASE_URL');
   static String get supabaseAnonKey => _require('SUPABASE_ANON_KEY');
+  static String get supabaseEmail => _require('SUPABASE_CLINIC_EMAIL');
+  static String get supabasePassword => _require('SUPABASE_CLINIC_PASSWORD');
 
   static String _require(String key) {
     final v = dotenv.maybeGet(key);

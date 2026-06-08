@@ -1,5 +1,10 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/appointments/data/appointment_tables.dart';
+import 'package:is_dental/features/billing/data/billing_tables.dart';
+import 'package:is_dental/features/inventory/data/inventory_tables.dart';
+import 'package:is_dental/features/patients/data/patient_tables.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'database_connection.dart';
 
 part 'app_database.g.dart';
@@ -33,12 +38,69 @@ class Users extends Table {
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-@DriftDatabase(tables: [AppSettings, ClinicProfile, Users])
+@DriftDatabase(
+  tables: [
+    AppSettings,
+    ClinicProfile,
+    Users,
+    Patients,
+    ToothRecords,
+    TreatmentPlans,
+    TreatmentSteps,
+    AuditLog,
+    Appointments,
+    Invoices,
+    InvoiceItems,
+    InventoryItems,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(openEncryptedConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 4;
+  Future<String?> clinicName() async =>
+      (await select(clinicProfile).getSingleOrNull())?.name;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) async {
+      await m.createAll();
+      await _indexes();
+    },
+
+    onUpgrade: (m, from, to) async {
+      if (from < 4) {
+        await m.createTable(invoices);
+        await m.createTable(invoiceItems);
+        await m.createTable(inventoryItems);
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_inv_patient ON invoices(patient_id);',
+        );
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_inv_status ON invoices(status);',
+        );
+      }
+    },
+  );
+
+  Future<void> _indexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_pat_name ON patients(full_name);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_pat_phone ON patients(phone);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_pat_code ON patients(code);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_tooth_patient ON tooth_records(patient_id);',
+    );
+  }
+
+  Future<String?> currentClinicId() async =>
+      (await select(clinicProfile).getSingleOrNull())?.clinicId;
 
   Future<User?> findActiveUser(String username) =>
       (select(users)..where(
