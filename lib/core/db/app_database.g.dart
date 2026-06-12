@@ -712,6 +712,17 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _roleMeta = const VerificationMeta('role');
   @override
   late final GeneratedColumn<String> role = GeneratedColumn<String>(
@@ -755,6 +766,7 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     fullName,
     username,
     passwordHash,
+    branchId,
     role,
     isDeleted,
     updatedAt,
@@ -809,6 +821,12 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     } else if (isInserting) {
       context.missing(_passwordHashMeta);
     }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
     if (data.containsKey('role')) {
       context.handle(
         _roleMeta,
@@ -858,6 +876,10 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
         DriftSqlType.string,
         data['${effectivePrefix}password_hash'],
       )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      ),
       role: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}role'],
@@ -885,6 +907,7 @@ class User extends DataClass implements Insertable<User> {
   final String fullName;
   final String username;
   final String passwordHash;
+  final String? branchId;
   final String role;
   final bool isDeleted;
   final DateTime updatedAt;
@@ -894,6 +917,7 @@ class User extends DataClass implements Insertable<User> {
     required this.fullName,
     required this.username,
     required this.passwordHash,
+    this.branchId,
     required this.role,
     required this.isDeleted,
     required this.updatedAt,
@@ -906,6 +930,9 @@ class User extends DataClass implements Insertable<User> {
     map['full_name'] = Variable<String>(fullName);
     map['username'] = Variable<String>(username);
     map['password_hash'] = Variable<String>(passwordHash);
+    if (!nullToAbsent || branchId != null) {
+      map['branch_id'] = Variable<String>(branchId);
+    }
     map['role'] = Variable<String>(role);
     map['is_deleted'] = Variable<bool>(isDeleted);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -919,6 +946,9 @@ class User extends DataClass implements Insertable<User> {
       fullName: Value(fullName),
       username: Value(username),
       passwordHash: Value(passwordHash),
+      branchId: branchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchId),
       role: Value(role),
       isDeleted: Value(isDeleted),
       updatedAt: Value(updatedAt),
@@ -936,6 +966,7 @@ class User extends DataClass implements Insertable<User> {
       fullName: serializer.fromJson<String>(json['fullName']),
       username: serializer.fromJson<String>(json['username']),
       passwordHash: serializer.fromJson<String>(json['passwordHash']),
+      branchId: serializer.fromJson<String?>(json['branchId']),
       role: serializer.fromJson<String>(json['role']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -950,6 +981,7 @@ class User extends DataClass implements Insertable<User> {
       'fullName': serializer.toJson<String>(fullName),
       'username': serializer.toJson<String>(username),
       'passwordHash': serializer.toJson<String>(passwordHash),
+      'branchId': serializer.toJson<String?>(branchId),
       'role': serializer.toJson<String>(role),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -962,6 +994,7 @@ class User extends DataClass implements Insertable<User> {
     String? fullName,
     String? username,
     String? passwordHash,
+    Value<String?> branchId = const Value.absent(),
     String? role,
     bool? isDeleted,
     DateTime? updatedAt,
@@ -971,6 +1004,7 @@ class User extends DataClass implements Insertable<User> {
     fullName: fullName ?? this.fullName,
     username: username ?? this.username,
     passwordHash: passwordHash ?? this.passwordHash,
+    branchId: branchId.present ? branchId.value : this.branchId,
     role: role ?? this.role,
     isDeleted: isDeleted ?? this.isDeleted,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -984,6 +1018,7 @@ class User extends DataClass implements Insertable<User> {
       passwordHash: data.passwordHash.present
           ? data.passwordHash.value
           : this.passwordHash,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
       role: data.role.present ? data.role.value : this.role,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -998,6 +1033,7 @@ class User extends DataClass implements Insertable<User> {
           ..write('fullName: $fullName, ')
           ..write('username: $username, ')
           ..write('passwordHash: $passwordHash, ')
+          ..write('branchId: $branchId, ')
           ..write('role: $role, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('updatedAt: $updatedAt')
@@ -1012,6 +1048,7 @@ class User extends DataClass implements Insertable<User> {
     fullName,
     username,
     passwordHash,
+    branchId,
     role,
     isDeleted,
     updatedAt,
@@ -1025,6 +1062,7 @@ class User extends DataClass implements Insertable<User> {
           other.fullName == this.fullName &&
           other.username == this.username &&
           other.passwordHash == this.passwordHash &&
+          other.branchId == this.branchId &&
           other.role == this.role &&
           other.isDeleted == this.isDeleted &&
           other.updatedAt == this.updatedAt);
@@ -1036,6 +1074,7 @@ class UsersCompanion extends UpdateCompanion<User> {
   final Value<String> fullName;
   final Value<String> username;
   final Value<String> passwordHash;
+  final Value<String?> branchId;
   final Value<String> role;
   final Value<bool> isDeleted;
   final Value<DateTime> updatedAt;
@@ -1045,6 +1084,7 @@ class UsersCompanion extends UpdateCompanion<User> {
     this.fullName = const Value.absent(),
     this.username = const Value.absent(),
     this.passwordHash = const Value.absent(),
+    this.branchId = const Value.absent(),
     this.role = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1055,6 +1095,7 @@ class UsersCompanion extends UpdateCompanion<User> {
     required String fullName,
     required String username,
     required String passwordHash,
+    this.branchId = const Value.absent(),
     required String role,
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1069,6 +1110,7 @@ class UsersCompanion extends UpdateCompanion<User> {
     Expression<String>? fullName,
     Expression<String>? username,
     Expression<String>? passwordHash,
+    Expression<String>? branchId,
     Expression<String>? role,
     Expression<bool>? isDeleted,
     Expression<DateTime>? updatedAt,
@@ -1079,6 +1121,7 @@ class UsersCompanion extends UpdateCompanion<User> {
       if (fullName != null) 'full_name': fullName,
       if (username != null) 'username': username,
       if (passwordHash != null) 'password_hash': passwordHash,
+      if (branchId != null) 'branch_id': branchId,
       if (role != null) 'role': role,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -1091,6 +1134,7 @@ class UsersCompanion extends UpdateCompanion<User> {
     Value<String>? fullName,
     Value<String>? username,
     Value<String>? passwordHash,
+    Value<String?>? branchId,
     Value<String>? role,
     Value<bool>? isDeleted,
     Value<DateTime>? updatedAt,
@@ -1101,6 +1145,7 @@ class UsersCompanion extends UpdateCompanion<User> {
       fullName: fullName ?? this.fullName,
       username: username ?? this.username,
       passwordHash: passwordHash ?? this.passwordHash,
+      branchId: branchId ?? this.branchId,
       role: role ?? this.role,
       isDeleted: isDeleted ?? this.isDeleted,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1125,6 +1170,9 @@ class UsersCompanion extends UpdateCompanion<User> {
     if (passwordHash.present) {
       map['password_hash'] = Variable<String>(passwordHash.value);
     }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
     if (role.present) {
       map['role'] = Variable<String>(role.value);
     }
@@ -1145,6 +1193,7 @@ class UsersCompanion extends UpdateCompanion<User> {
           ..write('fullName: $fullName, ')
           ..write('username: $username, ')
           ..write('passwordHash: $passwordHash, ')
+          ..write('branchId: $branchId, ')
           ..write('role: $role, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('updatedAt: $updatedAt')
@@ -6293,6 +6342,1043 @@ class InventoryItemsCompanion extends UpdateCompanion<InventoryItemRow> {
   }
 }
 
+class $TreatmentsTable extends Treatments
+    with TableInfo<$TreatmentsTable, TreatmentRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TreatmentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _clinicIdMeta = const VerificationMeta(
+    'clinicId',
+  );
+  @override
+  late final GeneratedColumn<String> clinicId = GeneratedColumn<String>(
+    'clinic_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _priceMeta = const VerificationMeta('price');
+  @override
+  late final GeneratedColumn<int> price = GeneratedColumn<int>(
+    'price',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _durationMeta = const VerificationMeta(
+    'duration',
+  );
+  @override
+  late final GeneratedColumn<String> duration = GeneratedColumn<String>(
+    'duration',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    uuid,
+    clinicId,
+    name,
+    category,
+    price,
+    duration,
+    isDeleted,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'treatments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TreatmentRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('clinic_id')) {
+      context.handle(
+        _clinicIdMeta,
+        clinicId.isAcceptableOrUnknown(data['clinic_id']!, _clinicIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('price')) {
+      context.handle(
+        _priceMeta,
+        price.isAcceptableOrUnknown(data['price']!, _priceMeta),
+      );
+    }
+    if (data.containsKey('duration')) {
+      context.handle(
+        _durationMeta,
+        duration.isAcceptableOrUnknown(data['duration']!, _durationMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TreatmentRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TreatmentRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      clinicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clinic_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      price: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}price'],
+      )!,
+      duration: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}duration'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TreatmentsTable createAlias(String alias) {
+    return $TreatmentsTable(attachedDatabase, alias);
+  }
+}
+
+class TreatmentRow extends DataClass implements Insertable<TreatmentRow> {
+  final int id;
+  final String uuid;
+  final String clinicId;
+  final String name;
+  final String category;
+  final int price;
+  final String duration;
+  final bool isDeleted;
+  final DateTime updatedAt;
+  const TreatmentRow({
+    required this.id,
+    required this.uuid,
+    required this.clinicId,
+    required this.name,
+    required this.category,
+    required this.price,
+    required this.duration,
+    required this.isDeleted,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['uuid'] = Variable<String>(uuid);
+    map['clinic_id'] = Variable<String>(clinicId);
+    map['name'] = Variable<String>(name);
+    map['category'] = Variable<String>(category);
+    map['price'] = Variable<int>(price);
+    map['duration'] = Variable<String>(duration);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  TreatmentsCompanion toCompanion(bool nullToAbsent) {
+    return TreatmentsCompanion(
+      id: Value(id),
+      uuid: Value(uuid),
+      clinicId: Value(clinicId),
+      name: Value(name),
+      category: Value(category),
+      price: Value(price),
+      duration: Value(duration),
+      isDeleted: Value(isDeleted),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory TreatmentRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TreatmentRow(
+      id: serializer.fromJson<int>(json['id']),
+      uuid: serializer.fromJson<String>(json['uuid']),
+      clinicId: serializer.fromJson<String>(json['clinicId']),
+      name: serializer.fromJson<String>(json['name']),
+      category: serializer.fromJson<String>(json['category']),
+      price: serializer.fromJson<int>(json['price']),
+      duration: serializer.fromJson<String>(json['duration']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'uuid': serializer.toJson<String>(uuid),
+      'clinicId': serializer.toJson<String>(clinicId),
+      'name': serializer.toJson<String>(name),
+      'category': serializer.toJson<String>(category),
+      'price': serializer.toJson<int>(price),
+      'duration': serializer.toJson<String>(duration),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  TreatmentRow copyWith({
+    int? id,
+    String? uuid,
+    String? clinicId,
+    String? name,
+    String? category,
+    int? price,
+    String? duration,
+    bool? isDeleted,
+    DateTime? updatedAt,
+  }) => TreatmentRow(
+    id: id ?? this.id,
+    uuid: uuid ?? this.uuid,
+    clinicId: clinicId ?? this.clinicId,
+    name: name ?? this.name,
+    category: category ?? this.category,
+    price: price ?? this.price,
+    duration: duration ?? this.duration,
+    isDeleted: isDeleted ?? this.isDeleted,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  TreatmentRow copyWithCompanion(TreatmentsCompanion data) {
+    return TreatmentRow(
+      id: data.id.present ? data.id.value : this.id,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      name: data.name.present ? data.name.value : this.name,
+      category: data.category.present ? data.category.value : this.category,
+      price: data.price.present ? data.price.value : this.price,
+      duration: data.duration.present ? data.duration.value : this.duration,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TreatmentRow(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('name: $name, ')
+          ..write('category: $category, ')
+          ..write('price: $price, ')
+          ..write('duration: $duration, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    uuid,
+    clinicId,
+    name,
+    category,
+    price,
+    duration,
+    isDeleted,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TreatmentRow &&
+          other.id == this.id &&
+          other.uuid == this.uuid &&
+          other.clinicId == this.clinicId &&
+          other.name == this.name &&
+          other.category == this.category &&
+          other.price == this.price &&
+          other.duration == this.duration &&
+          other.isDeleted == this.isDeleted &&
+          other.updatedAt == this.updatedAt);
+}
+
+class TreatmentsCompanion extends UpdateCompanion<TreatmentRow> {
+  final Value<int> id;
+  final Value<String> uuid;
+  final Value<String> clinicId;
+  final Value<String> name;
+  final Value<String> category;
+  final Value<int> price;
+  final Value<String> duration;
+  final Value<bool> isDeleted;
+  final Value<DateTime> updatedAt;
+  const TreatmentsCompanion({
+    this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
+    this.clinicId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.category = const Value.absent(),
+    this.price = const Value.absent(),
+    this.duration = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  TreatmentsCompanion.insert({
+    this.id = const Value.absent(),
+    required String uuid,
+    required String clinicId,
+    required String name,
+    required String category,
+    this.price = const Value.absent(),
+    this.duration = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : uuid = Value(uuid),
+       clinicId = Value(clinicId),
+       name = Value(name),
+       category = Value(category);
+  static Insertable<TreatmentRow> custom({
+    Expression<int>? id,
+    Expression<String>? uuid,
+    Expression<String>? clinicId,
+    Expression<String>? name,
+    Expression<String>? category,
+    Expression<int>? price,
+    Expression<String>? duration,
+    Expression<bool>? isDeleted,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (uuid != null) 'uuid': uuid,
+      if (clinicId != null) 'clinic_id': clinicId,
+      if (name != null) 'name': name,
+      if (category != null) 'category': category,
+      if (price != null) 'price': price,
+      if (duration != null) 'duration': duration,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  TreatmentsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? uuid,
+    Value<String>? clinicId,
+    Value<String>? name,
+    Value<String>? category,
+    Value<int>? price,
+    Value<String>? duration,
+    Value<bool>? isDeleted,
+    Value<DateTime>? updatedAt,
+  }) {
+    return TreatmentsCompanion(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      clinicId: clinicId ?? this.clinicId,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      price: price ?? this.price,
+      duration: duration ?? this.duration,
+      isDeleted: isDeleted ?? this.isDeleted,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (clinicId.present) {
+      map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (price.present) {
+      map['price'] = Variable<int>(price.value);
+    }
+    if (duration.present) {
+      map['duration'] = Variable<String>(duration.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TreatmentsCompanion(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('name: $name, ')
+          ..write('category: $category, ')
+          ..write('price: $price, ')
+          ..write('duration: $duration, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BranchesTable extends Branches
+    with TableInfo<$BranchesTable, BranchRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BranchesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _clinicIdMeta = const VerificationMeta(
+    'clinicId',
+  );
+  @override
+  late final GeneratedColumn<String> clinicId = GeneratedColumn<String>(
+    'clinic_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _locationMeta = const VerificationMeta(
+    'location',
+  );
+  @override
+  late final GeneratedColumn<String> location = GeneratedColumn<String>(
+    'location',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _isPrimaryMeta = const VerificationMeta(
+    'isPrimary',
+  );
+  @override
+  late final GeneratedColumn<bool> isPrimary = GeneratedColumn<bool>(
+    'is_primary',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_primary" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    uuid,
+    clinicId,
+    name,
+    location,
+    isPrimary,
+    isDeleted,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'branches';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BranchRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('clinic_id')) {
+      context.handle(
+        _clinicIdMeta,
+        clinicId.isAcceptableOrUnknown(data['clinic_id']!, _clinicIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('location')) {
+      context.handle(
+        _locationMeta,
+        location.isAcceptableOrUnknown(data['location']!, _locationMeta),
+      );
+    }
+    if (data.containsKey('is_primary')) {
+      context.handle(
+        _isPrimaryMeta,
+        isPrimary.isAcceptableOrUnknown(data['is_primary']!, _isPrimaryMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BranchRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BranchRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      clinicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clinic_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      location: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}location'],
+      )!,
+      isPrimary: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_primary'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BranchesTable createAlias(String alias) {
+    return $BranchesTable(attachedDatabase, alias);
+  }
+}
+
+class BranchRow extends DataClass implements Insertable<BranchRow> {
+  final int id;
+  final String uuid;
+  final String clinicId;
+  final String name;
+  final String location;
+  final bool isPrimary;
+  final bool isDeleted;
+  final DateTime updatedAt;
+  const BranchRow({
+    required this.id,
+    required this.uuid,
+    required this.clinicId,
+    required this.name,
+    required this.location,
+    required this.isPrimary,
+    required this.isDeleted,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['uuid'] = Variable<String>(uuid);
+    map['clinic_id'] = Variable<String>(clinicId);
+    map['name'] = Variable<String>(name);
+    map['location'] = Variable<String>(location);
+    map['is_primary'] = Variable<bool>(isPrimary);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  BranchesCompanion toCompanion(bool nullToAbsent) {
+    return BranchesCompanion(
+      id: Value(id),
+      uuid: Value(uuid),
+      clinicId: Value(clinicId),
+      name: Value(name),
+      location: Value(location),
+      isPrimary: Value(isPrimary),
+      isDeleted: Value(isDeleted),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory BranchRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BranchRow(
+      id: serializer.fromJson<int>(json['id']),
+      uuid: serializer.fromJson<String>(json['uuid']),
+      clinicId: serializer.fromJson<String>(json['clinicId']),
+      name: serializer.fromJson<String>(json['name']),
+      location: serializer.fromJson<String>(json['location']),
+      isPrimary: serializer.fromJson<bool>(json['isPrimary']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'uuid': serializer.toJson<String>(uuid),
+      'clinicId': serializer.toJson<String>(clinicId),
+      'name': serializer.toJson<String>(name),
+      'location': serializer.toJson<String>(location),
+      'isPrimary': serializer.toJson<bool>(isPrimary),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  BranchRow copyWith({
+    int? id,
+    String? uuid,
+    String? clinicId,
+    String? name,
+    String? location,
+    bool? isPrimary,
+    bool? isDeleted,
+    DateTime? updatedAt,
+  }) => BranchRow(
+    id: id ?? this.id,
+    uuid: uuid ?? this.uuid,
+    clinicId: clinicId ?? this.clinicId,
+    name: name ?? this.name,
+    location: location ?? this.location,
+    isPrimary: isPrimary ?? this.isPrimary,
+    isDeleted: isDeleted ?? this.isDeleted,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  BranchRow copyWithCompanion(BranchesCompanion data) {
+    return BranchRow(
+      id: data.id.present ? data.id.value : this.id,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      name: data.name.present ? data.name.value : this.name,
+      location: data.location.present ? data.location.value : this.location,
+      isPrimary: data.isPrimary.present ? data.isPrimary.value : this.isPrimary,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BranchRow(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('name: $name, ')
+          ..write('location: $location, ')
+          ..write('isPrimary: $isPrimary, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    uuid,
+    clinicId,
+    name,
+    location,
+    isPrimary,
+    isDeleted,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BranchRow &&
+          other.id == this.id &&
+          other.uuid == this.uuid &&
+          other.clinicId == this.clinicId &&
+          other.name == this.name &&
+          other.location == this.location &&
+          other.isPrimary == this.isPrimary &&
+          other.isDeleted == this.isDeleted &&
+          other.updatedAt == this.updatedAt);
+}
+
+class BranchesCompanion extends UpdateCompanion<BranchRow> {
+  final Value<int> id;
+  final Value<String> uuid;
+  final Value<String> clinicId;
+  final Value<String> name;
+  final Value<String> location;
+  final Value<bool> isPrimary;
+  final Value<bool> isDeleted;
+  final Value<DateTime> updatedAt;
+  const BranchesCompanion({
+    this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
+    this.clinicId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.location = const Value.absent(),
+    this.isPrimary = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  BranchesCompanion.insert({
+    this.id = const Value.absent(),
+    required String uuid,
+    required String clinicId,
+    required String name,
+    this.location = const Value.absent(),
+    this.isPrimary = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : uuid = Value(uuid),
+       clinicId = Value(clinicId),
+       name = Value(name);
+  static Insertable<BranchRow> custom({
+    Expression<int>? id,
+    Expression<String>? uuid,
+    Expression<String>? clinicId,
+    Expression<String>? name,
+    Expression<String>? location,
+    Expression<bool>? isPrimary,
+    Expression<bool>? isDeleted,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (uuid != null) 'uuid': uuid,
+      if (clinicId != null) 'clinic_id': clinicId,
+      if (name != null) 'name': name,
+      if (location != null) 'location': location,
+      if (isPrimary != null) 'is_primary': isPrimary,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  BranchesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? uuid,
+    Value<String>? clinicId,
+    Value<String>? name,
+    Value<String>? location,
+    Value<bool>? isPrimary,
+    Value<bool>? isDeleted,
+    Value<DateTime>? updatedAt,
+  }) {
+    return BranchesCompanion(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      clinicId: clinicId ?? this.clinicId,
+      name: name ?? this.name,
+      location: location ?? this.location,
+      isPrimary: isPrimary ?? this.isPrimary,
+      isDeleted: isDeleted ?? this.isDeleted,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (clinicId.present) {
+      map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (location.present) {
+      map['location'] = Variable<String>(location.value);
+    }
+    if (isPrimary.present) {
+      map['is_primary'] = Variable<bool>(isPrimary.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BranchesCompanion(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('name: $name, ')
+          ..write('location: $location, ')
+          ..write('isPrimary: $isPrimary, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6308,6 +7394,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $InvoicesTable invoices = $InvoicesTable(this);
   late final $InvoiceItemsTable invoiceItems = $InvoiceItemsTable(this);
   late final $InventoryItemsTable inventoryItems = $InventoryItemsTable(this);
+  late final $TreatmentsTable treatments = $TreatmentsTable(this);
+  late final $BranchesTable branches = $BranchesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6325,6 +7413,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     invoices,
     invoiceItems,
     inventoryItems,
+    treatments,
+    branches,
   ];
 }
 
@@ -6710,6 +7800,7 @@ typedef $$UsersTableCreateCompanionBuilder =
       required String fullName,
       required String username,
       required String passwordHash,
+      Value<String?> branchId,
       required String role,
       Value<bool> isDeleted,
       Value<DateTime> updatedAt,
@@ -6721,6 +7812,7 @@ typedef $$UsersTableUpdateCompanionBuilder =
       Value<String> fullName,
       Value<String> username,
       Value<String> passwordHash,
+      Value<String?> branchId,
       Value<String> role,
       Value<bool> isDeleted,
       Value<DateTime> updatedAt,
@@ -6756,6 +7848,11 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
 
   ColumnFilters<String> get passwordHash => $composableBuilder(
     column: $table.passwordHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6809,6 +7906,11 @@ class $$UsersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get role => $composableBuilder(
     column: $table.role,
     builder: (column) => ColumnOrderings(column),
@@ -6850,6 +7952,9 @@ class $$UsersTableAnnotationComposer
     column: $table.passwordHash,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
 
   GeneratedColumn<String> get role =>
       $composableBuilder(column: $table.role, builder: (column) => column);
@@ -6894,6 +7999,7 @@ class $$UsersTableTableManager
                 Value<String> fullName = const Value.absent(),
                 Value<String> username = const Value.absent(),
                 Value<String> passwordHash = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
                 Value<String> role = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -6903,6 +8009,7 @@ class $$UsersTableTableManager
                 fullName: fullName,
                 username: username,
                 passwordHash: passwordHash,
+                branchId: branchId,
                 role: role,
                 isDeleted: isDeleted,
                 updatedAt: updatedAt,
@@ -6914,6 +8021,7 @@ class $$UsersTableTableManager
                 required String fullName,
                 required String username,
                 required String passwordHash,
+                Value<String?> branchId = const Value.absent(),
                 required String role,
                 Value<bool> isDeleted = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -6923,6 +8031,7 @@ class $$UsersTableTableManager
                 fullName: fullName,
                 username: username,
                 passwordHash: passwordHash,
+                branchId: branchId,
                 role: role,
                 isDeleted: isDeleted,
                 updatedAt: updatedAt,
@@ -10818,6 +11927,521 @@ typedef $$InventoryItemsTableProcessedTableManager =
       InventoryItemRow,
       PrefetchHooks Function()
     >;
+typedef $$TreatmentsTableCreateCompanionBuilder =
+    TreatmentsCompanion Function({
+      Value<int> id,
+      required String uuid,
+      required String clinicId,
+      required String name,
+      required String category,
+      Value<int> price,
+      Value<String> duration,
+      Value<bool> isDeleted,
+      Value<DateTime> updatedAt,
+    });
+typedef $$TreatmentsTableUpdateCompanionBuilder =
+    TreatmentsCompanion Function({
+      Value<int> id,
+      Value<String> uuid,
+      Value<String> clinicId,
+      Value<String> name,
+      Value<String> category,
+      Value<int> price,
+      Value<String> duration,
+      Value<bool> isDeleted,
+      Value<DateTime> updatedAt,
+    });
+
+class $$TreatmentsTableFilterComposer
+    extends Composer<_$AppDatabase, $TreatmentsTable> {
+  $$TreatmentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get price => $composableBuilder(
+    column: $table.price,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get duration => $composableBuilder(
+    column: $table.duration,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TreatmentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TreatmentsTable> {
+  $$TreatmentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get price => $composableBuilder(
+    column: $table.price,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get duration => $composableBuilder(
+    column: $table.duration,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TreatmentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TreatmentsTable> {
+  $$TreatmentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get clinicId =>
+      $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<int> get price =>
+      $composableBuilder(column: $table.price, builder: (column) => column);
+
+  GeneratedColumn<String> get duration =>
+      $composableBuilder(column: $table.duration, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$TreatmentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TreatmentsTable,
+          TreatmentRow,
+          $$TreatmentsTableFilterComposer,
+          $$TreatmentsTableOrderingComposer,
+          $$TreatmentsTableAnnotationComposer,
+          $$TreatmentsTableCreateCompanionBuilder,
+          $$TreatmentsTableUpdateCompanionBuilder,
+          (
+            TreatmentRow,
+            BaseReferences<_$AppDatabase, $TreatmentsTable, TreatmentRow>,
+          ),
+          TreatmentRow,
+          PrefetchHooks Function()
+        > {
+  $$TreatmentsTableTableManager(_$AppDatabase db, $TreatmentsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TreatmentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TreatmentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TreatmentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
+                Value<String> clinicId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<int> price = const Value.absent(),
+                Value<String> duration = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => TreatmentsCompanion(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                name: name,
+                category: category,
+                price: price,
+                duration: duration,
+                isDeleted: isDeleted,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String uuid,
+                required String clinicId,
+                required String name,
+                required String category,
+                Value<int> price = const Value.absent(),
+                Value<String> duration = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => TreatmentsCompanion.insert(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                name: name,
+                category: category,
+                price: price,
+                duration: duration,
+                isDeleted: isDeleted,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TreatmentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TreatmentsTable,
+      TreatmentRow,
+      $$TreatmentsTableFilterComposer,
+      $$TreatmentsTableOrderingComposer,
+      $$TreatmentsTableAnnotationComposer,
+      $$TreatmentsTableCreateCompanionBuilder,
+      $$TreatmentsTableUpdateCompanionBuilder,
+      (
+        TreatmentRow,
+        BaseReferences<_$AppDatabase, $TreatmentsTable, TreatmentRow>,
+      ),
+      TreatmentRow,
+      PrefetchHooks Function()
+    >;
+typedef $$BranchesTableCreateCompanionBuilder =
+    BranchesCompanion Function({
+      Value<int> id,
+      required String uuid,
+      required String clinicId,
+      required String name,
+      Value<String> location,
+      Value<bool> isPrimary,
+      Value<bool> isDeleted,
+      Value<DateTime> updatedAt,
+    });
+typedef $$BranchesTableUpdateCompanionBuilder =
+    BranchesCompanion Function({
+      Value<int> id,
+      Value<String> uuid,
+      Value<String> clinicId,
+      Value<String> name,
+      Value<String> location,
+      Value<bool> isPrimary,
+      Value<bool> isDeleted,
+      Value<DateTime> updatedAt,
+    });
+
+class $$BranchesTableFilterComposer
+    extends Composer<_$AppDatabase, $BranchesTable> {
+  $$BranchesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get location => $composableBuilder(
+    column: $table.location,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isPrimary => $composableBuilder(
+    column: $table.isPrimary,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BranchesTableOrderingComposer
+    extends Composer<_$AppDatabase, $BranchesTable> {
+  $$BranchesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get location => $composableBuilder(
+    column: $table.location,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isPrimary => $composableBuilder(
+    column: $table.isPrimary,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BranchesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BranchesTable> {
+  $$BranchesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get clinicId =>
+      $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get location =>
+      $composableBuilder(column: $table.location, builder: (column) => column);
+
+  GeneratedColumn<bool> get isPrimary =>
+      $composableBuilder(column: $table.isPrimary, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$BranchesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BranchesTable,
+          BranchRow,
+          $$BranchesTableFilterComposer,
+          $$BranchesTableOrderingComposer,
+          $$BranchesTableAnnotationComposer,
+          $$BranchesTableCreateCompanionBuilder,
+          $$BranchesTableUpdateCompanionBuilder,
+          (BranchRow, BaseReferences<_$AppDatabase, $BranchesTable, BranchRow>),
+          BranchRow,
+          PrefetchHooks Function()
+        > {
+  $$BranchesTableTableManager(_$AppDatabase db, $BranchesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BranchesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BranchesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BranchesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
+                Value<String> clinicId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> location = const Value.absent(),
+                Value<bool> isPrimary = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => BranchesCompanion(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                name: name,
+                location: location,
+                isPrimary: isPrimary,
+                isDeleted: isDeleted,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String uuid,
+                required String clinicId,
+                required String name,
+                Value<String> location = const Value.absent(),
+                Value<bool> isPrimary = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => BranchesCompanion.insert(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                name: name,
+                location: location,
+                isPrimary: isPrimary,
+                isDeleted: isDeleted,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BranchesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BranchesTable,
+      BranchRow,
+      $$BranchesTableFilterComposer,
+      $$BranchesTableOrderingComposer,
+      $$BranchesTableAnnotationComposer,
+      $$BranchesTableCreateCompanionBuilder,
+      $$BranchesTableUpdateCompanionBuilder,
+      (BranchRow, BaseReferences<_$AppDatabase, $BranchesTable, BranchRow>),
+      BranchRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10846,4 +12470,8 @@ class $AppDatabaseManager {
       $$InvoiceItemsTableTableManager(_db, _db.invoiceItems);
   $$InventoryItemsTableTableManager get inventoryItems =>
       $$InventoryItemsTableTableManager(_db, _db.inventoryItems);
+  $$TreatmentsTableTableManager get treatments =>
+      $$TreatmentsTableTableManager(_db, _db.treatments);
+  $$BranchesTableTableManager get branches =>
+      $$BranchesTableTableManager(_db, _db.branches);
 }

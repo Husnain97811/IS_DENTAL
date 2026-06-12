@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/core/shell/auth_shell.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/theme/app_palette.dart';
@@ -91,150 +92,87 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
   Widget build(BuildContext context) {
     final d = context.dent;
     final lic = ref.watch(licenseControllerProvider).value?.license;
-    return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          child: Container(
-            width: 460,
-            padding: const EdgeInsets.all(30),
-            margin: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: d.surface,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: d.line),
-              boxShadow: d.shadowPop,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        gradient: d.accentGradient,
-                        borderRadius: BorderRadius.circular(13),
-                      ),
-                      child: Text(
-                        'D',
-                        style: TextStyle(
-                          fontFamily: AppFonts.display,
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w700,
-                          color: AppPalette.onAccent,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Welcome to DentOS',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        Text(
-                          [
-                            'Activate your license',
-                            'Clinic profile',
-                            'Owner account',
-                          ][_step],
-                          style: TextStyle(color: d.text3, fontSize: 9.sp),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                SizedBox(height: 3.h),
-                _stepDots(d),
-                SizedBox(height: 2.4.h),
-                if (_step == 0)
-                  _field(
-                    'License key',
-                    _license,
-                    hint: 'Paste your signed license (.dentos) contents',
-                    lines: 5,
-                  ),
-                if (_step == 1) ...[
-                  _field('Clinic name', _clinic),
-                  _field('Branch', _branch),
-                  _field('Currency', _currency),
-                  if (lic != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        'Tier: ${lic.tier.name} · seats: ${lic.maxUsers} · branches: ${lic.maxBranches}',
-                        style: TextStyle(color: d.text4, fontSize: 8.sp),
-                      ),
-                    ),
-                ],
-                if (_step == 2) ...[
-                  _field('Owner full name', _owner),
-                  _field('Username', _user),
-                  _field('Password', _pass, obscure: true),
-                ],
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Text(
-                      _error!,
-                      style: TextStyle(color: d.alert, fontSize: 8.5.sp),
-                    ),
-                  ),
-                SizedBox(height: 2.4.h),
-                Row(
-                  children: [
-                    if (_step > 0)
-                      TextButton(
-                        onPressed: _busy
-                            ? null
-                            : () => setState(() {
-                                _step--;
-                                _error = null;
-                              }),
-                        child: const Text('Back'),
-                      ),
-                    const Spacer(),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: d.ice,
-                        foregroundColor: AppPalette.onAccent,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 22,
-                          vertical: 14,
-                        ),
-                      ),
-                      onPressed: _busy
-                          ? null
-                          : (_step == 0
-                                ? _activate
-                                : (_step == 1
-                                      ? () => setState(() => _step = 2)
-                                      : _finish)),
-                      child: _busy
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppPalette.onAccent,
-                              ),
-                            )
-                          : Text(
-                              _step == 0
-                                  ? 'Activate'
-                                  : (_step == 1 ? 'Continue' : 'Finish setup'),
-                            ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+    return AuthShell(
+      maxWidth: 40.w,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AuthBrand(
+            title: 'Welcome to DentOS',
+            subtitle: const [
+              'Activate your license',
+              'Clinic profile',
+              'Owner account',
+            ][_step],
           ),
-        ),
+          SizedBox(height: 3.h),
+          _stepDots(d),
+          SizedBox(height: 2.4.h),
+          if (_step == 0)
+            AuthField(
+              label: 'License key',
+              controller: _license,
+              hint: 'Paste your signed license (.dentos) contents',
+              maxLines: 5,
+            ),
+          if (_step == 1) ...[
+            AuthField(label: 'Clinic name', controller: _clinic),
+            AuthField(label: 'Branch', controller: _branch),
+            AuthField(label: 'Currency', controller: _currency),
+            if (lic != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Tier: ${lic.tier.name} · seats: ${lic.maxUsers} · branches: ${lic.maxBranches}',
+                  style: TextStyle(color: d.text4, fontSize: 8.sp),
+                ),
+              ),
+          ],
+          if (_step == 2) ...[
+            AuthField(label: 'Owner full name', controller: _owner),
+            AuthField(label: 'Username', controller: _user),
+            AuthField(label: 'Password', controller: _pass, obscure: true),
+          ],
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                _error!,
+                style: TextStyle(color: d.alert, fontSize: 8.5.sp),
+              ),
+            ),
+          SizedBox(height: 2.4.h),
+          Row(
+            children: [
+              if (_step > 0)
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => setState(() {
+                          _step--;
+                          _error = null;
+                        }),
+                  child: const Text('Back'),
+                ),
+              const Spacer(),
+              SizedBox(
+                width: 165,
+                child: AuthButton(
+                  label: _step == 0
+                      ? 'Activate'
+                      : (_step == 1 ? 'Continue' : 'Finish setup'),
+                  busy: _busy,
+                  onPressed: _step == 0
+                      ? _activate
+                      : (_step == 1
+                            ? () => setState(() => _step = 2)
+                            : _finish),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

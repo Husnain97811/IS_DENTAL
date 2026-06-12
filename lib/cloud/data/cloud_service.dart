@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/config/env.dart';
 
 class CloudService {
-  final SupabaseClient _sb = Supabase.instance.client;
+  SupabaseClient get _sb => Supabase.instance.client;
 
   Future<bool> ensureSignedIn() async {
     if (_sb.auth.currentSession != null) return true;

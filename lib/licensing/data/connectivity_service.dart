@@ -1,13 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../cloud/data/cloud_service.dart';
+import '../../cloud/data/sync_engine.dart';
 import '../../core/db/app_database.dart';
 import '../../core/utils/monotonic_clock.dart';
 
 enum HeartbeatResult { ok, subscriptionInvalid, offline }
 
 class ConnectivityService {
-  ConnectivityService(this._db, this._clock);
+  ConnectivityService(this._db, this._clock, this._cloud, this._sync);
   final AppDatabase _db;
   final MonotonicClock _clock;
+  final CloudService _cloud;
+  final SyncEngine _sync;
 
   static const window = Duration(hours: 48);
   static const _kLastContact = 'last_contact_ms';
@@ -35,25 +40,29 @@ class ConnectivityService {
     required DateTime licenseExpiry,
   }) async {
     try {
-      final active = await _serverSubscriptionActive(clinicId);
-      if (active == null) return HeartbeatResult.offline; // unreachable
-      if (!active)
-        return HeartbeatResult
-            .subscriptionInvalid; // suspended/expired server-side
+      // 1) Reach the server (sign in if needed).
+      if (!await _cloud.ensureSignedIn()) return HeartbeatResult.offline;
+
+      // 2) Validate the subscription server-side.
+      final sub = await _cloud.subscription(clinicId);
+      if (sub == null) return HeartbeatResult.offline; // unreachable
+      final serverExpired =
+          sub.expiresAt != null && DateTime.now().isAfter(sub.expiresAt!);
+      if (sub.status != 'active' || serverExpired) {
+        return HeartbeatResult.subscriptionInvalid;
+      }
+
+      // 3) Success → reset the 48h window, then sync (best-effort).
       await seedContact();
-      // TODO(Phase 5): SyncEngine.syncAll() — push/pull every table once they exist.
+      try {
+        await _sync.syncAll(clinicId);
+      } catch (_) {
+        // Sync failures don't block access; the data is safe locally.
+      }
       return HeartbeatResult.ok;
     } catch (_) {
       return HeartbeatResult.offline;
     }
-  }
-
-  /// true = active, false = suspended/expired server-side, null = unreachable.
-  Future<bool?> _serverSubscriptionActive(String clinicId) async {
-    // TODO(Phase 5): Supabase RPC `subscription_status(clinic_id)` behind RLS,
-    // returning {status, expiresAt}. Until wired this returns null (offline),
-    // so the gate behaves honestly in dev. Flip to `true` to test the unlock path.
-    return null;
   }
 }
 
@@ -61,5 +70,7 @@ final connectivityServiceProvider = Provider(
   (ref) => ConnectivityService(
     ref.watch(appDatabaseProvider),
     ref.watch(monotonicClockProvider),
+    ref.watch(cloudServiceProvider),
+    ref.watch(syncEngineProvider),
   ),
 );

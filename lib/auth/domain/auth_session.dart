@@ -11,10 +11,12 @@ class AuthSession {
     required this.fullName,
     required this.username,
     required this.role,
+    this.branchId,
   });
   final int userId;
   final String fullName, username;
   final AppRole role;
+  final String? branchId; // null = clinic-wide (owner/admin)
 
   bool get isAdmin => role == AppRole.owner || role == AppRole.admin;
   String get initials => fullName

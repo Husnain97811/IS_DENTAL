@@ -1,12 +1,9 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:is_dental/features/appointments/data/appointment_tables.dart';
-import 'package:is_dental/features/billing/data/billing_tables.dart';
-import 'package:is_dental/features/inventory/data/inventory_tables.dart';
-import 'package:is_dental/features/patients/data/patient_tables.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'database_connection.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../constants/views.dart';
+import 'database_connection.dart';
 part 'app_database.g.dart';
 
 /// Key/value store for app meta: license blob, anti-rollback clock, setup flag, theme.
@@ -33,6 +30,8 @@ class Users extends Table {
   TextColumn get fullName => text()();
   TextColumn get username => text().unique()();
   TextColumn get passwordHash => text()();
+  TextColumn get branchId =>
+      text().nullable()(); // null = clinic-wide (owner/admin)
   TextColumn get role => text()(); // owner | admin | clinician | receptionist
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
@@ -52,13 +51,15 @@ class Users extends Table {
     Invoices,
     InvoiceItems,
     InventoryItems,
+    Treatments,
+    Branches,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(openEncryptedConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 7;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -70,19 +71,44 @@ class AppDatabase extends _$AppDatabase {
     },
 
     onUpgrade: (m, from, to) async {
-      if (from < 4) {
-        await m.createTable(invoices);
-        await m.createTable(invoiceItems);
-        await m.createTable(inventoryItems);
-        await customStatement(
-          'CREATE INDEX IF NOT EXISTS idx_inv_patient ON invoices(patient_id);',
-        );
-        await customStatement(
-          'CREATE INDEX IF NOT EXISTS idx_inv_status ON invoices(status);',
-        );
+      if (from < 7) {
+        await m.addColumn(users, users.branchId);
+      }
+      if (from < 6) {
+        await m.createTable(branches);
       }
     },
   );
+
+  Future<String?> currentBranchId() async {
+    final v = await getSetting('active_branch');
+    return (v == null || v.isEmpty) ? null : v;
+  }
+
+  Future<void> addStaff({
+    required String clinicId,
+    String? branchId,
+    required String fullName,
+    required String username,
+    required String passwordHash,
+    required String role,
+  }) => into(users).insert(
+    UsersCompanion.insert(
+      clinicId: clinicId,
+      branchId: Value(branchId),
+      fullName: fullName,
+      username: username,
+      passwordHash: passwordHash,
+      role: role,
+    ),
+  );
+  Future<void> softDeleteUser(int id) =>
+      (update(users)..where((t) => t.id.equals(id))).write(
+        UsersCompanion(
+          isDeleted: const Value(true),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
 
   Future<void> _indexes() async {
     await customStatement(

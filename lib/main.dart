@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/auth/presentation/idle_lock.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:sizer/sizer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'core/router/app_router.dart';
-import 'core/theme/app_theme.dart';
-import 'core/theme/theme_controller.dart';
 import 'core/config/env.dart';
+import 'core/constants/views.dart';
 
 // …
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   await Env.load();
   await Supabase.initialize(
     url: Env.supabaseUrl,

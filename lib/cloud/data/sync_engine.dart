@@ -6,7 +6,7 @@ import '../../core/db/app_database.dart';
 class SyncEngine {
   SyncEngine(this._db);
   final AppDatabase _db;
-  final SupabaseClient _sb = Supabase.instance.client;
+  SupabaseClient get _sb => Supabase.instance.client;
 
   Future<void> syncAll(String clinicId) async {
     await _syncPatients(clinicId);

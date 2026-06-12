@@ -41,6 +41,47 @@ class BillingRepositoryImpl implements BillingRepository {
   }
 
   @override
+  Future<void> createInvoice({
+    required int patientId,
+    required String invoiceNo,
+    required DateTime issuedAt,
+    required String status,
+    required String summary,
+    required int adjustment,
+    required List<({String description, int amount})> items,
+  }) async {
+    final clinicId = await _db.currentClinicId() ?? '';
+    final subtotal = items.fold<int>(0, (s, e) => s + e.amount);
+    final invId = await _db
+        .into(_db.invoices)
+        .insert(
+          InvoicesCompanion.insert(
+            uuid: Uuids.v4(),
+            clinicId: clinicId,
+            patientId: patientId,
+            invoiceNo: invoiceNo,
+            issuedAt: issuedAt,
+            status: Value(status),
+            summary: Value(summary),
+            subtotal: Value(subtotal),
+            adjustment: Value(adjustment),
+            total: Value(subtotal - adjustment),
+          ),
+        );
+    for (final it in items) {
+      await _db
+          .into(_db.invoiceItems)
+          .insert(
+            InvoiceItemsCompanion.insert(
+              invoiceId: invId,
+              description: it.description,
+              amount: it.amount,
+            ),
+          );
+    }
+  }
+
+  @override
   Stream<Invoice?> watchInvoice(int id) {
     return (_db.select(
       _db.invoiceItems,

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/core/theme/app_palette.dart';
+import 'package:is_dental/features/billing/presentation/widgets/invoice_editor.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/theme/app_typography.dart';
@@ -49,14 +51,34 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Billing & Invoices',
-            style: Theme.of(context).textTheme.displayLarge,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Click an invoice to preview & print.',
-            style: TextStyle(color: d.text3, fontSize: 9.sp),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Billing & Invoices',
+                      style: Theme.of(context).textTheme.displayLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Click an invoice to preview & print.',
+                      style: TextStyle(color: d.text3, fontSize: 9.sp),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: d.ice,
+                  foregroundColor: AppPalette.onAccent,
+                ),
+                onPressed: () => showInvoiceEditor(context),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('New Invoice'),
+              ),
+            ],
           ),
           SizedBox(height: 2.2.h),
           async.when(

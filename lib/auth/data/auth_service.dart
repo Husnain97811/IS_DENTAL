@@ -13,6 +13,14 @@ class AuthService {
   static const _maxFails = 5;
   static const _lockFor = Duration(minutes: 5);
 
+  /// The moment the lock lifts, or null if not currently locked.
+  Future<DateTime?> lockedUntil() async {
+    final ms = int.tryParse(await _db.getSetting(_lockKey) ?? '');
+    if (ms == null) return null;
+    final until = DateTime.fromMillisecondsSinceEpoch(ms);
+    return DateTime.now().isBefore(until) ? until : null;
+  }
+
   Future<({AuthSession? session, String? error})> login(
     String username,
     String password,
@@ -52,6 +60,7 @@ class AuthService {
         fullName: user.fullName,
         username: user.username,
         role: roleFromString(user.role),
+        branchId: user.branchId,
       ),
       error: null,
     );

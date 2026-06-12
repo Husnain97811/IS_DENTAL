@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/appointments/presentation/widgets/appointment_editor.dart';
+import 'package:is_dental/features/patients/presentation/widgets/patient_editor.dart';
 import 'package:sizer/sizer.dart';
-
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dent_colors.dart';
@@ -81,7 +82,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
                     TreatmentPlanTimeline(steps: plan.steps),
                   ),
           ),
-          _actions(context),
+          _actions(context, ref, p),
         ],
       ),
     );
@@ -261,7 +262,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
     );
   }
 
-  Widget _actions(BuildContext context) {
+  Widget _actions(BuildContext context, WidgetRef ref, Patient p) {
     final d = context.dent;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
@@ -273,7 +274,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
               foregroundColor: AppPalette.onAccent,
               minimumSize: const Size.fromHeight(42),
             ),
-            onPressed: () {},
+            onPressed: () => showPatientEditor(context, existing: p),
             icon: const Icon(Icons.folder_open_rounded, size: 17),
             label: const Text('Open Full Record'),
           ),
@@ -284,7 +285,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
               side: BorderSide(color: d.line),
               minimumSize: const Size.fromHeight(42),
             ),
-            onPressed: () {},
+            onPressed: () => showAppointmentEditor(context, patientId: p.id),
             icon: const Icon(Icons.event_rounded, size: 17),
             label: const Text('Schedule Follow-up'),
           ),

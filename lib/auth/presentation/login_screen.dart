@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/core/shell/auth_shell.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../core/theme/app_palette.dart';
-import '../../core/theme/app_typography.dart';
 import '../../core/theme/dent_colors.dart';
 import 'auth_controller.dart';
 
@@ -44,91 +43,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final d = context.dent;
-    return Scaffold(
-      body: Center(
-        child: Container(
-          width: 420,
-          padding: const EdgeInsets.all(30),
-          margin: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: d.surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: d.line),
-            boxShadow: d.shadowPop,
+    return AuthShell(
+      maxWidth: 40.w,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const AuthBrand(
+            title: 'Sign in',
+            subtitle: 'DentOS · Clinical Suite',
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      gradient: d.accentGradient,
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    child: Text(
-                      'D',
-                      style: TextStyle(
-                        fontFamily: AppFonts.display,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w700,
-                        color: AppPalette.onAccent,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Sign in',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      Text(
-                        'DentOS · Clinical Suite',
-                        style: TextStyle(color: d.text3, fontSize: 9.sp),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              SizedBox(height: 3.h),
-              _field('Username', _user),
-              _field('Password', _pass, obscure: true, onSubmit: _submit),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    _error!,
-                    style: TextStyle(color: d.alert, fontSize: 8.5.sp),
-                  ),
-                ),
-              SizedBox(height: 2.4.h),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: d.ice,
-                  foregroundColor: AppPalette.onAccent,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                onPressed: _busy ? null : _submit,
-                child: _busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppPalette.onAccent,
-                        ),
-                      )
-                    : const Text('Sign in'),
-              ),
-            ],
+          SizedBox(height: 3.h),
+          AuthField(label: 'Username', controller: _user),
+          AuthField(
+            label: 'Password',
+            controller: _pass,
+            obscure: true,
+            onSubmit: _submit,
           ),
-        ),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                _error!,
+                style: TextStyle(color: d.alert, fontSize: 8.5.sp),
+              ),
+            ),
+          SizedBox(height: 1.4.h),
+          AuthButton(label: 'Sign in', busy: _busy, onPressed: _submit),
+        ],
       ),
     );
   }

@@ -21,7 +21,7 @@ class _S extends ConsumerState<ReconnectRequiredScreen> {
     return Scaffold(
       body: Center(
         child: Container(
-          width: 440,
+          width: 40.w,
           padding: const EdgeInsets.all(30),
           margin: const EdgeInsets.all(20),
           decoration: BoxDecoration(

@@ -11,9 +11,15 @@ class PatientRepositoryImpl implements PatientRepository {
   final AppDatabase _db;
 
   @override
-  Stream<List<Patient>> watchPatients() =>
+  Stream<List<Patient>> watchPatients({String? branchId}) =>
       (_db.select(_db.patients)
-            ..where((t) => t.isDeleted.equals(false))
+            ..where(
+              (t) =>
+                  t.isDeleted.equals(false) &
+                  (branchId == null
+                      ? const Constant(true)
+                      : t.branchId.equals(branchId)),
+            )
             ..orderBy([(t) => OrderingTerm.asc(t.fullName)]))
           .watch()
           .map((rows) => rows.map(_toPatient).toList());
@@ -21,6 +27,9 @@ class PatientRepositoryImpl implements PatientRepository {
   @override
   Future<void> upsertPatient(Patient p) async {
     final clinicId = await _db.currentClinicId() ?? '';
+    final stampBranch = p.id == 0
+        ? Value(await _db.currentBranchId())
+        : const Value.absent();
     await _db
         .into(_db.patients)
         .insertOnConflictUpdate(

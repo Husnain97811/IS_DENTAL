@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/core/theme/app_palette.dart';
+import 'package:is_dental/features/patients/presentation/widgets/inventory_editor.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/theme/app_radii.dart';
@@ -22,10 +24,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   @override
   void initState() {
     super.initState();
-    if (kDebugMode)
+    if (kDebugMode) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => ref.read(inventoryRepositoryProvider).seedDemoIfEmpty(),
       );
+    }
   }
 
   (ChipKind, String, Color) _st(InventoryItem it, DentColors d) =>
@@ -93,6 +96,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                     ref.read(lowStockOnlyProvider.notifier).state = v,
                 selectedColor: d.alert.withValues(alpha: .14),
                 checkmarkColor: d.alert,
+              ),
+              const Spacer(),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: d.ice,
+                  foregroundColor: AppPalette.onAccent,
+                ),
+                onPressed: () => showInventoryEditor(context),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Add Item'),
               ),
             ],
           ),

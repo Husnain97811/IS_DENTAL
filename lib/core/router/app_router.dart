@@ -138,10 +138,24 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class _Splash extends StatelessWidget {
+class _Splash extends ConsumerWidget {
   const _Splash();
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: Center(child: CircularProgressIndicator(color: context.dent.ice)),
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(licenseControllerProvider);
+    return Scaffold(
+      body: Center(
+        child: s.hasError
+            ? Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Startup error:\n\n${s.error}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: context.dent.alert, fontSize: 13),
+                ),
+              )
+            : CircularProgressIndicator(color: context.dent.ice),
+      ),
+    );
+  }
 }

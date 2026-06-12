@@ -46,6 +46,27 @@ class InventoryRepositoryImpl implements InventoryRepository {
   }
 
   @override
+  Future<void> upsertItem(InventoryItem item) async {
+    final clinicId = await _db.currentClinicId() ?? '';
+    await _db
+        .into(_db.inventoryItems)
+        .insertOnConflictUpdate(
+          InventoryItemsCompanion(
+            id: item.id == 0 ? const Value.absent() : Value(item.id),
+            uuid: Value(item.uuid.isEmpty ? Uuids.v4() : item.uuid),
+            clinicId: Value(clinicId),
+            name: Value(item.name),
+            category: Value(item.category),
+            inStock: Value(item.inStock),
+            parLevel: Value(item.parLevel),
+            reorderAt: Value(item.reorderAt),
+            unit: Value(item.unit),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
+  }
+
+  @override
   Future<void> seedDemoIfEmpty() async {
     final clinicId = await _db.currentClinicId();
     if (clinicId == null) return;

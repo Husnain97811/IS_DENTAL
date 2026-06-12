@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/patients/presentation/widgets/patient_editor.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/theme/app_palette.dart';
@@ -148,11 +149,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
           backgroundColor: d.ice,
           foregroundColor: AppPalette.onAccent,
         ),
-        onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Add Patient form — coming with the patient editor.'),
-          ),
-        ),
+        onPressed: () => showPatientEditor(context),
         icon: const Icon(Icons.add_rounded, size: 18),
         label: const Text('Add Patient'),
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../../../core/db/app_database.dart';
 import '../data/inventory_repository_impl.dart';
 import '../domain/inventory_item.dart';

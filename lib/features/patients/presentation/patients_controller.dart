@@ -6,15 +6,17 @@ import '../domain/patient.dart';
 import '../domain/patient_repository.dart';
 import '../domain/tooth_record.dart';
 import '../domain/treatment_plan.dart';
+import '../../branches/presentation/branch_controller.dart'; // add this
 
 final patientRepositoryProvider = Provider<PatientRepository>(
   (ref) => PatientRepositoryImpl(ref.watch(appDatabaseProvider)),
 );
 
 final patientsStreamProvider = StreamProvider.autoDispose<List<Patient>>(
-  (ref) => ref.watch(patientRepositoryProvider).watchPatients(),
+  (ref) => ref
+      .watch(patientRepositoryProvider)
+      .watchPatients(branchId: ref.watch(activeBranchProvider)),
 );
-
 final selectedPatientIdProvider = StateProvider<int?>((_) => null);
 
 /// Selected patient, defaulting to the first in the list (so the dashboard drawer is populated).

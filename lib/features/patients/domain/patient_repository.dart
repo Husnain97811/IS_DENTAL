@@ -3,7 +3,7 @@ import 'tooth_record.dart';
 import 'treatment_plan.dart';
 
 abstract interface class PatientRepository {
-  Stream<List<Patient>> watchPatients();
+  Stream<List<Patient>> watchPatients({String? branchId});
   Future<void> upsertPatient(Patient p);
   Future<void> softDeletePatient(int id);
   Stream<Map<int, ToothRecord>> watchToothRecords(int patientId);
