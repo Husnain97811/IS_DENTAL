@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:is_dental/core/constants/app_flags.dart';
+import 'package:is_dental/core/router/app_routes.dart';
 import 'package:is_dental/features/patients/presentation/widgets/patient_editor.dart';
 import 'package:sizer/sizer.dart';
 
@@ -26,7 +29,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   @override
   void initState() {
     super.initState();
-    if (kDebugMode) {
+    if (kDebugMode && kSeedDemoData) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => ref.read(patientRepositoryProvider).seedDemoDataIfEmpty(),
       );
@@ -186,7 +189,9 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     final tone = _avatarTones[i % 4];
     final (chip, label) = _status(p.status);
     return InkWell(
-      onTap: () => ref.read(selectedPatientIdProvider.notifier).state = p.id,
+      onTap: () => context.push('${AppRoutes.patients}/${p.id}'),
+
+      // ref.read(selectedPatientIdProvider.notifier).state = p.id,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(
@@ -283,5 +288,5 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     (m) => '${m[1]},',
   );
   String _fmt(DateTime dt) =>
-      '${dt.day} ${const ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][0]}'; // placeholder
+      '${dt.day} ${const ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][dt.month - 1]} ${dt.year}';
 }

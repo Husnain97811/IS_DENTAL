@@ -32,6 +32,13 @@ final appointmentsForDayProvider =
           .watchAppointmentsForDay(ref.watch(selectedDateProvider)),
     );
 
+final appointmentsForMonthProvider = StreamProvider.autoDispose
+    .family<List<Appointment>, ({int year, int month})>(
+      (ref, ym) => ref
+          .watch(appointmentRepositoryProvider)
+          .watchAppointmentsForMonth(ym.year, ym.month),
+    );
+
 final markedDaysProvider = StreamProvider.autoDispose
     .family<Set<int>, ({int year, int month})>(
       (ref, ym) => ref
@@ -39,7 +46,19 @@ final markedDaysProvider = StreamProvider.autoDispose
           .watchMarkedDays(ym.year, ym.month),
     );
 
+final viewedMonthProvider = StateProvider<({int year, int month})>((ref) {
+  final s = ref.read(selectedDateProvider);
+  return (year: s.year, month: s.month);
+});
+
 final slotsProvider = FutureProvider.autoDispose
     .family<List<({DateTime time, bool busy})>, DateTime>(
       (ref, day) => ref.watch(appointmentRepositoryProvider).slotsFor(day),
+    );
+
+final appointmentsForPatientProvider = StreamProvider.autoDispose
+    .family<List<Appointment>, int>(
+      (ref, patientId) => ref
+          .watch(appointmentRepositoryProvider)
+          .watchAppointmentsForPatient(patientId),
     );

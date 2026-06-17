@@ -1,0 +1,12 @@
+{"email":"test1@demo.com","password":"secret123","license":{
+  "clinicId": "CL-0001",
+  "clinicName": "Smile Dental Care",
+  "tier": "premium",
+  "cloudPackage": "cloud",
+  "maxBranches": 3,
+  "maxUsers": 8,
+  "issuedAt": "2026-06-14T05:25:33.392989Z",
+  "expiresAt": "2027-06-14T05:25:33.392990Z",
+  "machineFingerprint": "ANY",
+  "signature": "5xQDDQjM/WnjJRwED6/K8CHhTSSgLBfSNX2FJ4piI2OqftFnOiJaOC61xNhZFX8dUx3prt1IXNy7rn03vgvli9LVGE72Zn5qyLVwYGdeH+ye8rwFOTfAymJyFBWFDJpKiiJJIh2D2vcxwDQsAu+gKQh0u04FPmXUiP2mdsVTVzbl1l5sFmIjrWKZAmCdlpjPlcl3ovTseTD6klBUVSXf5wM3ROcBUDqftC+QrMRA7zDq3t4BfdrRFadtavw0C/VD25v0/zRD1WIIRuVj55mjwhsx067x8MwiVmQ9kahRfRVgVX7shpQT7CrSfMIyYlj/EM0DP/D+g251F22xv5/yw=="
+}}

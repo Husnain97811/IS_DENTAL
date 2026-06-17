@@ -66,6 +66,7 @@ class _S extends ConsumerState<PatientEditorDialog> {
           Patient(
             id: e?.id ?? 0,
             uuid: e?.uuid ?? '',
+
             code: _code.text.trim(),
             fullName: _name.text.trim(),
             gender: _gender,

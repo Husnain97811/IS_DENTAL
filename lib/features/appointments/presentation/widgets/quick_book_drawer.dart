@@ -6,7 +6,9 @@ import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dent_colors.dart';
 import '../../../patients/presentation/patients_controller.dart';
+import '../../application/book_with_new_patient.dart';
 import '../appointments_controller.dart';
+import 'patient_picker_field.dart';
 
 class QuickBookDrawer extends ConsumerStatefulWidget {
   const QuickBookDrawer({super.key});
@@ -15,37 +17,74 @@ class QuickBookDrawer extends ConsumerStatefulWidget {
 }
 
 class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
-  int? _patientId;
+  PatientChoice? _patientChoice;
   String _procedure = kProcedures.first;
   String _dentist = kDentists.first;
   DateTime? _slot;
   bool _busy = false;
+  int _formKey = 0; // bump to reset the picker after a successful booking
 
   Future<void> _confirm() async {
-    if (_patientId == null || _slot == null) return;
+    final choice = _patientChoice;
+    final slot = _slot;
+    if (choice == null || slot == null) return;
+
     setState(() => _busy = true);
+    final dentist = _dentist
+        .replaceFirst('Dr. Ayesha', 'Dr.')
+        .replaceFirst('Dr. Bilal Ahmed', 'Dr. Bilal')
+        .replaceFirst('Dr. Sara Malik', 'Dr. Sara');
     final chair = 1 + kDentists.indexOf(_dentist);
-    await ref
-        .read(appointmentRepositoryProvider)
-        .book(
-          patientId: _patientId!,
-          dentist: _dentist
-              .replaceFirst('Dr. Ayesha', 'Dr.')
-              .replaceFirst('Dr. Bilal Ahmed', 'Dr. Bilal')
-              .replaceFirst('Dr. Sara Malik', 'Dr. Sara'),
-          chair: chair,
-          procedure: _procedure,
-          startsAt: _slot!,
-          durationMin: 45,
-        );
+
+    try {
+      switch (choice) {
+        case ExistingPatientChoice(:final patient):
+          await ref
+              .read(appointmentRepositoryProvider)
+              .book(
+                patientId: patient.id,
+                dentist: dentist,
+                chair: chair,
+                procedure: _procedure,
+                startsAt: slot,
+                durationMin: 45,
+              );
+        case NewPatientChoice(:final name):
+          await ref.read(bookWithNewPatientProvider)(
+            fullName: name,
+            dentist: dentist,
+            chair: chair,
+            procedure: _procedure,
+            startsAt: slot,
+            durationMin: 45,
+          );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not book: $e')));
+      }
+      return;
+    }
+
     if (!mounted) return;
     setState(() {
       _busy = false;
       _slot = null;
+      _patientChoice = null;
+      _formKey++; // clears the picker's text
     });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Appointment booked.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          choice is NewPatientChoice
+              ? 'Patient created & appointment booked.'
+              : 'Appointment booked.',
+        ),
+      ),
+    );
   }
 
   @override
@@ -90,30 +129,17 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
               ],
             ),
           ),
-          _label(d, 'Patient'),
-          _box(
-            d,
-            DropdownButton<int>(
-              isExpanded: true,
-              underline: const SizedBox(),
-              value: _patientId,
-              hint: Text(
-                'Select patient…',
-                style: TextStyle(color: d.text4, fontSize: 9.sp),
-              ),
-              items: [
-                for (final p in patients)
-                  DropdownMenuItem(
-                    value: p.id,
-                    child: Text(
-                      p.fullName,
-                      style: TextStyle(fontSize: 9.sp, color: d.text1),
-                    ),
-                  ),
-              ],
-              onChanged: (v) => setState(() => _patientId = v),
+
+          // live-search patient picker (existing or create-new)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            child: PatientPickerField(
+              key: ValueKey(_formKey),
+              patients: patients,
+              onChanged: (c) => setState(() => _patientChoice = c),
             ),
           ),
+
           _label(d, 'Procedure'),
           _box(
             d,
@@ -180,7 +206,7 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
                 foregroundColor: AppPalette.onAccent,
                 minimumSize: const Size.fromHeight(42),
               ),
-              onPressed: (_busy || _patientId == null || _slot == null)
+              onPressed: (_busy || _patientChoice == null || _slot == null)
                   ? null
                   : _confirm,
               icon: _busy

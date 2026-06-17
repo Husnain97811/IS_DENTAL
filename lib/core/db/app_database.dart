@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/core/utils/uuids.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/views.dart';
@@ -26,6 +27,8 @@ class ClinicProfile extends Table {
 
 class Users extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get uuid =>
+      text().withDefault(const Constant(''))(); // ← this line
   TextColumn get clinicId => text()();
   TextColumn get fullName => text()();
   TextColumn get username => text().unique()();
@@ -63,6 +66,106 @@ class AppDatabase extends _$AppDatabase {
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
+  Stream<int> watchPatientCount() {
+    final c = countAll();
+    final q = selectOnly(patients)
+      ..addColumns([c])
+      ..where(patients.isDeleted.equals(false));
+    return q.map((r) => r.read(c) ?? 0).watchSingle();
+  }
+
+  Stream<int> watchInTreatmentCount() {
+    final c = countAll();
+    final q = selectOnly(patients)
+      ..addColumns([c])
+      ..where(
+        patients.isDeleted.equals(false) &
+            patients.status.equals('inTreatment'),
+      );
+    return q.map((r) => r.read(c) ?? 0).watchSingle();
+  }
+
+  Stream<int> watchAppointmentCount(DateTime start, DateTime end) {
+    final c = countAll();
+    final q = selectOnly(appointments)
+      ..addColumns([c])
+      ..where(
+        appointments.isDeleted.equals(false) &
+            appointments.startsAt.isBiggerOrEqualValue(start) &
+            appointments.startsAt.isSmallerThanValue(end),
+      );
+    return q.map((r) => r.read(c) ?? 0).watchSingle();
+  }
+
+  Stream<int> watchPaidRevenue(DateTime start, DateTime end) {
+    final s = invoices.total.sum();
+    final q = selectOnly(invoices)
+      ..addColumns([s])
+      ..where(
+        invoices.isDeleted.equals(false) &
+            invoices.status.equals('paid') &
+            invoices.issuedAt.isBiggerOrEqualValue(start) &
+            invoices.issuedAt.isSmallerThanValue(end),
+      );
+    return q.map((r) => r.read(s) ?? 0).watchSingle();
+  }
+
+  Stream<({int sum, int count})> watchUnpaidTotals() {
+    final s = invoices.total.sum();
+    final c = countAll();
+    final q = selectOnly(invoices)
+      ..addColumns([s, c])
+      ..where(
+        invoices.isDeleted.equals(false) &
+            invoices.status.isIn(const ['pending', 'overdue']),
+      );
+    return q
+        .map((r) => (sum: r.read(s) ?? 0, count: r.read(c) ?? 0))
+        .watchSingle();
+  }
+
+  Stream<List<({String procedure, int count})>> watchTopProcedures(
+    DateTime start,
+    DateTime end, {
+    int limit = 5,
+  }) {
+    final c = countAll();
+    final q = selectOnly(appointments)
+      ..addColumns([appointments.procedure, c])
+      ..where(
+        appointments.isDeleted.equals(false) &
+            appointments.startsAt.isBiggerOrEqualValue(start) &
+            appointments.startsAt.isSmallerThanValue(end),
+      )
+      ..groupBy([appointments.procedure])
+      ..orderBy([OrderingTerm(expression: c, mode: OrderingMode.desc)])
+      ..limit(limit);
+    return q
+        .map(
+          (r) => (
+            procedure: r.read(appointments.procedure)!,
+            count: r.read(c) ?? 0,
+          ),
+        )
+        .watch();
+  }
+
+  // Only the current week's paid invoices (small set), bucketed by day in Dart.
+  Stream<List<({DateTime issuedAt, int total})>> watchPaidInvoicesBetween(
+    DateTime start,
+    DateTime end,
+  ) {
+    final q = select(invoices)
+      ..where(
+        (t) =>
+            t.isDeleted.equals(false) &
+            t.status.equals('paid') &
+            t.issuedAt.isBiggerOrEqualValue(start) &
+            t.issuedAt.isSmallerThanValue(end),
+      );
+    return q.map((r) => (issuedAt: r.issuedAt, total: r.total)).watch();
+  }
+
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
@@ -79,6 +182,19 @@ class AppDatabase extends _$AppDatabase {
       }
     },
   );
+
+  Future<void> backfillUserUuids() async {
+    for (final u in await (select(
+      users,
+    )..where((t) => t.uuid.equals(''))).get()) {
+      await (update(users)..where((t) => t.id.equals(u.id))).write(
+        UsersCompanion(
+          uuid: Value(Uuids.v4()),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    }
+  }
 
   Future<String?> currentBranchId() async {
     final v = await getSetting('active_branch');
@@ -156,6 +272,7 @@ class AppDatabase extends _$AppDatabase {
     String role = 'owner',
   }) => into(users).insert(
     UsersCompanion.insert(
+      uuid: Value(Uuids.v4()), // <-- this is what's missing
       clinicId: clinicId,
       fullName: fullName,
       username: username,

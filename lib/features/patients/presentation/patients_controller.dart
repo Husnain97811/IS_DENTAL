@@ -19,6 +19,18 @@ final patientsStreamProvider = StreamProvider.autoDispose<List<Patient>>(
 );
 final selectedPatientIdProvider = StateProvider<int?>((_) => null);
 
+final patientByIdProvider = Provider.autoDispose.family<Patient?, int>((
+  ref,
+  id,
+) {
+  final list = ref.watch(patientsStreamProvider).value;
+  if (list == null) return null;
+  for (final p in list) {
+    if (p.id == id) return p;
+  }
+  return null;
+});
+
 /// Selected patient, defaulting to the first in the list (so the dashboard drawer is populated).
 final selectedPatientProvider = Provider.autoDispose<Patient?>((ref) {
   final list = ref.watch(patientsStreamProvider).value;

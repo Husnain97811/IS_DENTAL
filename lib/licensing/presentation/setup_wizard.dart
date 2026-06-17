@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/cloud/data/cloud_registration.dart';
 import 'package:is_dental/core/shell/auth_shell.dart';
 import 'package:sizer/sizer.dart';
 
@@ -18,6 +19,7 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
   int _step = 0;
   bool _busy = false;
   String? _error;
+  bool _regFailed = false;
 
   final _license = TextEditingController();
   final _clinic = TextEditingController();
@@ -26,6 +28,7 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
   final _owner = TextEditingController();
   final _user = TextEditingController();
   final _pass = TextEditingController();
+  final _email = TextEditingController();
 
   @override
   void dispose() {
@@ -65,27 +68,47 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
   }
 
   Future<void> _finish() async {
-    if (_owner.text.isEmpty || _user.text.isEmpty || _pass.text.length < 6) {
+    final email = _email.text.trim();
+    if (_owner.text.isEmpty ||
+        _user.text.isEmpty ||
+        !email.contains('@') ||
+        _pass.text.length < 6) {
       setState(
-        () => _error = 'Enter owner name, username, and a password (6+ chars).',
+        () => _error =
+            'Enter owner name, username, a valid email, and a 6+ char password.',
       );
+      return;
+    }
+    final lic = ref.read(licenseControllerProvider).value?.license;
+    if (lic == null) {
+      setState(() => _error = 'License missing — go back and activate.');
       return;
     }
     setState(() {
       _busy = true;
       _error = null;
     });
+    final reg = await ref
+        .read(cloudRegistrationProvider)
+        .register(license: lic.toJson(), email: email, password: _pass.text);
+    if (!reg.ok) {
+      setState(() {
+        _busy = false;
+        _error = reg.error;
+      });
+      return;
+    }
     await ref
         .read(licenseControllerProvider.notifier)
         .completeSetup(
-          clinicName: _clinic.text.trim(),
+          clinicName: lic.clinicName,
           branch: _branch.text.trim(),
           currency: _currency.text.trim(),
           ownerName: _owner.text.trim(),
           username: _user.text.trim(),
+          email: email,
           password: _pass.text,
         );
-    // Gate rebuilds into the app automatically once status becomes active+setup.
   }
 
   @override
@@ -117,7 +140,7 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
               maxLines: 5,
             ),
           if (_step == 1) ...[
-            AuthField(label: 'Clinic name', controller: _clinic),
+            _lockedField(d, 'Clinic name', lic?.clinicName ?? ''),
             AuthField(label: 'Branch', controller: _branch),
             AuthField(label: 'Currency', controller: _currency),
             if (lic != null)
@@ -132,6 +155,11 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
           if (_step == 2) ...[
             AuthField(label: 'Owner full name', controller: _owner),
             AuthField(label: 'Username', controller: _user),
+            AuthField(
+              label: 'Email',
+              controller: _email,
+              hint: 'used for cloud sign-in',
+            ),
             AuthField(label: 'Password', controller: _pass, obscure: true),
           ],
           if (_error != null)
@@ -159,9 +187,9 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
               SizedBox(
                 width: 165,
                 child: AuthButton(
-                  label: _step == 0
-                      ? 'Activate'
-                      : (_step == 1 ? 'Continue' : 'Finish setup'),
+                  label: _step == 2
+                      ? (_regFailed ? 'Retry setup' : 'Finish setup')
+                      : (_step == 0 ? 'Activate' : 'Continue'),
                   busy: _busy,
                   onPressed: _step == 0
                       ? _activate
@@ -191,6 +219,50 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
           ),
         ),
       ),
+    ),
+  );
+
+  Widget _lockedField(DentColors d, String label, String value) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            color: d.text4,
+            fontSize: 7.sp,
+            fontWeight: FontWeight.w700,
+            letterSpacing: .5,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          height: 42,
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 13),
+          decoration: BoxDecoration(
+            color: d.surface2.withValues(alpha: .55),
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(color: d.line.withValues(alpha: .7)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 9.5.sp,
+                    color: d.text2,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Icon(Icons.lock_rounded, size: 14, color: d.text4),
+            ],
+          ),
+        ),
+      ],
     ),
   );
 

@@ -7,20 +7,8 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dent_colors.dart';
 import '../appointments_controller.dart';
 
-class MiniCalendar extends ConsumerStatefulWidget {
+class MiniCalendar extends ConsumerWidget {
   const MiniCalendar({super.key});
-  @override
-  ConsumerState<MiniCalendar> createState() => _MiniCalendarState();
-}
-
-class _MiniCalendarState extends ConsumerState<MiniCalendar> {
-  late DateTime _month;
-  @override
-  void initState() {
-    super.initState();
-    final s = ref.read(selectedDateProvider);
-    _month = DateTime(s.year, s.month);
-  }
 
   static const _months = [
     'January',
@@ -38,18 +26,25 @@ class _MiniCalendarState extends ConsumerState<MiniCalendar> {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final d = context.dent;
     final now = DateTime.now();
     final selected = ref.watch(selectedDateProvider);
+    final vm = ref.watch(viewedMonthProvider);
+    final month = DateTime(vm.year, vm.month);
     final marked =
-        ref
-            .watch(markedDaysProvider((year: _month.year, month: _month.month)))
-            .value ??
-        {};
-    final daysInMonth = DateTime(_month.year, _month.month + 1, 0).day;
-    final lead =
-        DateTime(_month.year, _month.month, 1).weekday % 7; // Sunday-start
+        ref.watch(markedDaysProvider((year: vm.year, month: vm.month))).value ??
+        const <int>{};
+    final daysInMonth = DateTime(vm.year, vm.month + 1, 0).day;
+    final lead = DateTime(vm.year, vm.month, 1).weekday % 7; // Sunday-start
+
+    void go(int delta) {
+      final m = DateTime(vm.year, vm.month + delta);
+      ref.read(viewedMonthProvider.notifier).state = (
+        year: m.year,
+        month: m.month,
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -60,7 +55,7 @@ class _MiniCalendarState extends ConsumerState<MiniCalendar> {
             children: [
               Expanded(
                 child: Text(
-                  '${_months[_month.month - 1]} ${_month.year}',
+                  '${_months[vm.month - 1]} ${vm.year}',
                   style: TextStyle(
                     fontFamily: AppFonts.display,
                     fontSize: 10.sp,
@@ -72,17 +67,13 @@ class _MiniCalendarState extends ConsumerState<MiniCalendar> {
               IconButton(
                 iconSize: 18,
                 color: d.text3,
-                onPressed: () => setState(
-                  () => _month = DateTime(_month.year, _month.month - 1),
-                ),
+                onPressed: () => go(-1),
                 icon: const Icon(Icons.chevron_left_rounded),
               ),
               IconButton(
                 iconSize: 18,
                 color: d.text3,
-                onPressed: () => setState(
-                  () => _month = DateTime(_month.year, _month.month + 1),
-                ),
+                onPressed: () => go(1),
                 icon: const Icon(Icons.chevron_right_rounded),
               ),
             ],
@@ -108,7 +99,7 @@ class _MiniCalendarState extends ConsumerState<MiniCalendar> {
                 ),
               for (var i = 0; i < lead; i++) const SizedBox(),
               for (var day = 1; day <= daysInMonth; day++)
-                _cell(d, day, now, selected, marked.contains(day)),
+                _cell(ref, d, month, day, now, selected, marked.contains(day)),
             ],
           ),
         ],
@@ -117,13 +108,15 @@ class _MiniCalendarState extends ConsumerState<MiniCalendar> {
   }
 
   Widget _cell(
+    WidgetRef ref,
     DentColors d,
+    DateTime month,
     int day,
     DateTime now,
     DateTime selected,
     bool marked,
   ) {
-    final date = DateTime(_month.year, _month.month, day);
+    final date = DateTime(month.year, month.month, day);
     final isToday =
         date.year == now.year && date.month == now.month && date.day == now.day;
     final isSel =

@@ -67,6 +67,7 @@ class LicenseService {
     required String currency,
     required String ownerName,
     required String username,
+    required String email,
     required String password,
   }) async {
     await _db.saveProfile(
@@ -82,7 +83,9 @@ class LicenseService {
       username: username,
       passwordHash: BCrypt.hashpw(password, BCrypt.gensalt()),
     );
-    await _db.setSetting(_kSetup, '1');
+    await _db.setSetting('cloud_email', email);
+    await _db.setSetting('cloud_password', password);
+    await _db.setSetting('setup_complete', '1');
   }
 }
 

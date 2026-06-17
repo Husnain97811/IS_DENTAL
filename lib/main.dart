@@ -17,6 +17,7 @@ void main() async {
     url: Env.supabaseUrl,
     publishableKey: Env.supabaseAnonKey,
   );
+  await Supabase.initialize(url: Env.supabaseUrl, anonKey: Env.supabaseAnonKey);
   runApp(const ProviderScope(child: DentOSApp()));
 }
 

@@ -56,20 +56,26 @@ class LicenseController extends AsyncNotifier<LicenseState> {
     required String currency,
     required String ownerName,
     required String username,
+    required String email,
     required String password,
   }) async {
     final lic = state.value?.license;
     if (lic == null) return;
-    await _lic.completeSetup(
+    final svc = ref.read(licenseServiceProvider); // <- was _svc
+    await svc.completeSetup(
       lic: lic,
       clinicName: clinicName,
       branch: branch,
       currency: currency,
       ownerName: ownerName,
       username: username,
+      email: email,
       password: password,
     );
-    state = AsyncData(await _resolve());
+    state = AsyncData(await svc.resolveLicense());
+    unawaited(
+      _conn.heartbeat(clinicId: lic.clinicId, licenseExpiry: lic.expiresAt),
+    );
   }
 
   Future<void> reload() async => state = AsyncData(await _resolve());

@@ -46,6 +46,77 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
   }
 
   @override
+  Stream<List<Appointment>> watchAppointmentsForMonth(int year, int month) {
+    final start = DateTime(year, month, 1);
+    final end = DateTime(year, month + 1, 1);
+    final q =
+        _db.select(_db.appointments).join([
+            innerJoin(
+              _db.patients,
+              _db.patients.id.equalsExp(_db.appointments.patientId),
+            ),
+          ])
+          ..where(
+            _db.appointments.isDeleted.equals(false) &
+                _db.appointments.startsAt.isBiggerOrEqualValue(start) &
+                _db.appointments.startsAt.isSmallerThanValue(end),
+          )
+          ..orderBy([OrderingTerm.asc(_db.appointments.startsAt)]);
+    return q.watch().map(
+      (rows) => rows.map((r) {
+        final a = r.readTable(_db.appointments);
+        final p = r.readTable(_db.patients);
+        return Appointment(
+          id: a.id,
+          uuid: a.uuid,
+          patientId: a.patientId,
+          patientName: p.fullName,
+          dentist: a.dentist,
+          chair: a.chair,
+          procedure: a.procedure,
+          startsAt: a.startsAt,
+          durationMin: a.durationMin,
+          status: AppointmentStatus.values.byName(a.status),
+        );
+      }).toList(),
+    );
+  }
+
+  @override
+  Stream<List<Appointment>> watchAppointmentsForPatient(int patientId) {
+    final q =
+        _db.select(_db.appointments).join([
+            innerJoin(
+              _db.patients,
+              _db.patients.id.equalsExp(_db.appointments.patientId),
+            ),
+          ])
+          ..where(
+            _db.appointments.isDeleted.equals(false) &
+                _db.appointments.patientId.equals(patientId),
+          )
+          ..orderBy([OrderingTerm.desc(_db.appointments.startsAt)]);
+    return q.watch().map(
+      (rows) => rows.map((r) {
+        final a = r.readTable(_db.appointments);
+        final p = r.readTable(_db.patients);
+        return Appointment(
+          id: a.id,
+          uuid: a.uuid,
+          patientId: a.patientId,
+          patientName: p.fullName,
+          dentist: a.dentist,
+          chair: a.chair,
+          procedure: a.procedure,
+          startsAt: a.startsAt,
+          durationMin: a.durationMin,
+          status: AppointmentStatus.values.byName(a.status),
+        );
+      }).toList(),
+    );
+  }
+
+  @override
   Stream<Set<int>> watchMarkedDays(int year, int month) {
     final start = DateTime(year, month, 1);
     final end = DateTime(year, month + 1, 1);

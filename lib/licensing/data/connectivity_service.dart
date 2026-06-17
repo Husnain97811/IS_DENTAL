@@ -41,7 +41,8 @@ class ConnectivityService {
   }) async {
     try {
       // 1) Reach the server (sign in if needed).
-      if (!await _cloud.ensureSignedIn()) return HeartbeatResult.offline;
+      // ensureSignedIn is a void method that throws on failure, so just await it
+      await _cloud.ensureSignedIn();
 
       // 2) Validate the subscription server-side.
       final sub = await _cloud.subscription(clinicId);

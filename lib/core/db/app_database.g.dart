@@ -667,6 +667,16 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _clinicIdMeta = const VerificationMeta(
     'clinicId',
   );
@@ -762,6 +772,7 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    uuid,
     clinicId,
     fullName,
     username,
@@ -785,6 +796,12 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
     }
     if (data.containsKey('clinic_id')) {
       context.handle(
@@ -860,6 +877,10 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
       clinicId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}clinic_id'],
@@ -903,6 +924,7 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
 
 class User extends DataClass implements Insertable<User> {
   final int id;
+  final String uuid;
   final String clinicId;
   final String fullName;
   final String username;
@@ -913,6 +935,7 @@ class User extends DataClass implements Insertable<User> {
   final DateTime updatedAt;
   const User({
     required this.id,
+    required this.uuid,
     required this.clinicId,
     required this.fullName,
     required this.username,
@@ -926,6 +949,7 @@ class User extends DataClass implements Insertable<User> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
+    map['uuid'] = Variable<String>(uuid);
     map['clinic_id'] = Variable<String>(clinicId);
     map['full_name'] = Variable<String>(fullName);
     map['username'] = Variable<String>(username);
@@ -942,6 +966,7 @@ class User extends DataClass implements Insertable<User> {
   UsersCompanion toCompanion(bool nullToAbsent) {
     return UsersCompanion(
       id: Value(id),
+      uuid: Value(uuid),
       clinicId: Value(clinicId),
       fullName: Value(fullName),
       username: Value(username),
@@ -962,6 +987,7 @@ class User extends DataClass implements Insertable<User> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return User(
       id: serializer.fromJson<int>(json['id']),
+      uuid: serializer.fromJson<String>(json['uuid']),
       clinicId: serializer.fromJson<String>(json['clinicId']),
       fullName: serializer.fromJson<String>(json['fullName']),
       username: serializer.fromJson<String>(json['username']),
@@ -977,6 +1003,7 @@ class User extends DataClass implements Insertable<User> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
+      'uuid': serializer.toJson<String>(uuid),
       'clinicId': serializer.toJson<String>(clinicId),
       'fullName': serializer.toJson<String>(fullName),
       'username': serializer.toJson<String>(username),
@@ -990,6 +1017,7 @@ class User extends DataClass implements Insertable<User> {
 
   User copyWith({
     int? id,
+    String? uuid,
     String? clinicId,
     String? fullName,
     String? username,
@@ -1000,6 +1028,7 @@ class User extends DataClass implements Insertable<User> {
     DateTime? updatedAt,
   }) => User(
     id: id ?? this.id,
+    uuid: uuid ?? this.uuid,
     clinicId: clinicId ?? this.clinicId,
     fullName: fullName ?? this.fullName,
     username: username ?? this.username,
@@ -1012,6 +1041,7 @@ class User extends DataClass implements Insertable<User> {
   User copyWithCompanion(UsersCompanion data) {
     return User(
       id: data.id.present ? data.id.value : this.id,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
       clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
       fullName: data.fullName.present ? data.fullName.value : this.fullName,
       username: data.username.present ? data.username.value : this.username,
@@ -1029,6 +1059,7 @@ class User extends DataClass implements Insertable<User> {
   String toString() {
     return (StringBuffer('User(')
           ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
           ..write('clinicId: $clinicId, ')
           ..write('fullName: $fullName, ')
           ..write('username: $username, ')
@@ -1044,6 +1075,7 @@ class User extends DataClass implements Insertable<User> {
   @override
   int get hashCode => Object.hash(
     id,
+    uuid,
     clinicId,
     fullName,
     username,
@@ -1058,6 +1090,7 @@ class User extends DataClass implements Insertable<User> {
       identical(this, other) ||
       (other is User &&
           other.id == this.id &&
+          other.uuid == this.uuid &&
           other.clinicId == this.clinicId &&
           other.fullName == this.fullName &&
           other.username == this.username &&
@@ -1070,6 +1103,7 @@ class User extends DataClass implements Insertable<User> {
 
 class UsersCompanion extends UpdateCompanion<User> {
   final Value<int> id;
+  final Value<String> uuid;
   final Value<String> clinicId;
   final Value<String> fullName;
   final Value<String> username;
@@ -1080,6 +1114,7 @@ class UsersCompanion extends UpdateCompanion<User> {
   final Value<DateTime> updatedAt;
   const UsersCompanion({
     this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
     this.clinicId = const Value.absent(),
     this.fullName = const Value.absent(),
     this.username = const Value.absent(),
@@ -1091,6 +1126,7 @@ class UsersCompanion extends UpdateCompanion<User> {
   });
   UsersCompanion.insert({
     this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
     required String clinicId,
     required String fullName,
     required String username,
@@ -1106,6 +1142,7 @@ class UsersCompanion extends UpdateCompanion<User> {
        role = Value(role);
   static Insertable<User> custom({
     Expression<int>? id,
+    Expression<String>? uuid,
     Expression<String>? clinicId,
     Expression<String>? fullName,
     Expression<String>? username,
@@ -1117,6 +1154,7 @@ class UsersCompanion extends UpdateCompanion<User> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (uuid != null) 'uuid': uuid,
       if (clinicId != null) 'clinic_id': clinicId,
       if (fullName != null) 'full_name': fullName,
       if (username != null) 'username': username,
@@ -1130,6 +1168,7 @@ class UsersCompanion extends UpdateCompanion<User> {
 
   UsersCompanion copyWith({
     Value<int>? id,
+    Value<String>? uuid,
     Value<String>? clinicId,
     Value<String>? fullName,
     Value<String>? username,
@@ -1141,6 +1180,7 @@ class UsersCompanion extends UpdateCompanion<User> {
   }) {
     return UsersCompanion(
       id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
       clinicId: clinicId ?? this.clinicId,
       fullName: fullName ?? this.fullName,
       username: username ?? this.username,
@@ -1157,6 +1197,9 @@ class UsersCompanion extends UpdateCompanion<User> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<int>(id.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
     }
     if (clinicId.present) {
       map['clinic_id'] = Variable<String>(clinicId.value);
@@ -1189,6 +1232,7 @@ class UsersCompanion extends UpdateCompanion<User> {
   String toString() {
     return (StringBuffer('UsersCompanion(')
           ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
           ..write('clinicId: $clinicId, ')
           ..write('fullName: $fullName, ')
           ..write('username: $username, ')
@@ -7796,6 +7840,7 @@ typedef $$ClinicProfileTableProcessedTableManager =
 typedef $$UsersTableCreateCompanionBuilder =
     UsersCompanion Function({
       Value<int> id,
+      Value<String> uuid,
       required String clinicId,
       required String fullName,
       required String username,
@@ -7808,6 +7853,7 @@ typedef $$UsersTableCreateCompanionBuilder =
 typedef $$UsersTableUpdateCompanionBuilder =
     UsersCompanion Function({
       Value<int> id,
+      Value<String> uuid,
       Value<String> clinicId,
       Value<String> fullName,
       Value<String> username,
@@ -7828,6 +7874,11 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
   });
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7886,6 +7937,11 @@ class $$UsersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get clinicId => $composableBuilder(
     column: $table.clinicId,
     builder: (column) => ColumnOrderings(column),
@@ -7938,6 +7994,9 @@ class $$UsersTableAnnotationComposer
   });
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
 
   GeneratedColumn<String> get clinicId =>
       $composableBuilder(column: $table.clinicId, builder: (column) => column);
@@ -7995,6 +8054,7 @@ class $$UsersTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
                 Value<String> clinicId = const Value.absent(),
                 Value<String> fullName = const Value.absent(),
                 Value<String> username = const Value.absent(),
@@ -8005,6 +8065,7 @@ class $$UsersTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => UsersCompanion(
                 id: id,
+                uuid: uuid,
                 clinicId: clinicId,
                 fullName: fullName,
                 username: username,
@@ -8017,6 +8078,7 @@ class $$UsersTableTableManager
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
                 required String clinicId,
                 required String fullName,
                 required String username,
@@ -8027,6 +8089,7 @@ class $$UsersTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => UsersCompanion.insert(
                 id: id,
+                uuid: uuid,
                 clinicId: clinicId,
                 fullName: fullName,
                 username: username,

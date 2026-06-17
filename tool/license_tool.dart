@@ -36,6 +36,7 @@ void main() {
     ...jsonDecode(payload),
     'signature': base64.encode(sig.bytes),
   };
+
   File(
     'license.json',
   ).writeAsStringSync(const JsonEncoder.withIndent('  ').convert(license));

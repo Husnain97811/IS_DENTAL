@@ -13,4 +13,6 @@ abstract interface class AppointmentRepository {
     int durationMin,
   });
   Future<void> seedDemoAppointmentsIfEmpty();
+  Stream<List<Appointment>> watchAppointmentsForMonth(int year, int month);
+  Stream<List<Appointment>> watchAppointmentsForPatient(int patientId);
 }

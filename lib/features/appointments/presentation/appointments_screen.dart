@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/core/constants/app_flags.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/theme/dent_colors.dart';
@@ -23,7 +24,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   @override
   void initState() {
     super.initState();
-    if (kDebugMode) {
+    if (kDebugMode && kSeedDemoData) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await ref.read(patientRepositoryProvider).seedDemoDataIfEmpty();
         await ref

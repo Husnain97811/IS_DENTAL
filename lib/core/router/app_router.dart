@@ -1,25 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:is_dental/auth/presentation/auth_controller.dart';
-import 'package:is_dental/auth/presentation/login_screen.dart';
-import 'package:is_dental/licensing/presentation/reconnect_required_screen.dart';
-
-import '../../licensing/domain/license.dart';
-import '../../licensing/presentation/license_controller.dart';
-import '../../licensing/presentation/locked_screen.dart';
-import '../../licensing/presentation/setup_wizard.dart';
-import '../shell/app_shell.dart';
-import '../theme/dent_colors.dart';
+import '../constants/views.dart';
 import 'app_routes.dart';
-import '../../features/dashboard/presentation/dashboard_screen.dart';
-import '../../features/appointments/presentation/appointments_screen.dart';
-import '../../features/patients/presentation/patients_screen.dart';
-import '../../features/treatments/presentation/treatments_screen.dart';
-import '../../features/billing/presentation/billing_screen.dart';
-import '../../features/inventory/presentation/inventory_screen.dart';
-import '../../features/reports/presentation/reports_screen.dart';
-import '../../features/settings/presentation/settings_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier(0);
@@ -89,6 +72,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.patients,
                 builder: (c, s) => const PatientsScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (c, s) => PatientDetailScreen(
+                      patientId: int.parse(s.pathParameters['id']!),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

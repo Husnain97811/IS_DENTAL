@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/cloud/data/cloud_service.dart';
+import 'package:is_dental/cloud/data/sync_engine.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/db/app_database.dart';
@@ -33,6 +35,21 @@ class _S extends ConsumerState<SettingsScreen> {
     _branch.dispose();
     _currency.dispose();
     super.dispose();
+  }
+
+  Future<String> syncNow(WidgetRef ref) async {
+    try {
+      debugPrint('SYNC: signing in…');
+      await ref.read(cloudServiceProvider).ensureSignedIn();
+      final clinicId = await ref.read(appDatabaseProvider).currentClinicId();
+      debugPrint('SYNC: start for $clinicId');
+      await ref.read(syncEngineProvider).syncAll(clinicId!);
+      debugPrint('SYNC: done');
+      return 'Synced';
+    } catch (e) {
+      debugPrint('SYNC: FAILED $e');
+      return 'Sync failed: $e';
+    }
   }
 
   Future<void> _save() async {
@@ -425,6 +442,18 @@ class _S extends ConsumerState<SettingsScreen> {
                     Text(
                       'Export full database (.dentos)',
                       style: TextStyle(color: d.text3, fontSize: 8.sp),
+                    ),
+                    FilledButton.icon(
+                      onPressed: () async {
+                        final msg = await syncNow(ref);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text(msg)));
+                        }
+                      },
+                      icon: const Icon(Icons.cloud_sync_rounded),
+                      label: const Text('Sync now'),
                     ),
                   ],
                 ),

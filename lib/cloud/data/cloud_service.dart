@@ -1,21 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/config/env.dart';
+import '../../core/constants/views.dart';
 
 class CloudService {
+  CloudService(this._db); // add this
+  final AppDatabase _db;
   SupabaseClient get _sb => Supabase.instance.client;
 
-  Future<bool> ensureSignedIn() async {
-    if (_sb.auth.currentSession != null) return true;
-    try {
-      await _sb.auth.signInWithPassword(
-        email: Env.supabaseEmail,
-        password: Env.supabasePassword,
-      );
-      return _sb.auth.currentSession != null;
-    } catch (_) {
-      return false; // offline or bad creds
-    }
+  Future<void> ensureSignedIn() async {
+    final sb = Supabase.instance.client;
+    if (sb.auth.currentSession != null)
+      return; // session persists after registration
+    final email = await _db.getSetting('cloud_email') ?? '';
+    final password = await _db.getSetting('cloud_password') ?? '';
+    if (email.isEmpty || password.isEmpty)
+      throw Exception('Cloud account not set up yet.');
+    await sb.auth.signInWithPassword(email: email, password: password);
   }
 
   /// null = unreachable; otherwise the server's view of the subscription.
@@ -41,4 +42,6 @@ class CloudService {
   }
 }
 
-final cloudServiceProvider = Provider((ref) => CloudService());
+final cloudServiceProvider = Provider(
+  (ref) => CloudService(ref.watch(appDatabaseProvider)),
+);
