@@ -8,6 +8,7 @@ import 'package:is_dental/features/reports/data/reports_pdf.dart';
 import 'package:is_dental/features/reports/presentation/reports_controller.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../constants/views.dart';
 import '../../router/nav_destinations.dart';
 import '../../theme/app_palette.dart';
 import '../../theme/app_typography.dart';
@@ -336,7 +337,7 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
               const SizedBox(width: 10),
               _notificationBell(context, notifs),
               const SizedBox(width: 10),
-              _iconBtn(context, Icons.storage_rounded, () {}),
+              _DbStatusButton(destination: widget.destination),
               const SizedBox(width: 10),
               _primaryButton(context, ref),
             ],
@@ -692,5 +693,250 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
           ),
         );
     }
+  }
+}
+
+class _DbStatusButton extends ConsumerWidget {
+  const _DbStatusButton({required this.destination});
+  final NavDestination destination;
+
+  String _timeAgo(DateTime? dt) {
+    if (dt == null) return 'Never synced';
+    final diff = DateTime.now().difference(dt);
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) return '${diff.inHours} hr ago';
+    return '${diff.inDays}d ago';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final d = context.dent;
+    return Material(
+      color: d.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _showDialog(context, ref),
+        child: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: d.line),
+          ),
+          child: Icon(Icons.storage_rounded, size: 11.sp, color: d.text3),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showDialog(BuildContext context, WidgetRef ref) async {
+    final db = ref.read(appDatabaseProvider);
+    final lastSync = await db.lastSyncAt();
+    final clinicId = await db.currentClinicId();
+    final isCloud = clinicId != null && clinicId.isNotEmpty;
+    if (!context.mounted) return;
+
+    final d = context.dent;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: d.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        contentPadding: EdgeInsets.zero,
+        content: SizedBox(
+          width: 40.w,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // header
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: d.line)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: d.ice.withValues(alpha: .13),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Icon(
+                        Icons.storage_rounded,
+                        color: d.ice,
+                        size: 14.sp,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Database Status',
+                          style: TextStyle(
+                            fontFamily: AppFonts.display,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                            color: d.text1,
+                          ),
+                        ),
+                        Text(
+                          'DentOS local + cloud',
+                          style: TextStyle(color: d.text4, fontSize: 10.sp),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // rows
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    _row(
+                      d,
+                      Icons.lock_rounded,
+                      'Encryption',
+                      'SQLCipher · AES-256',
+                      d.ok,
+                    ),
+                    const SizedBox(height: 14),
+                    _row(
+                      d,
+                      isCloud
+                          ? Icons.cloud_done_rounded
+                          : Icons.cloud_off_rounded,
+                      'Sync mode',
+                      isCloud ? 'Local + Cloud (Supabase)' : 'Local only',
+                      isCloud ? d.teal : d.warn,
+                    ),
+                    const SizedBox(height: 14),
+                    _row(
+                      d,
+                      Icons.sync_rounded,
+                      'Last synced',
+                      _timeAgo(lastSync),
+                      lastSync == null ? d.text4 : d.ok,
+                    ),
+                    if (lastSync != null) ...[
+                      // const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          lastSync.toString().split('.').first,
+                          style: TextStyle(
+                            color: d.text4,
+                            fontSize: 8.5.sp,
+                            fontFamily: AppFonts.mono,
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 14),
+                    _row(
+                      d,
+                      Icons.folder_rounded,
+                      'Storage',
+                      'Local encrypted DB · auto-backup',
+                      d.text3,
+                    ),
+                  ],
+                ),
+              ),
+
+              // footer
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: d.text2,
+                          side: BorderSide(color: d.line),
+                          minimumSize: const Size.fromHeight(40),
+                        ),
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Close'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: d.ice,
+                          foregroundColor: AppPalette.onAccent,
+                          minimumSize: const Size.fromHeight(40),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          context.go(AppRoutes.settings);
+                        },
+                        icon: const Icon(Icons.settings_rounded, size: 16),
+                        label: const Text('Settings'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _row(
+    DentColors d,
+    IconData icon,
+    String label,
+    String value,
+    Color iconColor,
+  ) {
+    return Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Icon(icon, color: iconColor, size: 16),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: d.text3,
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  color: d.text1,
+                  fontSize: 9.5.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }

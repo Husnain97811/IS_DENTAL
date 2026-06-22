@@ -44,6 +44,7 @@ class _S extends ConsumerState<SettingsScreen> {
       final clinicId = await ref.read(appDatabaseProvider).currentClinicId();
       debugPrint('SYNC: start for $clinicId');
       await ref.read(syncEngineProvider).syncAll(clinicId!);
+      await ref.read(appDatabaseProvider).recordSyncNow(); // ← add this
       debugPrint('SYNC: done');
       return 'Synced';
     } catch (e) {

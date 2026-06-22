@@ -60,6 +60,7 @@ class Users extends Table {
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(openEncryptedConnection());
+  static const _kLastSync = 'last_sync_at';
 
   @override
   int get schemaVersion => 8;
@@ -72,6 +73,15 @@ class AppDatabase extends _$AppDatabase {
       ..addColumns([c])
       ..where(patients.isDeleted.equals(false));
     return q.map((r) => r.read(c) ?? 0).watchSingle();
+  }
+
+  Future<void> recordSyncNow() =>
+      setSetting(_kLastSync, DateTime.now().toIso8601String());
+
+  Future<DateTime?> lastSyncAt() async {
+    final v = await getSetting(_kLastSync);
+    if (v == null || v.isEmpty) return null;
+    return DateTime.tryParse(v);
   }
 
   Stream<int> watchInTreatmentCount() {
