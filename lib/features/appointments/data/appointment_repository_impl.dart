@@ -117,6 +117,15 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
   }
 
   @override
+  Future<void> setStatus(int id, AppointmentStatus status) =>
+      (_db.update(_db.appointments)..where((t) => t.id.equals(id))).write(
+        AppointmentsCompanion(
+          status: Value(status.name),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  @override
   Stream<Set<int>> watchMarkedDays(int year, int month) {
     final start = DateTime(year, month, 1);
     final end = DateTime(year, month + 1, 1);

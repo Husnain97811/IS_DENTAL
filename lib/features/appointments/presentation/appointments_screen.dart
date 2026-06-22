@@ -2,16 +2,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/constants/app_flags.dart';
+import 'package:is_dental/features/billing/presentation/widgets/invoice_editor.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../../core/theme/dent_colors.dart';
-import '../../../core/widgets/dent_panel.dart';
-import '../../../core/widgets/segmented_control.dart';
-import '../../patients/presentation/patients_controller.dart';
+import '../../../core/constants/views.dart';
 import '../domain/appointment.dart';
-import 'appointments_controller.dart';
 import 'widgets/appointment_tile.dart';
 import 'widgets/mini_calendar.dart';
+
+final billedAppointmentIdsProvider = StreamProvider<Set<int>>((ref) {
+  return ref.watch(appDatabaseProvider).watchBilledAppointmentIds();
+});
 
 class AppointmentsScreen extends ConsumerStatefulWidget {
   const AppointmentsScreen({super.key});
@@ -114,7 +115,17 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                           padding: const EdgeInsets.all(8),
                           child: Column(
                             children: [
-                              for (final a in list) AppointmentTile(appt: a),
+                              for (final a in list)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 6),
+                                  child: Row(
+                                    children: [
+                                      Expanded(child: AppointmentTile(appt: a)),
+                                      const SizedBox(width: 10),
+                                      _ApptActions(appt: a),
+                                    ],
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -191,6 +202,127 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ApptActions extends ConsumerWidget {
+  const _ApptActions({required this.appt});
+  final Appointment appt;
+
+  Future<void> _confirmArrived(BuildContext context, WidgetRef ref) async {
+    final d = context.dent;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: d.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Mark as arrived?'),
+        content: Text('Confirm ${appt.patientName} has arrived at the clinic.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: d.ice,
+              foregroundColor: AppPalette.onAccent,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Mark Arrived'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await ref
+          .read(appDatabaseProvider)
+          .setAppointmentStatus(appt.id, AppointmentStatus.waiting.name);
+    }
+  }
+
+  Future<void> _bill(BuildContext context, WidgetRef ref) async {
+    final created = await showInvoiceEditor(
+      context,
+      patientId: appt.patientId,
+      procedure: appt.procedure,
+    );
+    if (created == true) {
+      await ref.read(appDatabaseProvider).setAppointmentBilled(appt.id);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final d = context.dent;
+    final arrived = appt.status != AppointmentStatus.upcoming;
+    final billed =
+        ref.watch(billedAppointmentIdsProvider).value?.contains(appt.id) ??
+        false;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 92,
+          child: OutlinedButton(
+            onPressed: arrived ? null : () => _confirmArrived(context, ref),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: arrived ? d.text4 : d.ok,
+              side: BorderSide(color: arrived ? d.line : d.ok),
+              padding: const EdgeInsets.symmetric(vertical: 9),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
+              arrived ? 'Arrived ✓' : 'Arrived',
+              style: TextStyle(fontSize: 8.5.sp, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: 92,
+          child: billed
+              ? OutlinedButton(
+                  onPressed: null,
+                  style: OutlinedButton.styleFrom(
+                    disabledForegroundColor: d.ok,
+                    side: BorderSide(color: d.line),
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    'Billed ✓',
+                    style: TextStyle(
+                      fontSize: 8.5.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+              : FilledButton(
+                  onPressed: () => _bill(context, ref),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: d.ice,
+                    foregroundColor: AppPalette.onAccent,
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    'Bill',
+                    style: TextStyle(
+                      fontSize: 8.5.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }

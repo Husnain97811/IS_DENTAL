@@ -34,16 +34,27 @@ class _AppShellState extends State<AppShell> {
               AppSidebar(
                 collapsed: collapsed,
                 currentIndex: widget.navigationShell.currentIndex,
-                onSelect: (i) => widget.navigationShell.goBranch(i, initialLocation: i == widget.navigationShell.currentIndex),
+                onSelect: (i) => widget.navigationShell.goBranch(
+                  i,
+                  initialLocation: i == widget.navigationShell.currentIndex,
+                ),
               ),
               Expanded(
                 child: Column(
                   children: [
-                    AppTopbar(destination: dest, onToggleSidebar: _toggleSidebar),
+                    AppTopbar(
+                      destination: dest,
+                      onToggleSidebar: _toggleSidebar,
+                    ),
                     Expanded(
                       child: Row(
                         children: [
-                          Expanded(child: ColoredBox(color: context.dent.canvas, child: widget.navigationShell)),
+                          Expanded(
+                            child: ColoredBox(
+                              color: context.dent.canvas,
+                              child: widget.navigationShell,
+                            ),
+                          ),
                           if (showDrawer) ContextualDrawer(kind: dest.drawer),
                         ],
                       ),

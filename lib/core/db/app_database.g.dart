@@ -3923,6 +3923,19 @@ class $AppointmentsTable extends Appointments
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _billedMeta = const VerificationMeta('billed');
+  @override
+  late final GeneratedColumn<bool> billed = GeneratedColumn<bool>(
+    'billed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("billed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _isDeletedMeta = const VerificationMeta(
     'isDeleted',
   );
@@ -3964,6 +3977,7 @@ class $AppointmentsTable extends Appointments
     durationMin,
     status,
     notes,
+    billed,
     isDeleted,
     updatedAt,
   ];
@@ -4063,6 +4077,12 @@ class $AppointmentsTable extends Appointments
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('billed')) {
+      context.handle(
+        _billedMeta,
+        billed.isAcceptableOrUnknown(data['billed']!, _billedMeta),
+      );
+    }
     if (data.containsKey('is_deleted')) {
       context.handle(
         _isDeletedMeta,
@@ -4132,6 +4152,10 @@ class $AppointmentsTable extends Appointments
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      billed: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}billed'],
+      )!,
       isDeleted: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_deleted'],
@@ -4162,6 +4186,7 @@ class AppointmentRow extends DataClass implements Insertable<AppointmentRow> {
   final int durationMin;
   final String status;
   final String? notes;
+  final bool billed;
   final bool isDeleted;
   final DateTime updatedAt;
   const AppointmentRow({
@@ -4177,6 +4202,7 @@ class AppointmentRow extends DataClass implements Insertable<AppointmentRow> {
     required this.durationMin,
     required this.status,
     this.notes,
+    required this.billed,
     required this.isDeleted,
     required this.updatedAt,
   });
@@ -4199,6 +4225,7 @@ class AppointmentRow extends DataClass implements Insertable<AppointmentRow> {
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
+    map['billed'] = Variable<bool>(billed);
     map['is_deleted'] = Variable<bool>(isDeleted);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -4222,6 +4249,7 @@ class AppointmentRow extends DataClass implements Insertable<AppointmentRow> {
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
+      billed: Value(billed),
       isDeleted: Value(isDeleted),
       updatedAt: Value(updatedAt),
     );
@@ -4245,6 +4273,7 @@ class AppointmentRow extends DataClass implements Insertable<AppointmentRow> {
       durationMin: serializer.fromJson<int>(json['durationMin']),
       status: serializer.fromJson<String>(json['status']),
       notes: serializer.fromJson<String?>(json['notes']),
+      billed: serializer.fromJson<bool>(json['billed']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -4265,6 +4294,7 @@ class AppointmentRow extends DataClass implements Insertable<AppointmentRow> {
       'durationMin': serializer.toJson<int>(durationMin),
       'status': serializer.toJson<String>(status),
       'notes': serializer.toJson<String?>(notes),
+      'billed': serializer.toJson<bool>(billed),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -4283,6 +4313,7 @@ class AppointmentRow extends DataClass implements Insertable<AppointmentRow> {
     int? durationMin,
     String? status,
     Value<String?> notes = const Value.absent(),
+    bool? billed,
     bool? isDeleted,
     DateTime? updatedAt,
   }) => AppointmentRow(
@@ -4298,6 +4329,7 @@ class AppointmentRow extends DataClass implements Insertable<AppointmentRow> {
     durationMin: durationMin ?? this.durationMin,
     status: status ?? this.status,
     notes: notes.present ? notes.value : this.notes,
+    billed: billed ?? this.billed,
     isDeleted: isDeleted ?? this.isDeleted,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -4317,6 +4349,7 @@ class AppointmentRow extends DataClass implements Insertable<AppointmentRow> {
           : this.durationMin,
       status: data.status.present ? data.status.value : this.status,
       notes: data.notes.present ? data.notes.value : this.notes,
+      billed: data.billed.present ? data.billed.value : this.billed,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -4337,6 +4370,7 @@ class AppointmentRow extends DataClass implements Insertable<AppointmentRow> {
           ..write('durationMin: $durationMin, ')
           ..write('status: $status, ')
           ..write('notes: $notes, ')
+          ..write('billed: $billed, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4357,6 +4391,7 @@ class AppointmentRow extends DataClass implements Insertable<AppointmentRow> {
     durationMin,
     status,
     notes,
+    billed,
     isDeleted,
     updatedAt,
   );
@@ -4376,6 +4411,7 @@ class AppointmentRow extends DataClass implements Insertable<AppointmentRow> {
           other.durationMin == this.durationMin &&
           other.status == this.status &&
           other.notes == this.notes &&
+          other.billed == this.billed &&
           other.isDeleted == this.isDeleted &&
           other.updatedAt == this.updatedAt);
 }
@@ -4393,6 +4429,7 @@ class AppointmentsCompanion extends UpdateCompanion<AppointmentRow> {
   final Value<int> durationMin;
   final Value<String> status;
   final Value<String?> notes;
+  final Value<bool> billed;
   final Value<bool> isDeleted;
   final Value<DateTime> updatedAt;
   const AppointmentsCompanion({
@@ -4408,6 +4445,7 @@ class AppointmentsCompanion extends UpdateCompanion<AppointmentRow> {
     this.durationMin = const Value.absent(),
     this.status = const Value.absent(),
     this.notes = const Value.absent(),
+    this.billed = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -4424,6 +4462,7 @@ class AppointmentsCompanion extends UpdateCompanion<AppointmentRow> {
     this.durationMin = const Value.absent(),
     this.status = const Value.absent(),
     this.notes = const Value.absent(),
+    this.billed = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : uuid = Value(uuid),
@@ -4445,6 +4484,7 @@ class AppointmentsCompanion extends UpdateCompanion<AppointmentRow> {
     Expression<int>? durationMin,
     Expression<String>? status,
     Expression<String>? notes,
+    Expression<bool>? billed,
     Expression<bool>? isDeleted,
     Expression<DateTime>? updatedAt,
   }) {
@@ -4461,6 +4501,7 @@ class AppointmentsCompanion extends UpdateCompanion<AppointmentRow> {
       if (durationMin != null) 'duration_min': durationMin,
       if (status != null) 'status': status,
       if (notes != null) 'notes': notes,
+      if (billed != null) 'billed': billed,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -4479,6 +4520,7 @@ class AppointmentsCompanion extends UpdateCompanion<AppointmentRow> {
     Value<int>? durationMin,
     Value<String>? status,
     Value<String?>? notes,
+    Value<bool>? billed,
     Value<bool>? isDeleted,
     Value<DateTime>? updatedAt,
   }) {
@@ -4495,6 +4537,7 @@ class AppointmentsCompanion extends UpdateCompanion<AppointmentRow> {
       durationMin: durationMin ?? this.durationMin,
       status: status ?? this.status,
       notes: notes ?? this.notes,
+      billed: billed ?? this.billed,
       isDeleted: isDeleted ?? this.isDeleted,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -4539,6 +4582,9 @@ class AppointmentsCompanion extends UpdateCompanion<AppointmentRow> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (billed.present) {
+      map['billed'] = Variable<bool>(billed.value);
+    }
     if (isDeleted.present) {
       map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
@@ -4563,6 +4609,7 @@ class AppointmentsCompanion extends UpdateCompanion<AppointmentRow> {
           ..write('durationMin: $durationMin, ')
           ..write('status: $status, ')
           ..write('notes: $notes, ')
+          ..write('billed: $billed, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -10293,6 +10340,7 @@ typedef $$AppointmentsTableCreateCompanionBuilder =
       Value<int> durationMin,
       Value<String> status,
       Value<String?> notes,
+      Value<bool> billed,
       Value<bool> isDeleted,
       Value<DateTime> updatedAt,
     });
@@ -10310,6 +10358,7 @@ typedef $$AppointmentsTableUpdateCompanionBuilder =
       Value<int> durationMin,
       Value<String> status,
       Value<String?> notes,
+      Value<bool> billed,
       Value<bool> isDeleted,
       Value<DateTime> updatedAt,
     });
@@ -10399,6 +10448,11 @@ class $$AppointmentsTableFilterComposer
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get billed => $composableBuilder(
+    column: $table.billed,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10500,6 +10554,11 @@ class $$AppointmentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get billed => $composableBuilder(
+    column: $table.billed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isDeleted => $composableBuilder(
     column: $table.isDeleted,
     builder: (column) => ColumnOrderings(column),
@@ -10578,6 +10637,9 @@ class $$AppointmentsTableAnnotationComposer
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
 
+  GeneratedColumn<bool> get billed =>
+      $composableBuilder(column: $table.billed, builder: (column) => column);
+
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 
@@ -10648,6 +10710,7 @@ class $$AppointmentsTableTableManager
                 Value<int> durationMin = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<bool> billed = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => AppointmentsCompanion(
@@ -10663,6 +10726,7 @@ class $$AppointmentsTableTableManager
                 durationMin: durationMin,
                 status: status,
                 notes: notes,
+                billed: billed,
                 isDeleted: isDeleted,
                 updatedAt: updatedAt,
               ),
@@ -10680,6 +10744,7 @@ class $$AppointmentsTableTableManager
                 Value<int> durationMin = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<bool> billed = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => AppointmentsCompanion.insert(
@@ -10695,6 +10760,7 @@ class $$AppointmentsTableTableManager
                 durationMin: durationMin,
                 status: status,
                 notes: notes,
+                billed: billed,
                 isDeleted: isDeleted,
                 updatedAt: updatedAt,
               ),

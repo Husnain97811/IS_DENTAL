@@ -1,7 +1,16 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 part 'tooth_record.freezed.dart';
 
-enum ToothState { healthy, caries, treated, crown, missing }
+enum ToothState {
+  healthy,
+  caries,
+  treated, // filled / restored
+  crown,
+  rootCanal,
+  bridge,
+  implant,
+  missing,
+}
 
 @freezed
 abstract class ToothRecord with _$ToothRecord {

@@ -99,15 +99,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 checkmarkColor: d.alert,
               ),
               const Spacer(),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: d.ice,
-                  foregroundColor: AppPalette.onAccent,
-                ),
-                onPressed: () => showInventoryEditor(context),
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Add Item'),
-              ),
+              // FilledButton.icon(
+              //   style: FilledButton.styleFrom(
+              //     backgroundColor: d.ice,
+              //     foregroundColor: AppPalette.onAccent,
+              //   ),
+              //   onPressed: () => showInventoryEditor(context),
+              //   icon: const Icon(Icons.add_rounded, size: 18),
+              //   label: const Text('Add Item'),
+              // ),
             ],
           ),
           SizedBox(height: 1.6.h),

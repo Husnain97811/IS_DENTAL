@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/core/utils/pdf_output.dart';
 import 'package:printing/printing.dart';
 import 'package:sizer/sizer.dart';
 
@@ -157,15 +158,16 @@ class InvoiceDrawer extends ConsumerWidget {
                           foregroundColor: AppPalette.onAccent,
                           minimumSize: const Size.fromHeight(42),
                         ),
-                        onPressed: () async {
-                          final name = await ref.read(
-                            clinicNameProvider.future,
-                          );
-                          await Printing.layoutPdf(
-                            onLayout: (_) =>
-                                buildInvoicePdf(inv, clinicName: name),
-                          );
-                        },
+                        onPressed: () => showPdfOutput(
+                          context,
+                          build: () async {
+                            final name = await ref.read(
+                              clinicNameProvider.future,
+                            );
+                            return buildInvoicePdf(inv, clinicName: name);
+                          },
+                          filename: '${inv.invoiceNo}.pdf',
+                        ),
                         icon: const Icon(Icons.print_rounded, size: 17),
                         label: const Text('Print / PDF'),
                       ),

@@ -443,6 +443,7 @@ class _S extends ConsumerState<SettingsScreen> {
                       'Export full database (.dentos)',
                       style: TextStyle(color: d.text3, fontSize: 8.sp),
                     ),
+                    SizedBox(height: 6.sp),
                     FilledButton.icon(
                       onPressed: () async {
                         final msg = await syncNow(ref);

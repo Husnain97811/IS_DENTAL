@@ -10,11 +10,20 @@ import '../../../../core/widgets/dent_field.dart';
 import '../../../patients/presentation/patients_controller.dart';
 import '../billing_controller.dart';
 
-Future<void> showInvoiceEditor(BuildContext context) =>
-    showDialog(context: context, builder: (_) => const InvoiceEditorDialog());
+Future<bool?> showInvoiceEditor(
+  BuildContext context, {
+  int? patientId,
+  String? procedure,
+}) => showDialog<bool>(
+  context: context,
+  builder: (_) =>
+      InvoiceEditorDialog(patientId: patientId, procedure: procedure),
+);
 
 class InvoiceEditorDialog extends ConsumerStatefulWidget {
-  const InvoiceEditorDialog({super.key});
+  const InvoiceEditorDialog({super.key, this.patientId, this.procedure});
+  final int? patientId;
+  final String? procedure;
   @override
   ConsumerState<InvoiceEditorDialog> createState() => _S();
 }
@@ -30,12 +39,14 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
   late final TextEditingController _no, _adjustment;
   final List<_Line> _lines = [_Line()];
   bool _busy = false;
-
   @override
   void initState() {
     super.initState();
     _no = TextEditingController(text: 'INV-${1000 + Random().nextInt(9000)}');
     _adjustment = TextEditingController(text: '0');
+    _patientId = widget.patientId;
+    final proc = widget.procedure?.trim();
+    if (proc != null && proc.isNotEmpty) _lines.first.desc.text = proc;
   }
 
   @override
@@ -77,7 +88,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
           adjustment: int.tryParse(_adjustment.text) ?? 0,
           items: items,
         );
-    if (mounted) Navigator.pop(context);
+    if (mounted) Navigator.pop(context, true);
   }
 
   @override

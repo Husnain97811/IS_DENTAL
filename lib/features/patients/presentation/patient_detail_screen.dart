@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sizer/sizer.dart';
-
 import 'package:is_dental/core/theme/app_typography.dart';
 import 'package:is_dental/core/theme/dent_colors.dart';
 import 'package:is_dental/core/widgets/dent_avatar.dart';
 import 'package:is_dental/core/widgets/dent_panel.dart';
 import 'package:is_dental/core/widgets/status_chip.dart';
-
 import '../domain/patient.dart';
 import '../domain/tooth_record.dart';
 import '../domain/treatment_plan.dart';
@@ -18,6 +16,8 @@ import '../../appointments/domain/appointment.dart';
 import '../../appointments/presentation/appointments_controller.dart';
 import '../../billing/domain/invoice.dart';
 import '../../billing/presentation/billing_controller.dart';
+import 'package:is_dental/core/widgets/segmented_control.dart';
+import 'package:is_dental/features/patients/presentation/widgets/tooth_model_3d.dart';
 
 String _money(int v) => v.toString().replaceAllMapped(
   RegExp(r'(\d)(?=(\d{3})+$)'),
@@ -79,7 +79,13 @@ class PatientDetailScreen extends ConsumerWidget {
         children: [
           _header(context, d, patient),
           SizedBox(height: 2.h),
+
           _quickStats(context, d, patient, last),
+          _DentalChartCard(
+            patientId: patientId,
+            states: toothStates,
+            records: toothRecords,
+          ),
           SizedBox(height: 2.h),
           LayoutBuilder(
             builder: (context, c) {
@@ -97,8 +103,9 @@ class PatientDetailScreen extends ConsumerWidget {
               final rightCol = Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _chartCard(context, ref, d, toothStates, toothRecords),
-                  const SizedBox(height: 18),
+                  // _chartCard(context, ref, d, toothStates, toothRecords),
+
+                  // const SizedBox(height: 18),
                   _planCard(context, d, plan),
                   const SizedBox(height: 18),
                   _detailsCard(context, d, patient),
@@ -435,26 +442,26 @@ class PatientDetailScreen extends ConsumerWidget {
   );
 
   // ---- dental chart (rotatable + tap to edit) ----
-  Widget _chartCard(
-    BuildContext context,
-    WidgetRef ref,
-    DentColors d,
-    Map<int, ToothState> states,
-    Map<int, ToothRecord> records,
-  ) => DentPanel(
-    title: 'Dental Chart',
-    subtitle: 'FDI · drag to rotate · tap a tooth to update',
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-      child: _Rotatable(
-        child: Odontogram(
-          states: states,
-          onToothTap: (fdi) =>
-              _showToothSheet(context, ref, patientId, fdi, records[fdi]),
-        ),
-      ),
-    ),
-  );
+  // Widget _chartCard(
+  //   BuildContext context,
+  //   WidgetRef ref,
+  //   DentColors d,
+  //   Map<int, ToothState> states,
+  //   Map<int, ToothRecord> records,
+  // ) => DentPanel(
+  //   title: 'Dental Chart',
+  //   subtitle: 'FDI · drag to rotate · tap a tooth to update',
+  //   child: Padding(
+  //     padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+  //     child: _Rotatable(
+  //       child: Odontogram(
+  //         states: states,
+  //         onToothTap: (fdi) =>
+  //             _showToothSheet(context, ref, patientId, fdi, records[fdi]),
+  //       ),
+  //     ),
+  //   ),
+  // );
 
   // ---- treatment plan ----
   Widget _planCard(BuildContext context, DentColors d, TreatmentPlan? plan) =>
@@ -610,8 +617,15 @@ void _showToothSheet(
   const options = <(ToothState, String, String)>[
     (ToothState.healthy, 'Healthy', 'Sound tooth, no findings'),
     (ToothState.caries, 'Caries (decay)', 'Active decay present'),
-    (ToothState.treated, 'Treated / Filled', 'Restoration done'),
-    (ToothState.crown, 'Crown', 'Crowned / capped'),
+    (
+      ToothState.treated,
+      'Filled / Restored',
+      'Composite or amalgam restoration',
+    ),
+    (ToothState.crown, 'Crown', 'Full-coverage crown'),
+    (ToothState.rootCanal, 'Root Canal (RCT)', 'Endodontically treated'),
+    (ToothState.bridge, 'Bridge', 'Part of a fixed bridge'),
+    (ToothState.implant, 'Implant', 'Dental implant'),
     (ToothState.missing, 'Missing / Extracted', 'Tooth absent'),
   ];
   showModalBottomSheet(
@@ -625,95 +639,100 @@ void _showToothSheet(
       final current = rec?.state ?? ToothState.healthy;
       return Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Text('Tooth $fdi', style: Theme.of(ctx).textTheme.titleMedium),
-                const SizedBox(width: 10),
-                StatusChip(
-                  current.name[0].toUpperCase() + current.name.substring(1),
-                  kind: ChipKind.inProgress,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Tooth $fdi',
+                    style: Theme.of(ctx).textTheme.titleMedium,
+                  ),
+                  const SizedBox(width: 10),
+                  StatusChip(
+                    current.name[0].toUpperCase() + current.name.substring(1),
+                    kind: ChipKind.inProgress,
+                  ),
+                ],
+              ),
+              if ((rec?.note ?? '').isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  rec!.note!,
+                  style: TextStyle(color: d.text3, fontSize: 8.5.sp),
                 ),
               ],
-            ),
-            if ((rec?.note ?? '').isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 14),
               Text(
-                rec!.note!,
-                style: TextStyle(color: d.text3, fontSize: 8.5.sp),
-              ),
-            ],
-            const SizedBox(height: 14),
-            Text(
-              'SET CONDITION',
-              style: TextStyle(
-                color: d.text4,
-                fontSize: 7.sp,
-                fontWeight: FontWeight.w700,
-                letterSpacing: .5,
-              ),
-            ),
-            const SizedBox(height: 6),
-            for (final (state, label, hint) in options)
-              InkWell(
-                borderRadius: BorderRadius.circular(11),
-                onTap: () {
-                  ref
-                      .read(patientRepositoryProvider)
-                      .setToothState(patientId, fdi, state);
-                  Navigator.of(ctx).pop();
-                },
-                child: Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: state == current ? d.surface2 : null,
-                    borderRadius: BorderRadius.circular(11),
-                    border: Border.all(
-                      color: state == current ? d.ice : d.line,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              label,
-                              style: TextStyle(
-                                color: d.text1,
-                                fontSize: 9.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              hint,
-                              style: TextStyle(
-                                color: d.text4,
-                                fontSize: 7.5.sp,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (state == current)
-                        Icon(
-                          Icons.check_circle_rounded,
-                          color: d.ice,
-                          size: 12.sp,
-                        ),
-                    ],
-                  ),
+                'SET CONDITION',
+                style: TextStyle(
+                  color: d.text4,
+                  fontSize: 7.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: .5,
                 ),
               ),
-          ],
+              const SizedBox(height: 6),
+              for (final (state, label, hint) in options)
+                InkWell(
+                  borderRadius: BorderRadius.circular(11),
+                  onTap: () {
+                    ref
+                        .read(patientRepositoryProvider)
+                        .setToothState(patientId, fdi, state);
+                    Navigator.of(ctx).pop();
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: state == current ? d.surface2 : null,
+                      borderRadius: BorderRadius.circular(11),
+                      border: Border.all(
+                        color: state == current ? d.ice : d.line,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                label,
+                                style: TextStyle(
+                                  color: d.text1,
+                                  fontSize: 9.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                hint,
+                                style: TextStyle(
+                                  color: d.text4,
+                                  fontSize: 7.5.sp,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (state == current)
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: d.ice,
+                            size: 12.sp,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       );
     },
@@ -768,6 +787,57 @@ class _RotatableState extends State<_Rotatable> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _DentalChartCard extends ConsumerStatefulWidget {
+  const _DentalChartCard({
+    required this.patientId,
+    required this.states,
+    required this.records,
+  });
+  final int patientId;
+  final Map<int, ToothState> states;
+  final Map<int, ToothRecord> records;
+
+  @override
+  ConsumerState<_DentalChartCard> createState() => _DentalChartCardState();
+}
+
+class _DentalChartCardState extends ConsumerState<_DentalChartCard> {
+  int _tab = 0; // 0 = 2D chart (editable), 1 = 3D view
+
+  @override
+  Widget build(BuildContext context) {
+    return DentPanel(
+      title: 'Dental Chart',
+      subtitle: _tab == 0
+          ? 'FDI · tap a tooth to update'
+          : 'Drag to rotate · view only',
+      trailing: SegmentedControl(
+        items: const ['Chart', '3D'],
+        selected: _tab,
+        onChanged: (i) => setState(() => _tab = i),
+      ),
+      child: _tab == 0
+          ? Padding(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+              child: Odontogram(
+                states: widget.states,
+                onToothTap: (fdi) => _showToothSheet(
+                  context,
+                  ref,
+                  widget.patientId,
+                  fdi,
+                  widget.records[fdi],
+                ),
+              ),
+            )
+          : const Padding(
+              padding: EdgeInsets.all(12),
+              child: SizedBox(height: 360, child: ToothModel3D()),
+            ),
     );
   }
 }

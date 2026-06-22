@@ -69,8 +69,8 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
           Text('Patients', style: Theme.of(context).textTheme.displayLarge),
           const SizedBox(height: 4),
           Text(
-            'Active records · click a row to preview.',
-            style: TextStyle(color: d.text3, fontSize: 9.sp),
+            'Active records · click arrow to preview.',
+            style: TextStyle(color: d.text3, fontSize: 10.sp),
           ),
           SizedBox(height: 2.h),
           _toolbar(d),
@@ -146,16 +146,16 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
           ),
         ),
       ),
-      const Spacer(),
-      FilledButton.icon(
-        style: FilledButton.styleFrom(
-          backgroundColor: d.ice,
-          foregroundColor: AppPalette.onAccent,
-        ),
-        onPressed: () => showPatientEditor(context),
-        icon: const Icon(Icons.add_rounded, size: 18),
-        label: const Text('Add Patient'),
-      ),
+      // const Spacer(),
+      // FilledButton.icon(
+      //   style: FilledButton.styleFrom(
+      //     backgroundColor: d.ice,
+      //     foregroundColor: AppPalette.onAccent,
+      //   ),
+      //   onPressed: () => showPatientEditor(context),
+      //   icon: const Icon(Icons.add_rounded, size: 18),
+      //   label: const Text('Add Patient'),
+      // ),
     ],
   );
 
@@ -189,9 +189,9 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     final tone = _avatarTones[i % 4];
     final (chip, label) = _status(p.status);
     return InkWell(
-      onTap: () => context.push('${AppRoutes.patients}/${p.id}'),
-
-      // ref.read(selectedPatientIdProvider.notifier).state = p.id,
+      onTap: () =>
+          // context.push('${AppRoutes.patients}/${p.id}'),
+          ref.read(selectedPatientIdProvider.notifier).state = p.id,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(

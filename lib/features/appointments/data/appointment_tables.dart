@@ -15,6 +15,7 @@ class Appointments extends Table {
   IntColumn get durationMin => integer().withDefault(const Constant(30))();
   TextColumn get status => text().withDefault(const Constant('upcoming'))();
   TextColumn get notes => text().nullable()();
+  BoolColumn get billed => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }

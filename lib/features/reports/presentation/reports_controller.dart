@@ -10,12 +10,24 @@ class ReportsSummary {
     required this.monthLabels,
     required this.mix,
     required this.dentists,
+    required this.transactions,
   });
+
   final int totalRevenue, patientCount, procedureCount;
   final List<double> monthly; // thousands
   final List<String> monthLabels;
   final List<({String label, double value})> mix;
   final List<({String name, int value})> dentists;
+  final List<
+    ({
+      String invoiceNo,
+      DateTime date,
+      String patient,
+      int amount,
+      String status,
+    })
+  >
+  transactions;
 }
 
 String _classify(String s) {
@@ -70,7 +82,7 @@ final reportsSummaryProvider = FutureProvider.autoDispose<ReportsSummary>((
   final now = DateTime.now();
   final monthly = <double>[];
   final labels = <String>[];
-  for (var k = 5; k >= 0; k--) {
+  for (var k = 11; k >= 0; k--) {
     final m = DateTime(now.year, now.month - k);
     labels.add(months[m.month - 1]);
     final sum = invoices
@@ -98,6 +110,22 @@ final reportsSummaryProvider = FutureProvider.autoDispose<ReportsSummary>((
       dMap.entries.map((e) => (name: e.key, value: e.value)).toList()
         ..sort((a, b) => b.value.compareTo(a.value));
 
+  final nameById = {for (final p in patients) p.id: p.fullName};
+  final yearAgo = DateTime(now.year - 1, now.month, now.day);
+  final transactions =
+      (invoices.where((i) => i.issuedAt.isAfter(yearAgo)).toList()
+            ..sort((a, b) => b.issuedAt.compareTo(a.issuedAt)))
+          .map(
+            (i) => (
+              invoiceNo: i.invoiceNo,
+              date: i.issuedAt,
+              patient: nameById[i.patientId] ?? '—',
+              amount: i.total,
+              status: i.status,
+            ),
+          )
+          .toList();
+
   return ReportsSummary(
     totalRevenue: totalRevenue,
     patientCount: patients.length,
@@ -106,5 +134,6 @@ final reportsSummaryProvider = FutureProvider.autoDispose<ReportsSummary>((
     monthLabels: labels,
     mix: mix,
     dentists: dentists,
+    transactions: transactions,
   );
 });

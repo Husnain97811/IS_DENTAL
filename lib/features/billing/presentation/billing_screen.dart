@@ -70,15 +70,15 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                   ],
                 ),
               ),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: d.ice,
-                  foregroundColor: AppPalette.onAccent,
-                ),
-                onPressed: () => showInvoiceEditor(context),
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('New Invoice'),
-              ),
+              // FilledButton.icon(
+              //   style: FilledButton.styleFrom(
+              //     backgroundColor: d.ice,
+              //     foregroundColor: AppPalette.onAccent,
+              //   ),
+              //   onPressed: () => showInvoiceEditor(context),
+              //   icon: const Icon(Icons.add_rounded, size: 18),
+              //   label: const Text('New Invoice'),
+              // ),
             ],
           ),
           SizedBox(height: 2.2.h),

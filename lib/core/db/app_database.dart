@@ -62,7 +62,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(openEncryptedConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -174,6 +174,9 @@ class AppDatabase extends _$AppDatabase {
     },
 
     onUpgrade: (m, from, to) async {
+      if (from < 8) {
+        await m.addColumn(appointments, appointments.billed);
+      }
       if (from < 7) {
         await m.addColumn(users, users.branchId);
       }
@@ -225,6 +228,28 @@ class AppDatabase extends _$AppDatabase {
           updatedAt: Value(DateTime.now()),
         ),
       );
+
+  Future<void> setAppointmentStatus(int id, String status) =>
+      (update(appointments)..where((t) => t.id.equals(id))).write(
+        AppointmentsCompanion(
+          status: Value(status),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  Future<void> setAppointmentBilled(int id) =>
+      (update(appointments)..where((t) => t.id.equals(id))).write(
+        AppointmentsCompanion(
+          billed: const Value(true),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  Stream<Set<int>> watchBilledAppointmentIds() {
+    final q = select(appointments)
+      ..where((t) => t.billed.equals(true) & t.isDeleted.equals(false));
+    return q.watch().map((rows) => rows.map((r) => r.id).toSet());
+  }
 
   Future<void> _indexes() async {
     await customStatement(

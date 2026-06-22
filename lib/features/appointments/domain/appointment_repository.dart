@@ -15,4 +15,5 @@ abstract interface class AppointmentRepository {
   Future<void> seedDemoAppointmentsIfEmpty();
   Stream<List<Appointment>> watchAppointmentsForMonth(int year, int month);
   Stream<List<Appointment>> watchAppointmentsForPatient(int patientId);
+  Future<void> setStatus(int id, AppointmentStatus status);
 }

@@ -62,8 +62,26 @@ class Odontogram extends StatelessWidget {
           children: [
             _legend(d, d.surface2, d.line2, 'Healthy'),
             _legend(d, d.warn.withValues(alpha: .5), d.warn, 'Caries'),
-            _legend(d, d.ice.withValues(alpha: .6), d.ice, 'Treated'),
+            _legend(d, d.ice.withValues(alpha: .6), d.ice, 'Filled'),
             _legend(d, d.teal.withValues(alpha: .6), d.tealDeep, 'Crown'),
+            _legend(
+              d,
+              const Color(0x668B5CF6),
+              const Color(0xFF8B5CF6),
+              'Root Canal',
+            ),
+            _legend(
+              d,
+              const Color(0x66FB7185),
+              const Color(0xFFFB7185),
+              'Bridge',
+            ),
+            _legend(
+              d,
+              const Color(0x6664748B),
+              const Color(0xFF64748B),
+              'Implant',
+            ),
             _legend(d, d.line2, d.line2, 'Missing'),
           ],
         ),
@@ -94,8 +112,8 @@ class Odontogram extends StatelessWidget {
           child: Opacity(
             opacity: state == ToothState.missing ? .55 : 1,
             child: Container(
-              width: 17,
-              height: 22,
+              width: 30,
+              height: 35,
               decoration: BoxDecoration(
                 color: fill,
                 borderRadius: const BorderRadius.vertical(
@@ -119,6 +137,9 @@ class Odontogram extends StatelessWidget {
     ToothState.caries => (d.warn.withValues(alpha: .4), d.warn),
     ToothState.treated => (d.ice.withValues(alpha: .45), d.ice),
     ToothState.crown => (d.teal.withValues(alpha: .45), d.tealDeep),
+    ToothState.rootCanal => (const Color(0x668B5CF6), const Color(0xFF8B5CF6)),
+    ToothState.bridge => (const Color(0x66FB7185), const Color(0xFFFB7185)),
+    ToothState.implant => (const Color(0x6664748B), const Color(0xFF64748B)),
     ToothState.missing => (d.surface2, d.line2),
   };
 

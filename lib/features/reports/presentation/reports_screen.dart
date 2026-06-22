@@ -9,6 +9,9 @@ import '../../../core/widgets/dent_panel.dart';
 import '../../../core/widgets/kpi_card.dart';
 import '../../../core/widgets/stat_bar.dart';
 import 'reports_controller.dart';
+import '../../../core/db/app_database.dart';
+import '../../../core/utils/pdf_output.dart';
+import '../data/reports_pdf.dart';
 
 class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
@@ -26,14 +29,47 @@ class ReportsScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Reports & Analytics',
-            style: Theme.of(context).textTheme.displayLarge,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Practice performance overview.',
-            style: TextStyle(color: d.text3, fontSize: 9.sp),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Reports & Analytics',
+                      style: Theme.of(context).textTheme.displayLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Practice performance · last 12 months.',
+                      style: TextStyle(color: d.text3, fontSize: 9.sp),
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: d.text2,
+                  side: BorderSide(color: d.line),
+                  minimumSize: const Size(0, 42),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+                onPressed: () => showPdfOutput(
+                  context,
+                  build: () async {
+                    final s = await ref.read(reportsSummaryProvider.future);
+                    final name =
+                        (await ref.read(appDatabaseProvider).clinicName()) ??
+                        'Clinic';
+                    return buildReportsPdf(s, clinicName: name);
+                  },
+                  filename: 'dentos-report.pdf',
+                ),
+                icon: const Icon(Icons.download_rounded, size: 18),
+                label: const Text('Export'),
+              ),
+            ],
           ),
           SizedBox(height: 2.2.h),
           async.when(
