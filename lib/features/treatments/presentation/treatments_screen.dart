@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/patients/presentation/widgets/tooth_chart_screen.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/constants/app_flags.dart';
@@ -41,9 +42,15 @@ class _S extends ConsumerState<TreatmentsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Treatment Catalog',
-            style: Theme.of(context).textTheme.displayLarge,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Treatment Catalog',
+                style: Theme.of(context).textTheme.displayLarge,
+              ),
+              toothChartButton(d),
+            ],
           ),
           const SizedBox(height: 4),
           Text(
@@ -86,6 +93,43 @@ class _S extends ConsumerState<TreatmentsScreen> {
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget toothChartButton(DentColors d) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const ToothChartScreen()));
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF38BDF8), Color(0xFF13E0C4)], // ice → teal
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF38BDF8).withOpacity(0.35),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Text(
+          '3D Chart',
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+            fontSize: 9.sp,
+            letterSpacing: 0.4,
+          ),
+        ),
       ),
     );
   }

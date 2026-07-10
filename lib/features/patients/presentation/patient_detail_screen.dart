@@ -816,7 +816,8 @@ class _DentalChartCardState extends ConsumerState<_DentalChartCard> {
           ? 'FDI · tap a tooth to update'
           : 'Drag to rotate · view only',
       trailing: SegmentedControl(
-        items: const ['Chart', '3D'],
+        items: const ['Chart'],
+        // items: const ['Chart', '3D'],
         selected: _tab,
         onChanged: (i) => setState(() => _tab = i),
       ),
