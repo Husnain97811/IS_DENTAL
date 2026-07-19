@@ -4,7 +4,6 @@ import 'package:is_dental/auth/presentation/idle_lock.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:sizer/sizer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'core/config/env.dart';
 import 'core/constants/views.dart';
 

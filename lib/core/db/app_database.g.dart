@@ -1347,6 +1347,16 @@ class $PatientsTable extends Patients
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
+  static const VerificationMeta _cnicMeta = const VerificationMeta('cnic');
+  @override
+  late final GeneratedColumn<String> cnic = GeneratedColumn<String>(
+    'cnic',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _allergiesMeta = const VerificationMeta(
     'allergies',
   );
@@ -1464,6 +1474,7 @@ class $PatientsTable extends Patients
     gender,
     age,
     phone,
+    cnic,
     allergies,
     insurance,
     lastVisit,
@@ -1543,6 +1554,12 @@ class $PatientsTable extends Patients
       context.handle(
         _phoneMeta,
         phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
+    if (data.containsKey('cnic')) {
+      context.handle(
+        _cnicMeta,
+        cnic.isAcceptableOrUnknown(data['cnic']!, _cnicMeta),
       );
     }
     if (data.containsKey('allergies')) {
@@ -1647,6 +1664,10 @@ class $PatientsTable extends Patients
         DriftSqlType.string,
         data['${effectivePrefix}phone'],
       )!,
+      cnic: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cnic'],
+      )!,
       allergies: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}allergies'],
@@ -1702,6 +1723,7 @@ class PatientRow extends DataClass implements Insertable<PatientRow> {
   final String gender;
   final int age;
   final String phone;
+  final String cnic;
   final String? allergies;
   final String? insurance;
   final DateTime? lastVisit;
@@ -1721,6 +1743,7 @@ class PatientRow extends DataClass implements Insertable<PatientRow> {
     required this.gender,
     required this.age,
     required this.phone,
+    required this.cnic,
     this.allergies,
     this.insurance,
     this.lastVisit,
@@ -1745,6 +1768,7 @@ class PatientRow extends DataClass implements Insertable<PatientRow> {
     map['gender'] = Variable<String>(gender);
     map['age'] = Variable<int>(age);
     map['phone'] = Variable<String>(phone);
+    map['cnic'] = Variable<String>(cnic);
     if (!nullToAbsent || allergies != null) {
       map['allergies'] = Variable<String>(allergies);
     }
@@ -1776,6 +1800,7 @@ class PatientRow extends DataClass implements Insertable<PatientRow> {
       gender: Value(gender),
       age: Value(age),
       phone: Value(phone),
+      cnic: Value(cnic),
       allergies: allergies == null && nullToAbsent
           ? const Value.absent()
           : Value(allergies),
@@ -1809,6 +1834,7 @@ class PatientRow extends DataClass implements Insertable<PatientRow> {
       gender: serializer.fromJson<String>(json['gender']),
       age: serializer.fromJson<int>(json['age']),
       phone: serializer.fromJson<String>(json['phone']),
+      cnic: serializer.fromJson<String>(json['cnic']),
       allergies: serializer.fromJson<String?>(json['allergies']),
       insurance: serializer.fromJson<String?>(json['insurance']),
       lastVisit: serializer.fromJson<DateTime?>(json['lastVisit']),
@@ -1833,6 +1859,7 @@ class PatientRow extends DataClass implements Insertable<PatientRow> {
       'gender': serializer.toJson<String>(gender),
       'age': serializer.toJson<int>(age),
       'phone': serializer.toJson<String>(phone),
+      'cnic': serializer.toJson<String>(cnic),
       'allergies': serializer.toJson<String?>(allergies),
       'insurance': serializer.toJson<String?>(insurance),
       'lastVisit': serializer.toJson<DateTime?>(lastVisit),
@@ -1855,6 +1882,7 @@ class PatientRow extends DataClass implements Insertable<PatientRow> {
     String? gender,
     int? age,
     String? phone,
+    String? cnic,
     Value<String?> allergies = const Value.absent(),
     Value<String?> insurance = const Value.absent(),
     Value<DateTime?> lastVisit = const Value.absent(),
@@ -1874,6 +1902,7 @@ class PatientRow extends DataClass implements Insertable<PatientRow> {
     gender: gender ?? this.gender,
     age: age ?? this.age,
     phone: phone ?? this.phone,
+    cnic: cnic ?? this.cnic,
     allergies: allergies.present ? allergies.value : this.allergies,
     insurance: insurance.present ? insurance.value : this.insurance,
     lastVisit: lastVisit.present ? lastVisit.value : this.lastVisit,
@@ -1895,6 +1924,7 @@ class PatientRow extends DataClass implements Insertable<PatientRow> {
       gender: data.gender.present ? data.gender.value : this.gender,
       age: data.age.present ? data.age.value : this.age,
       phone: data.phone.present ? data.phone.value : this.phone,
+      cnic: data.cnic.present ? data.cnic.value : this.cnic,
       allergies: data.allergies.present ? data.allergies.value : this.allergies,
       insurance: data.insurance.present ? data.insurance.value : this.insurance,
       lastVisit: data.lastVisit.present ? data.lastVisit.value : this.lastVisit,
@@ -1923,6 +1953,7 @@ class PatientRow extends DataClass implements Insertable<PatientRow> {
           ..write('gender: $gender, ')
           ..write('age: $age, ')
           ..write('phone: $phone, ')
+          ..write('cnic: $cnic, ')
           ..write('allergies: $allergies, ')
           ..write('insurance: $insurance, ')
           ..write('lastVisit: $lastVisit, ')
@@ -1947,6 +1978,7 @@ class PatientRow extends DataClass implements Insertable<PatientRow> {
     gender,
     age,
     phone,
+    cnic,
     allergies,
     insurance,
     lastVisit,
@@ -1970,6 +2002,7 @@ class PatientRow extends DataClass implements Insertable<PatientRow> {
           other.gender == this.gender &&
           other.age == this.age &&
           other.phone == this.phone &&
+          other.cnic == this.cnic &&
           other.allergies == this.allergies &&
           other.insurance == this.insurance &&
           other.lastVisit == this.lastVisit &&
@@ -1991,6 +2024,7 @@ class PatientsCompanion extends UpdateCompanion<PatientRow> {
   final Value<String> gender;
   final Value<int> age;
   final Value<String> phone;
+  final Value<String> cnic;
   final Value<String?> allergies;
   final Value<String?> insurance;
   final Value<DateTime?> lastVisit;
@@ -2010,6 +2044,7 @@ class PatientsCompanion extends UpdateCompanion<PatientRow> {
     this.gender = const Value.absent(),
     this.age = const Value.absent(),
     this.phone = const Value.absent(),
+    this.cnic = const Value.absent(),
     this.allergies = const Value.absent(),
     this.insurance = const Value.absent(),
     this.lastVisit = const Value.absent(),
@@ -2030,6 +2065,7 @@ class PatientsCompanion extends UpdateCompanion<PatientRow> {
     this.gender = const Value.absent(),
     this.age = const Value.absent(),
     this.phone = const Value.absent(),
+    this.cnic = const Value.absent(),
     this.allergies = const Value.absent(),
     this.insurance = const Value.absent(),
     this.lastVisit = const Value.absent(),
@@ -2053,6 +2089,7 @@ class PatientsCompanion extends UpdateCompanion<PatientRow> {
     Expression<String>? gender,
     Expression<int>? age,
     Expression<String>? phone,
+    Expression<String>? cnic,
     Expression<String>? allergies,
     Expression<String>? insurance,
     Expression<DateTime>? lastVisit,
@@ -2073,6 +2110,7 @@ class PatientsCompanion extends UpdateCompanion<PatientRow> {
       if (gender != null) 'gender': gender,
       if (age != null) 'age': age,
       if (phone != null) 'phone': phone,
+      if (cnic != null) 'cnic': cnic,
       if (allergies != null) 'allergies': allergies,
       if (insurance != null) 'insurance': insurance,
       if (lastVisit != null) 'last_visit': lastVisit,
@@ -2095,6 +2133,7 @@ class PatientsCompanion extends UpdateCompanion<PatientRow> {
     Value<String>? gender,
     Value<int>? age,
     Value<String>? phone,
+    Value<String>? cnic,
     Value<String?>? allergies,
     Value<String?>? insurance,
     Value<DateTime?>? lastVisit,
@@ -2115,6 +2154,7 @@ class PatientsCompanion extends UpdateCompanion<PatientRow> {
       gender: gender ?? this.gender,
       age: age ?? this.age,
       phone: phone ?? this.phone,
+      cnic: cnic ?? this.cnic,
       allergies: allergies ?? this.allergies,
       insurance: insurance ?? this.insurance,
       lastVisit: lastVisit ?? this.lastVisit,
@@ -2156,6 +2196,9 @@ class PatientsCompanion extends UpdateCompanion<PatientRow> {
     }
     if (phone.present) {
       map['phone'] = Variable<String>(phone.value);
+    }
+    if (cnic.present) {
+      map['cnic'] = Variable<String>(cnic.value);
     }
     if (allergies.present) {
       map['allergies'] = Variable<String>(allergies.value);
@@ -2199,6 +2242,7 @@ class PatientsCompanion extends UpdateCompanion<PatientRow> {
           ..write('gender: $gender, ')
           ..write('age: $age, ')
           ..write('phone: $phone, ')
+          ..write('cnic: $cnic, ')
           ..write('allergies: $allergies, ')
           ..write('insurance: $insurance, ')
           ..write('lastVisit: $lastVisit, ')
@@ -4682,6 +4726,17 @@ class $InvoicesTable extends Invoices
       'REFERENCES patients (id)',
     ),
   );
+  static const VerificationMeta _appointmentIdMeta = const VerificationMeta(
+    'appointmentId',
+  );
+  @override
+  late final GeneratedColumn<int> appointmentId = GeneratedColumn<int>(
+    'appointment_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _invoiceNoMeta = const VerificationMeta(
     'invoiceNo',
   );
@@ -4794,6 +4849,7 @@ class $InvoicesTable extends Invoices
     clinicId,
     branchId,
     patientId,
+    appointmentId,
     invoiceNo,
     issuedAt,
     status,
@@ -4848,6 +4904,15 @@ class $InvoicesTable extends Invoices
       );
     } else if (isInserting) {
       context.missing(_patientIdMeta);
+    }
+    if (data.containsKey('appointment_id')) {
+      context.handle(
+        _appointmentIdMeta,
+        appointmentId.isAcceptableOrUnknown(
+          data['appointment_id']!,
+          _appointmentIdMeta,
+        ),
+      );
     }
     if (data.containsKey('invoice_no')) {
       context.handle(
@@ -4936,6 +5001,10 @@ class $InvoicesTable extends Invoices
         DriftSqlType.int,
         data['${effectivePrefix}patient_id'],
       )!,
+      appointmentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}appointment_id'],
+      ),
       invoiceNo: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}invoice_no'],
@@ -4987,6 +5056,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
   final String clinicId;
   final String? branchId;
   final int patientId;
+  final int? appointmentId;
   final String invoiceNo;
   final DateTime issuedAt;
   final String status;
@@ -5002,6 +5072,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     required this.clinicId,
     this.branchId,
     required this.patientId,
+    this.appointmentId,
     required this.invoiceNo,
     required this.issuedAt,
     required this.status,
@@ -5022,6 +5093,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       map['branch_id'] = Variable<String>(branchId);
     }
     map['patient_id'] = Variable<int>(patientId);
+    if (!nullToAbsent || appointmentId != null) {
+      map['appointment_id'] = Variable<int>(appointmentId);
+    }
     map['invoice_no'] = Variable<String>(invoiceNo);
     map['issued_at'] = Variable<DateTime>(issuedAt);
     map['status'] = Variable<String>(status);
@@ -5043,6 +5117,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
           ? const Value.absent()
           : Value(branchId),
       patientId: Value(patientId),
+      appointmentId: appointmentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(appointmentId),
       invoiceNo: Value(invoiceNo),
       issuedAt: Value(issuedAt),
       status: Value(status),
@@ -5066,6 +5143,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       clinicId: serializer.fromJson<String>(json['clinicId']),
       branchId: serializer.fromJson<String?>(json['branchId']),
       patientId: serializer.fromJson<int>(json['patientId']),
+      appointmentId: serializer.fromJson<int?>(json['appointmentId']),
       invoiceNo: serializer.fromJson<String>(json['invoiceNo']),
       issuedAt: serializer.fromJson<DateTime>(json['issuedAt']),
       status: serializer.fromJson<String>(json['status']),
@@ -5086,6 +5164,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       'clinicId': serializer.toJson<String>(clinicId),
       'branchId': serializer.toJson<String?>(branchId),
       'patientId': serializer.toJson<int>(patientId),
+      'appointmentId': serializer.toJson<int?>(appointmentId),
       'invoiceNo': serializer.toJson<String>(invoiceNo),
       'issuedAt': serializer.toJson<DateTime>(issuedAt),
       'status': serializer.toJson<String>(status),
@@ -5104,6 +5183,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     String? clinicId,
     Value<String?> branchId = const Value.absent(),
     int? patientId,
+    Value<int?> appointmentId = const Value.absent(),
     String? invoiceNo,
     DateTime? issuedAt,
     String? status,
@@ -5119,6 +5199,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     clinicId: clinicId ?? this.clinicId,
     branchId: branchId.present ? branchId.value : this.branchId,
     patientId: patientId ?? this.patientId,
+    appointmentId: appointmentId.present
+        ? appointmentId.value
+        : this.appointmentId,
     invoiceNo: invoiceNo ?? this.invoiceNo,
     issuedAt: issuedAt ?? this.issuedAt,
     status: status ?? this.status,
@@ -5136,6 +5219,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
       branchId: data.branchId.present ? data.branchId.value : this.branchId,
       patientId: data.patientId.present ? data.patientId.value : this.patientId,
+      appointmentId: data.appointmentId.present
+          ? data.appointmentId.value
+          : this.appointmentId,
       invoiceNo: data.invoiceNo.present ? data.invoiceNo.value : this.invoiceNo,
       issuedAt: data.issuedAt.present ? data.issuedAt.value : this.issuedAt,
       status: data.status.present ? data.status.value : this.status,
@@ -5158,6 +5244,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
           ..write('clinicId: $clinicId, ')
           ..write('branchId: $branchId, ')
           ..write('patientId: $patientId, ')
+          ..write('appointmentId: $appointmentId, ')
           ..write('invoiceNo: $invoiceNo, ')
           ..write('issuedAt: $issuedAt, ')
           ..write('status: $status, ')
@@ -5178,6 +5265,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     clinicId,
     branchId,
     patientId,
+    appointmentId,
     invoiceNo,
     issuedAt,
     status,
@@ -5197,6 +5285,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
           other.clinicId == this.clinicId &&
           other.branchId == this.branchId &&
           other.patientId == this.patientId &&
+          other.appointmentId == this.appointmentId &&
           other.invoiceNo == this.invoiceNo &&
           other.issuedAt == this.issuedAt &&
           other.status == this.status &&
@@ -5214,6 +5303,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
   final Value<String> clinicId;
   final Value<String?> branchId;
   final Value<int> patientId;
+  final Value<int?> appointmentId;
   final Value<String> invoiceNo;
   final Value<DateTime> issuedAt;
   final Value<String> status;
@@ -5229,6 +5319,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     this.clinicId = const Value.absent(),
     this.branchId = const Value.absent(),
     this.patientId = const Value.absent(),
+    this.appointmentId = const Value.absent(),
     this.invoiceNo = const Value.absent(),
     this.issuedAt = const Value.absent(),
     this.status = const Value.absent(),
@@ -5245,6 +5336,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     required String clinicId,
     this.branchId = const Value.absent(),
     required int patientId,
+    this.appointmentId = const Value.absent(),
     required String invoiceNo,
     required DateTime issuedAt,
     this.status = const Value.absent(),
@@ -5265,6 +5357,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     Expression<String>? clinicId,
     Expression<String>? branchId,
     Expression<int>? patientId,
+    Expression<int>? appointmentId,
     Expression<String>? invoiceNo,
     Expression<DateTime>? issuedAt,
     Expression<String>? status,
@@ -5281,6 +5374,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
       if (clinicId != null) 'clinic_id': clinicId,
       if (branchId != null) 'branch_id': branchId,
       if (patientId != null) 'patient_id': patientId,
+      if (appointmentId != null) 'appointment_id': appointmentId,
       if (invoiceNo != null) 'invoice_no': invoiceNo,
       if (issuedAt != null) 'issued_at': issuedAt,
       if (status != null) 'status': status,
@@ -5299,6 +5393,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     Value<String>? clinicId,
     Value<String?>? branchId,
     Value<int>? patientId,
+    Value<int?>? appointmentId,
     Value<String>? invoiceNo,
     Value<DateTime>? issuedAt,
     Value<String>? status,
@@ -5315,6 +5410,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
       clinicId: clinicId ?? this.clinicId,
       branchId: branchId ?? this.branchId,
       patientId: patientId ?? this.patientId,
+      appointmentId: appointmentId ?? this.appointmentId,
       invoiceNo: invoiceNo ?? this.invoiceNo,
       issuedAt: issuedAt ?? this.issuedAt,
       status: status ?? this.status,
@@ -5344,6 +5440,9 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     }
     if (patientId.present) {
       map['patient_id'] = Variable<int>(patientId.value);
+    }
+    if (appointmentId.present) {
+      map['appointment_id'] = Variable<int>(appointmentId.value);
     }
     if (invoiceNo.present) {
       map['invoice_no'] = Variable<String>(invoiceNo.value);
@@ -5383,6 +5482,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
           ..write('clinicId: $clinicId, ')
           ..write('branchId: $branchId, ')
           ..write('patientId: $patientId, ')
+          ..write('appointmentId: $appointmentId, ')
           ..write('invoiceNo: $invoiceNo, ')
           ..write('issuedAt: $issuedAt, ')
           ..write('status: $status, ')
@@ -8179,6 +8279,7 @@ typedef $$PatientsTableCreateCompanionBuilder =
       Value<String> gender,
       Value<int> age,
       Value<String> phone,
+      Value<String> cnic,
       Value<String?> allergies,
       Value<String?> insurance,
       Value<DateTime?> lastVisit,
@@ -8200,6 +8301,7 @@ typedef $$PatientsTableUpdateCompanionBuilder =
       Value<String> gender,
       Value<int> age,
       Value<String> phone,
+      Value<String> cnic,
       Value<String?> allergies,
       Value<String?> insurance,
       Value<DateTime?> lastVisit,
@@ -8342,6 +8444,11 @@ class $$PatientsTableFilterComposer
 
   ColumnFilters<String> get phone => $composableBuilder(
     column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cnic => $composableBuilder(
+    column: $table.cnic,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8545,6 +8652,11 @@ class $$PatientsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get cnic => $composableBuilder(
+    column: $table.cnic,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get allergies => $composableBuilder(
     column: $table.allergies,
     builder: (column) => ColumnOrderings(column),
@@ -8626,6 +8738,9 @@ class $$PatientsTableAnnotationComposer
 
   GeneratedColumn<String> get phone =>
       $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get cnic =>
+      $composableBuilder(column: $table.cnic, builder: (column) => column);
 
   GeneratedColumn<String> get allergies =>
       $composableBuilder(column: $table.allergies, builder: (column) => column);
@@ -8801,6 +8916,7 @@ class $$PatientsTableTableManager
                 Value<String> gender = const Value.absent(),
                 Value<int> age = const Value.absent(),
                 Value<String> phone = const Value.absent(),
+                Value<String> cnic = const Value.absent(),
                 Value<String?> allergies = const Value.absent(),
                 Value<String?> insurance = const Value.absent(),
                 Value<DateTime?> lastVisit = const Value.absent(),
@@ -8820,6 +8936,7 @@ class $$PatientsTableTableManager
                 gender: gender,
                 age: age,
                 phone: phone,
+                cnic: cnic,
                 allergies: allergies,
                 insurance: insurance,
                 lastVisit: lastVisit,
@@ -8841,6 +8958,7 @@ class $$PatientsTableTableManager
                 Value<String> gender = const Value.absent(),
                 Value<int> age = const Value.absent(),
                 Value<String> phone = const Value.absent(),
+                Value<String> cnic = const Value.absent(),
                 Value<String?> allergies = const Value.absent(),
                 Value<String?> insurance = const Value.absent(),
                 Value<DateTime?> lastVisit = const Value.absent(),
@@ -8860,6 +8978,7 @@ class $$PatientsTableTableManager
                 gender: gender,
                 age: age,
                 phone: phone,
+                cnic: cnic,
                 allergies: allergies,
                 insurance: insurance,
                 lastVisit: lastVisit,
@@ -10838,6 +10957,7 @@ typedef $$InvoicesTableCreateCompanionBuilder =
       required String clinicId,
       Value<String?> branchId,
       required int patientId,
+      Value<int?> appointmentId,
       required String invoiceNo,
       required DateTime issuedAt,
       Value<String> status,
@@ -10855,6 +10975,7 @@ typedef $$InvoicesTableUpdateCompanionBuilder =
       Value<String> clinicId,
       Value<String?> branchId,
       Value<int> patientId,
+      Value<int?> appointmentId,
       Value<String> invoiceNo,
       Value<DateTime> issuedAt,
       Value<String> status,
@@ -10932,6 +11053,11 @@ class $$InvoicesTableFilterComposer
 
   ColumnFilters<String> get branchId => $composableBuilder(
     column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get appointmentId => $composableBuilder(
+    column: $table.appointmentId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11058,6 +11184,11 @@ class $$InvoicesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get appointmentId => $composableBuilder(
+    column: $table.appointmentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get invoiceNo => $composableBuilder(
     column: $table.invoiceNo,
     builder: (column) => ColumnOrderings(column),
@@ -11147,6 +11278,11 @@ class $$InvoicesTableAnnotationComposer
 
   GeneratedColumn<String> get branchId =>
       $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<int> get appointmentId => $composableBuilder(
+    column: $table.appointmentId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get invoiceNo =>
       $composableBuilder(column: $table.invoiceNo, builder: (column) => column);
@@ -11259,6 +11395,7 @@ class $$InvoicesTableTableManager
                 Value<String> clinicId = const Value.absent(),
                 Value<String?> branchId = const Value.absent(),
                 Value<int> patientId = const Value.absent(),
+                Value<int?> appointmentId = const Value.absent(),
                 Value<String> invoiceNo = const Value.absent(),
                 Value<DateTime> issuedAt = const Value.absent(),
                 Value<String> status = const Value.absent(),
@@ -11274,6 +11411,7 @@ class $$InvoicesTableTableManager
                 clinicId: clinicId,
                 branchId: branchId,
                 patientId: patientId,
+                appointmentId: appointmentId,
                 invoiceNo: invoiceNo,
                 issuedAt: issuedAt,
                 status: status,
@@ -11291,6 +11429,7 @@ class $$InvoicesTableTableManager
                 required String clinicId,
                 Value<String?> branchId = const Value.absent(),
                 required int patientId,
+                Value<int?> appointmentId = const Value.absent(),
                 required String invoiceNo,
                 required DateTime issuedAt,
                 Value<String> status = const Value.absent(),
@@ -11306,6 +11445,7 @@ class $$InvoicesTableTableManager
                 clinicId: clinicId,
                 branchId: branchId,
                 patientId: patientId,
+                appointmentId: appointmentId,
                 invoiceNo: invoiceNo,
                 issuedAt: issuedAt,
                 status: status,

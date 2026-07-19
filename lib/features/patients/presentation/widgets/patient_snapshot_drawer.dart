@@ -153,7 +153,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
           const SizedBox(height: 3),
           Text(
             '${_cap(p.gender.name)} · ${p.age} yrs · ID #${p.code}',
-            style: TextStyle(color: d.text3, fontSize: 8.5.sp),
+            style: TextStyle(color: d.text3, fontSize: 9.5.sp),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -184,7 +184,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
               label,
               style: TextStyle(
                 color: d.text4,
-                fontSize: 7.sp,
+                fontSize: 10.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -318,7 +318,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
       text,
       style: TextStyle(
         color: color,
-        fontSize: 7.5.sp,
+        fontSize: 9.5.sp,
         fontWeight: FontWeight.w600,
       ),
     ),

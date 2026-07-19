@@ -98,6 +98,11 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                               .toLowerCase()
                               .contains(_q.toLowerCase()),
                         )
+                        .where(
+                          (p) => '${p.fullName} ${p.phone} ${p.code} ${p.cnic}'
+                              .toLowerCase()
+                              .contains(_q.toLowerCase()),
+                        )
                         .toList();
               return DentPanel(
                 child: Column(
@@ -215,9 +220,10 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
         children: [
           Expanded(flex: 3, child: Text('PATIENT', style: h())),
           Expanded(flex: 2, child: Text('PHONE', style: h())),
-          Expanded(flex: 2, child: Text('LAST VISIT', style: h())),
+          Expanded(flex: 2, child: Text('CNIC', style: h())), // ← add
+          // Expanded(flex: 2, child: Text('LAST VISIT', style: h())),
           Expanded(flex: 2, child: Text('TREATMENT', style: h())),
-          Expanded(flex: 1, child: Text('BALANCE', style: h())),
+          // Expanded(flex: 1, child: Text('BALANCE', style: h())),
           Expanded(flex: 2, child: Text('STATUS', style: h())),
         ],
       ),
@@ -248,7 +254,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                     p.initials,
                     bg: tone.$2,
                     fg: tone.$1,
-                    size: 34,
+                    size: 19.sp,
                     radius: 10,
                   ),
                   const SizedBox(width: 11),
@@ -257,18 +263,19 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          p.fullName,
+                          p.fullName.split(' ').take(2).join(' '),
                           style: TextStyle(
                             color: d.text1,
                             fontWeight: FontWeight.w600,
-                            fontSize: 9.sp,
+                            fontSize: 11.5.sp,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
+
                         Text(
                           '#${p.code}',
                           style: AppTypography.mono(
-                            size: 7.5.sp,
+                            size: 9.5.sp,
                             color: d.text4,
                           ),
                         ),
@@ -285,13 +292,22 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                 style: AppTypography.mono(size: 8.sp, color: d.text2),
               ),
             ),
+
             Expanded(
               flex: 2,
               child: Text(
-                p.lastVisit == null ? '—' : _fmt(p.lastVisit!),
-                style: TextStyle(color: d.text2, fontSize: 8.5.sp),
+                p.cnic.isEmpty ? '—' : p.cnic,
+                style: AppTypography.mono(size: 8.sp, color: d.text2),
               ),
             ),
+
+            // Expanded(
+            //   flex: 2,
+            //   child: Text(
+            //     p.lastVisit == null ? '—' : _fmt(p.lastVisit!),
+            //     style: TextStyle(color: d.text2, fontSize: 8.5.sp),
+            //   ),
+            // ),
             Expanded(
               flex: 2,
               child: Text(
@@ -300,16 +316,16 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            Expanded(
-              flex: 1,
-              child: Text(
-                p.balance == 0 ? 'Rs 0' : 'Rs ${_grp(p.balance)}',
-                style: AppTypography.mono(
-                  size: 8.5.sp,
-                  color: p.balance > 0 ? d.alert : d.text1,
-                ),
-              ),
-            ),
+            // Expanded(
+            //   flex: 1,
+            //   child: Text(
+            //     p.balance == 0 ? 'Rs 0' : 'Rs ${_grp(p.balance)}',
+            //     style: AppTypography.mono(
+            //       size: 8.5.sp,
+            //       color: p.balance > 0 ? d.alert : d.text1,
+            //     ),
+            //   ),
+            // ),
             Expanded(
               flex: 2,
               child: Align(

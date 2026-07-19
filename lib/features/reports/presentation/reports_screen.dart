@@ -13,15 +13,114 @@ import '../../../core/db/app_database.dart';
 import '../../../core/utils/pdf_output.dart';
 import '../data/reports_pdf.dart';
 
-class ReportsScreen extends ConsumerWidget {
+class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
+  @override
+  ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
+}
+
+class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   String _m(int v) => v.toString().replaceAllMapped(
     RegExp(r'(\d)(?=(\d{3})+$)'),
     (x) => '${x[1]},',
   );
 
+  Future<void> _onExport() async {
+    // Step 1 — pick All or Custom
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final d = context.dent;
+        return AlertDialog(
+          backgroundColor: d.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: const Text('Export Report'),
+          content: const Text(
+            'Export all data for the last 12 months, or choose a custom date range?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            OutlinedButton(
+              onPressed: () => Navigator.pop(ctx, 'custom'),
+              child: const Text('Custom range'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, 'all'),
+              child: const Text('All data'),
+            ),
+          ],
+        );
+      },
+    );
+    if (choice == null || !mounted) return;
+
+    if (choice == 'all') {
+      // existing flow
+      await showPdfOutput(
+        context,
+        build: () async {
+          final s = await ref.read(reportsSummaryProvider.future);
+          final name =
+              (await ref.read(appDatabaseProvider).clinicName()) ?? 'Clinic';
+          return buildReportsPdf(s, clinicName: name);
+        },
+        filename: 'dentos-report.pdf',
+      );
+      return;
+    }
+
+    // Step 2 — pick date range
+    final now = DateTime.now();
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(now.year - 5),
+      lastDate: now,
+      initialDateRange: DateTimeRange(
+        start: DateTime(now.year, now.month - 1, 1),
+        end: now,
+      ),
+      helpText: 'Select report date range',
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: context.dent.ice,
+            brightness: Theme.of(ctx).brightness,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked == null || !mounted) return;
+
+    // Step 3 — generate filtered PDF → showPdfOutput chooser
+    await showPdfOutput(
+      context,
+      build: () async {
+        final s = await ref.read(
+          reportsSummaryRangeProvider((
+            from: picked.start,
+            to: picked.end,
+          )).future,
+        );
+        final name =
+            (await ref.read(appDatabaseProvider).clinicName()) ?? 'Clinic';
+        final label = '${_fmt(picked.start)} – ${_fmt(picked.end)}';
+        return buildReportsPdf(s, clinicName: name, rangeLabel: label);
+      },
+      filename: 'dentos-report-${_fmt(picked.start)}-${_fmt(picked.end)}.pdf',
+    );
+  }
+
+  String _fmt(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final d = context.dent;
     final async = ref.watch(reportsSummaryProvider);
     return SingleChildScrollView(
@@ -55,17 +154,7 @@ class ReportsScreen extends ConsumerWidget {
                   minimumSize: const Size(0, 42),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                 ),
-                onPressed: () => showPdfOutput(
-                  context,
-                  build: () async {
-                    final s = await ref.read(reportsSummaryProvider.future);
-                    final name =
-                        (await ref.read(appDatabaseProvider).clinicName()) ??
-                        'Clinic';
-                    return buildReportsPdf(s, clinicName: name);
-                  },
-                  filename: 'dentos-report.pdf',
-                ),
+                onPressed: _onExport,
                 icon: const Icon(Icons.download_rounded, size: 18),
                 label: const Text('Export'),
               ),
@@ -104,12 +193,12 @@ class ReportsScreen extends ConsumerWidget {
                         KpiTone.slate,
                         Icons.medical_services_rounded,
                       ),
-                      (
-                        'Avg. Rating',
-                        '4.8/5',
-                        KpiTone.amber,
-                        Icons.star_rounded,
-                      ),
+                      // (
+                      //   'Avg. Rating',
+                      //   '4.8/5',
+                      //   KpiTone.amber,
+                      //   Icons.star_rounded,
+                      // ),
                     ])
                       SizedBox(
                         width: 240,

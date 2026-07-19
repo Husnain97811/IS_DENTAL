@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/core/shell/widgets/formatters.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../../core/theme/app_palette.dart';
@@ -26,6 +28,7 @@ class _S extends ConsumerState<PatientEditorDialog> {
   late final TextEditingController _name,
       _code,
       _phone,
+      _cnic,
       _age,
       _allergies,
       _insurance;
@@ -42,6 +45,7 @@ class _S extends ConsumerState<PatientEditorDialog> {
       text: e?.code ?? 'PT-${10000 + Random().nextInt(89999)}',
     );
     _phone = TextEditingController(text: e?.phone ?? '');
+    _cnic = TextEditingController(text: e?.cnic ?? '');
     _age = TextEditingController(text: e == null ? '' : '${e.age}');
     _allergies = TextEditingController(text: e?.allergies ?? '');
     _insurance = TextEditingController(text: e?.insurance ?? '');
@@ -51,7 +55,7 @@ class _S extends ConsumerState<PatientEditorDialog> {
 
   @override
   void dispose() {
-    for (final c in [_name, _code, _phone, _age, _allergies, _insurance])
+    for (final c in [_name, _code, _phone, _cnic, _age, _allergies, _insurance])
       c.dispose();
     super.dispose();
   }
@@ -72,6 +76,7 @@ class _S extends ConsumerState<PatientEditorDialog> {
             gender: _gender,
             age: int.tryParse(_age.text) ?? 0,
             phone: _phone.text.trim(),
+            cnic: _cnic.text.trim(),
             allergies: _allergies.text.trim().isEmpty
                 ? null
                 : _allergies.text.trim(),
@@ -120,6 +125,27 @@ class _S extends ConsumerState<PatientEditorDialog> {
                       label: 'Phone',
                       controller: _phone,
                       keyboardType: TextInputType.phone,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  // Expanded(
+                  //   child: DentField(label: 'Patient ID', controller: _code),
+                  // ),
+                  // const SizedBox(width: 12),
+                  Expanded(
+                    child: DentField(
+                      label: 'CNIC',
+                      controller: _cnic,
+                      hint: '35202-1234567-1',
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        CnicInputFormatter(),
+                      ],
                     ),
                   ),
                 ],

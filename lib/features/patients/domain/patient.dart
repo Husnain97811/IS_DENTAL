@@ -22,6 +22,8 @@ abstract class Patient with _$Patient {
     required Gender gender,
     @Default(0) int age,
     @Default('') String phone,
+    @Default('') String cnic,
+
     String? allergies,
     String? insurance,
     DateTime? lastVisit,

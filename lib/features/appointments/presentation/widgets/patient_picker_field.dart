@@ -214,22 +214,25 @@ class _PatientPickerFieldState extends State<PatientPickerField> {
           ),
 
         // live suggestions
+        // live suggestions
         if (_showSuggestions)
-          Container(
-            margin: const EdgeInsets.only(top: 8),
-            constraints: const BoxConstraints(maxHeight: 248),
-            decoration: BoxDecoration(
-              color: d.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: d.line),
-            ),
-            child: ListView(
-              shrinkWrap: true,
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              children: [
-                for (final p in _matches) _suggestionTile(d, p),
-                if (!_hasExactName) _createTile(d),
-              ],
+          TextFieldTapRegion(
+            child: Container(
+              margin: const EdgeInsets.only(top: 8),
+              constraints: BoxConstraints(maxHeight: 30.h),
+              decoration: BoxDecoration(
+                color: d.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: d.line),
+              ),
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                children: [
+                  for (final p in _matches) _suggestionTile(d, p),
+                  if (!_hasExactName) _createTile(d),
+                ],
+              ),
             ),
           ),
       ],

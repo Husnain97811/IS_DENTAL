@@ -55,6 +55,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
     final d = context.dent;
     final day = ref.watch(selectedDateProvider);
     final apptsAsync = ref.watch(appointmentsForDayProvider);
+    final dentistFilter = ref.watch(dentistFilterProvider);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(26, 24, 26, 40),
       child: Column(
@@ -79,6 +80,40 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                   ],
                 ),
               ),
+
+              Container(
+                height: 36,
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: d.surface2,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: d.line),
+                ),
+                child: DropdownButton<String?>(
+                  value: dentistFilter,
+                  underline: const SizedBox(),
+                  items: [
+                    DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text(
+                        'All doctors',
+                        style: TextStyle(fontSize: 8.5.sp, color: d.text1),
+                      ),
+                    ),
+                    for (final doc in kDentistsShort)
+                      DropdownMenuItem<String?>(
+                        value: doc,
+                        child: Text(
+                          doc,
+                          style: TextStyle(fontSize: 8.5.sp, color: d.text1),
+                        ),
+                      ),
+                  ],
+                  onChanged: (v) =>
+                      ref.read(dentistFilterProvider.notifier).state = v,
+                ),
+              ),
               SegmentedControl(
                 items: const ['Day', 'Agenda', 'Week'],
                 selected: _view,
@@ -101,34 +136,45 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                     padding: const EdgeInsets.all(24),
                     child: Text('$e', style: TextStyle(color: d.alert)),
                   ),
-                  data: (list) => list.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.all(40),
-                          child: Center(
-                            child: Text(
-                              'No appointments for this day.',
-                              style: TextStyle(color: d.text4),
+                  data: (list) {
+                    final filtered = dentistFilter == null
+                        ? list
+                        : list
+                              .where(
+                                (a) => a.dentist.startsWith(dentistFilter!),
+                              )
+                              .toList();
+                    return filtered.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(40),
+                            child: Center(
+                              child: Text(
+                                'No appointments for this day.',
+                                style: TextStyle(color: d.text4),
+                              ),
                             ),
-                          ),
-                        )
-                      : Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Column(
-                            children: [
-                              for (final a in list)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 6),
-                                  child: Row(
-                                    children: [
-                                      Expanded(child: AppointmentTile(appt: a)),
-                                      const SizedBox(width: 10),
-                                      _ApptActions(appt: a),
-                                    ],
+                          )
+                        : Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Column(
+                              children: [
+                                for (final a in filtered)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 6),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: AppointmentTile(appt: a),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        _ApptActions(appt: a),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                            ],
-                          ),
-                        ),
+                              ],
+                            ),
+                          );
+                  },
                 ),
               );
               final side = Column(
@@ -214,14 +260,15 @@ class _ApptActions extends ConsumerWidget {
     final d = context.dent;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
+        // ← named
         backgroundColor: d.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Mark as arrived?'),
         content: Text('Confirm ${appt.patientName} has arrived at the clinic.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false), // ← use it
             child: const Text('Cancel'),
           ),
           FilledButton(
@@ -229,7 +276,7 @@ class _ApptActions extends ConsumerWidget {
               backgroundColor: d.ice,
               foregroundColor: AppPalette.onAccent,
             ),
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true), // ← use it
             child: const Text('Mark Arrived'),
           ),
         ],

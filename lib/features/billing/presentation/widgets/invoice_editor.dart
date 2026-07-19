@@ -39,14 +39,23 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
   late final TextEditingController _no, _adjustment;
   final List<_Line> _lines = [_Line()];
   bool _busy = false;
+  static const int kConsultationFee = 1500; // change to your clinic's fee
+
   @override
   void initState() {
     super.initState();
     _no = TextEditingController(text: 'INV-${1000 + Random().nextInt(9000)}');
     _adjustment = TextEditingController(text: '0');
     _patientId = widget.patientId;
+
+    // Auto consultation fee as the first line (removable via the × icon)
+    final consult = _Line();
+    consult.desc.text = 'Consultation Fee';
+    consult.amt.text = '$kConsultationFee';
+    _lines.insert(0, consult);
+
     final proc = widget.procedure?.trim();
-    if (proc != null && proc.isNotEmpty) _lines.first.desc.text = proc;
+    if (proc != null && proc.isNotEmpty) _lines.last.desc.text = proc;
   }
 
   @override
@@ -84,7 +93,12 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
           invoiceNo: _no.text.trim(),
           issuedAt: DateTime.now(),
           status: _status,
-          summary: items.first.description,
+          summary: items
+              .firstWhere(
+                (i) => i.description != 'Consultation Fee',
+                orElse: () => items.first,
+              )
+              .description,
           adjustment: int.tryParse(_adjustment.text) ?? 0,
           items: items,
         );

@@ -2,7 +2,6 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/utils/uuids.dart';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/views.dart';
 import 'database_connection.dart';
 part 'app_database.g.dart';
@@ -63,7 +62,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 7;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -184,14 +183,11 @@ class AppDatabase extends _$AppDatabase {
     },
 
     onUpgrade: (m, from, to) async {
+      if (from < 9) {
+        await m.addColumn(invoices, invoices.appointmentId);
+      }
       if (from < 8) {
         await m.addColumn(appointments, appointments.billed);
-      }
-      if (from < 7) {
-        await m.addColumn(users, users.branchId);
-      }
-      if (from < 6) {
-        await m.createTable(branches);
       }
     },
   );
@@ -259,6 +255,15 @@ class AppDatabase extends _$AppDatabase {
     final q = select(appointments)
       ..where((t) => t.billed.equals(true) & t.isDeleted.equals(false));
     return q.watch().map((rows) => rows.map((r) => r.id).toSet());
+  }
+
+  /// appointmentId → invoice status ('pending' | 'paid' | 'overdue')
+  Stream<Map<int, String>> watchAppointmentInvoiceStatuses() {
+    final q = select(invoices)
+      ..where((t) => t.isDeleted.equals(false) & t.appointmentId.isNotNull());
+    return q.watch().map(
+      (rows) => {for (final r in rows) r.appointmentId!: r.status},
+    );
   }
 
   Future<void> _indexes() async {

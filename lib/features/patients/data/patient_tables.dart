@@ -12,6 +12,7 @@ class Patients extends Table {
   TextColumn get gender => text().withDefault(const Constant('female'))();
   IntColumn get age => integer().withDefault(const Constant(0))();
   TextColumn get phone => text().withDefault(const Constant(''))();
+  TextColumn get cnic => text().withDefault(const Constant(''))();
   TextColumn get allergies => text().nullable()();
   TextColumn get insurance => text().nullable()();
   DateTimeColumn get lastVisit => dateTime().nullable()();

@@ -8,6 +8,8 @@ class Invoices extends Table {
   TextColumn get clinicId => text()();
   TextColumn get branchId => text().nullable()();
   IntColumn get patientId => integer().references(Patients, #id)();
+  IntColumn get appointmentId => integer().nullable()(); // ← add this line
+
   TextColumn get invoiceNo => text()();
   DateTimeColumn get issuedAt => dateTime()();
   TextColumn get status => text().withDefault(const Constant('pending'))();

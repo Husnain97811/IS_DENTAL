@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/appointments/domain/appointment.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../../core/theme/app_palette.dart';
@@ -21,13 +22,51 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
   String _procedure = kProcedures.first;
   String _dentist = kDentists.first;
   DateTime? _slot;
+  int _durationMin = 20;
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _durationMin = ref.read(clinicScheduleProvider).slotMinutes;
+  }
+
   int _formKey = 0; // bump to reset the picker after a successful booking
 
   Future<void> _confirm() async {
     final choice = _patientChoice;
     final slot = _slot;
     if (choice == null || slot == null) return;
+
+    // ── Conflict check ──
+    final day = ref.read(selectedDateProvider);
+    final existing =
+        ref.read(appointmentsForDayFamilyProvider(day)).value ?? const [];
+    final newEnd = slot.add(Duration(minutes: _durationMin));
+    Appointment? conflict;
+    for (final a in existing) {
+      final aEnd = a.startsAt.add(Duration(minutes: a.durationMin));
+      if (rangesOverlap(slot, newEnd, a.startsAt, aEnd)) {
+        conflict = a;
+        break;
+      }
+    }
+    if (conflict != null) {
+      final cEnd = conflict.startsAt.add(
+        Duration(minutes: conflict.durationMin),
+      );
+      String hm(DateTime t) =>
+          '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'This time is already booked '
+            '(${hm(conflict.startsAt)}–${hm(cEnd)}). Choose another time.',
+          ),
+        ),
+      );
+      return;
+    }
 
     setState(() => _busy = true);
     final dentist = _dentist
@@ -92,7 +131,7 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
     final d = context.dent;
     final patients = ref.watch(patientsStreamProvider).value ?? [];
     final day = ref.watch(selectedDateProvider);
-    final slots = ref.watch(slotsProvider(day)).value ?? [];
+    final slots = ref.watch(daySlotsProvider(day));
     String two(int v) => v.toString().padLeft(2, '0');
 
     return Container(
@@ -196,6 +235,27 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
                     onTap: s.busy ? null : () => setState(() => _slot = s.time),
                   ),
               ],
+            ),
+          ),
+
+          _label(d, 'Duration (min)'),
+          _box(
+            d,
+            DropdownButton<int>(
+              isExpanded: true,
+              underline: const SizedBox(),
+              value: _durationMin,
+              items: [
+                for (final m in const [15, 20, 25, 30, 45, 50, 60, 90])
+                  DropdownMenuItem(
+                    value: m,
+                    child: Text(
+                      '$m min',
+                      style: TextStyle(fontSize: 9.sp, color: d.text1),
+                    ),
+                  ),
+              ],
+              onChanged: (v) => setState(() => _durationMin = v!),
             ),
           ),
           Padding(

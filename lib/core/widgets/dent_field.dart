@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 import '../theme/dent_colors.dart';
 
@@ -11,6 +12,7 @@ class DentField extends StatelessWidget {
     this.keyboardType,
     this.maxLines = 1,
     this.onChanged,
+    this.inputFormatters,
   });
   final String label;
   final TextEditingController controller;
@@ -18,6 +20,7 @@ class DentField extends StatelessWidget {
   final TextInputType? keyboardType;
   final int maxLines;
   final ValueChanged<String>? onChanged;
+  final List<TextInputFormatter>? inputFormatters; // ← add
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +32,7 @@ class DentField extends StatelessWidget {
           label.toUpperCase(),
           style: TextStyle(
             color: d.text4,
-            fontSize: 7.sp,
+            fontSize: 10.sp,
             fontWeight: FontWeight.w700,
             letterSpacing: .5,
           ),
@@ -40,6 +43,8 @@ class DentField extends StatelessWidget {
           keyboardType: keyboardType,
           maxLines: maxLines,
           onChanged: onChanged,
+          inputFormatters: inputFormatters, // ← add
+
           style: TextStyle(fontSize: 9.5.sp, color: d.text1),
           decoration: InputDecoration(
             hintText: hint,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/appointments/domain/appointment.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../../core/theme/app_palette.dart';
@@ -34,12 +35,15 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
   String _dentist = kDentists.first;
   late DateTime _date;
   DateTime? _slot;
+  int _durationMin = 20; // ← add
+  bool _customTime = false; // ← add
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
     _date = ref.read(selectedDateProvider);
+    _durationMin = ref.read(clinicScheduleProvider).slotMinutes;
   }
 
   Future<void> _pickDate() async {
@@ -57,10 +61,53 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
     }
   }
 
+  Future<void> _pickCustomTime() async {
+    final t = await showTimePicker(
+      context: context,
+      initialTime: _slot != null
+          ? TimeOfDay.fromDateTime(_slot!)
+          : ref.read(clinicScheduleProvider).start,
+    );
+    if (t == null) return;
+    setState(() {
+      _slot = DateTime(_date.year, _date.month, _date.day, t.hour, t.minute);
+      _customTime = true;
+    });
+  }
+
   Future<void> _confirm() async {
     final choice = _patient;
     final slot = _slot;
     if (choice == null || slot == null) return;
+
+    // ── Conflict check: block any overlap with existing bookings ──
+    final existing =
+        ref.read(appointmentsForDayFamilyProvider(_date)).value ?? const [];
+    final newEnd = slot.add(Duration(minutes: _durationMin));
+    Appointment? conflict;
+    for (final a in existing) {
+      final aEnd = a.startsAt.add(Duration(minutes: a.durationMin));
+      if (rangesOverlap(slot, newEnd, a.startsAt, aEnd)) {
+        conflict = a;
+        break;
+      }
+    }
+    if (conflict != null) {
+      final cEnd = conflict.startsAt.add(
+        Duration(minutes: conflict.durationMin),
+      );
+      String hm(DateTime t) =>
+          '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'This time is already booked '
+            '(${hm(conflict.startsAt)}–${hm(cEnd)}). Choose another time.',
+          ),
+        ),
+      );
+      return;
+    }
 
     setState(() => _busy = true);
     final dentist = _dentist
@@ -80,7 +127,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                 chair: chair,
                 procedure: _procedure,
                 startsAt: slot,
-                durationMin: 45,
+                durationMin: _durationMin, // ← was 45
               );
         case NewPatientChoice(:final name):
           await ref.read(bookWithNewPatientProvider)(
@@ -89,7 +136,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
             chair: chair,
             procedure: _procedure,
             startsAt: slot,
-            durationMin: 45,
+            durationMin: _durationMin, // ← was 45
           );
       }
     } catch (e) {
@@ -128,12 +175,12 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
     final d = context.dent;
     final patients =
         ref.watch(patientsStreamProvider).value ?? const <Patient>[];
-    final slots = ref.watch(slotsProvider(_date)).value ?? const [];
+    final slots = ref.watch(daySlotsProvider(_date));
     String two(int v) => v.toString().padLeft(2, '0');
     final initialPatient = _initialPatient(patients);
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 440, maxHeight: 640),
+      constraints: BoxConstraints(maxWidth: 60.w, maxHeight: 80.h),
       child: Container(
         decoration: BoxDecoration(
           color: d.surface,
@@ -272,13 +319,59 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                             selected: _slot == s.time,
                             onTap: s.busy
                                 ? null
-                                : () => setState(() => _slot = s.time),
+                                : () => setState(() {
+                                    _slot = s.time;
+                                    _customTime = false;
+                                  }),
                           ),
                         if (slots.isEmpty)
                           Text(
                             'No slots for this day.',
                             style: TextStyle(color: d.text4, fontSize: 8.5.sp),
                           ),
+                        _label(d, 'Duration (min)'),
+                        _box(
+                          d,
+                          DropdownButton<int>(
+                            isExpanded: true,
+                            underline: const SizedBox(),
+                            value: _durationMin,
+                            items: [
+                              for (final m in const [
+                                15,
+                                20,
+                                25,
+                                30,
+                                45,
+                                50,
+                                60,
+                                90,
+                              ])
+                                DropdownMenuItem(
+                                  value: m,
+                                  child: Text(
+                                    '$m min',
+                                    style: TextStyle(
+                                      fontSize: 9.sp,
+                                      color: d.text1,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                            onChanged: (v) => setState(() => _durationMin = v!),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: _pickCustomTime,
+                          icon: Icon(Icons.more_time_rounded, size: 11.sp),
+                          label: Text(
+                            _customTime && _slot != null
+                                ? 'Custom time: ${_slot!.hour.toString().padLeft(2, '0')}:${_slot!.minute.toString().padLeft(2, '0')}'
+                                : 'Set custom time',
+                            style: TextStyle(fontSize: 8.5.sp),
+                          ),
+                        ),
                       ],
                     ),
                   ],

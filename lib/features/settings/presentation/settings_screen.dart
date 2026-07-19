@@ -4,6 +4,7 @@ import 'package:is_dental/cloud/data/cloud_service.dart';
 import 'package:is_dental/cloud/data/sync_engine.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../core/constants/views.dart';
 import '../../../core/db/app_database.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/dent_colors.dart';
@@ -16,6 +17,11 @@ import '../../branches/presentation/branch_controller.dart';
 import '../../branches/presentation/widgets/branch_editor.dart';
 import 'settings_controller.dart';
 import 'widgets/staff_editor.dart';
+import 'dart:typed_data';
+import 'package:printing/printing.dart';
+import 'package:is_dental/core/utils/pdf_output.dart';
+import 'package:is_dental/features/reports/data/reports_pdf.dart';
+import 'package:is_dental/features/reports/presentation/reports_controller.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -426,6 +432,54 @@ class _S extends ConsumerState<SettingsScreen> {
         _toggleRow(d, 'Auto Backup', 'Encrypted local backup', true, (_) {}),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: d.line)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cloud Sync',
+                      style: TextStyle(
+                        color: d.text1,
+                        fontSize: 9.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Push all local data to Supabase',
+                      style: TextStyle(color: d.text3, fontSize: 8.sp),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: d.ice,
+                  foregroundColor: AppPalette.onAccent,
+                ),
+                onPressed: () async {
+                  final msg = await syncNow(ref);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(msg)));
+                  }
+                },
+                icon: const Icon(Icons.cloud_sync_rounded, size: 16),
+                label: const Text('Sync now'),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: d.line)),
+          ),
           child: Row(
             children: [
               Expanded(
@@ -441,31 +495,14 @@ class _S extends ConsumerState<SettingsScreen> {
                       ),
                     ),
                     Text(
-                      'Export full database (.dentos)',
+                      'Export reports PDF or patient data CSV',
                       style: TextStyle(color: d.text3, fontSize: 8.sp),
-                    ),
-                    SizedBox(height: 6.sp),
-                    FilledButton.icon(
-                      onPressed: () async {
-                        final msg = await syncNow(ref);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(
-                            context,
-                          ).showSnackBar(SnackBar(content: Text(msg)));
-                        }
-                      },
-                      icon: const Icon(Icons.cloud_sync_rounded),
-                      label: const Text('Sync now'),
                     ),
                   ],
                 ),
               ),
               OutlinedButton(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Backup & export — coming soon.'),
-                  ),
-                ),
+                onPressed: () => _showManageSheet(d),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: d.text2,
                   side: BorderSide(color: d.line),
@@ -478,6 +515,29 @@ class _S extends ConsumerState<SettingsScreen> {
       ],
     ),
   );
+
+  Future<void> _showManageSheet(DentColors d) async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: d.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _ManageSheet(parentRef: ref),
+    );
+  }
+
+  // CSV helper used by the sheet
+  static String _buildPatientCsv(List<dynamic> patients) {
+    final buf = StringBuffer();
+    buf.writeln('Code,Name,Phone,Status,Balance,Last Visit');
+    for (final p in patients) {
+      buf.writeln(
+        '${p.code},"${p.fullName}",${p.phone},${p.status.name},${p.balance},${p.lastVisit ?? "—"}',
+      );
+    }
+    return buf.toString();
+  }
 
   Widget _staffRow(DentColors d, int id, String name, String role) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -559,4 +619,273 @@ class _S extends ConsumerState<SettingsScreen> {
       ],
     ),
   );
+}
+
+class _ManageSheet extends ConsumerStatefulWidget {
+  const _ManageSheet({required this.parentRef});
+  final WidgetRef parentRef;
+
+  @override
+  ConsumerState<_ManageSheet> createState() => _ManageSheetState();
+}
+
+class _ManageSheetState extends ConsumerState<_ManageSheet> {
+  bool _exportingCsv = false;
+  bool _exportingPdf = false;
+
+  String _m(int v) => v.toString().replaceAllMapped(
+    RegExp(r'(\d)(?=(\d{3})+$)'),
+    (m) => '${m[1]},',
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final d = context.dent;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: d.line,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          Text(
+            'Data & Export',
+            style: TextStyle(
+              fontFamily: AppFonts.display,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+              color: d.text1,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Export your clinic data or run a manual backup.',
+            style: TextStyle(color: d.text3, fontSize: 9.sp),
+          ),
+          const SizedBox(height: 24),
+
+          // Export reports PDF
+          _SheetTile(
+            d: d,
+            icon: Icons.picture_as_pdf_rounded,
+            iconColor: d.ice,
+            title: 'Export Reports PDF',
+            subtitle:
+                'Revenue, procedures, dentist performance · last 12 months',
+            loading: _exportingPdf,
+            onTap: () async {
+              setState(() => _exportingPdf = true);
+              try {
+                final s = await ref.read(reportsSummaryProvider.future);
+                final name =
+                    await ref.read(appDatabaseProvider).clinicName() ??
+                    'Clinic';
+                if (!context.mounted) return;
+                await showPdfOutput(
+                  context,
+                  build: () => buildReportsPdf(s, clinicName: name),
+                  filename: 'dentos-report.pdf',
+                );
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+                }
+              } finally {
+                if (mounted) setState(() => _exportingPdf = false);
+              }
+            },
+          ),
+          const SizedBox(height: 12),
+
+          // Export patient CSV
+          _SheetTile(
+            d: d,
+            icon: Icons.table_chart_rounded,
+            iconColor: d.teal,
+            title: 'Export Patient List (CSV)',
+            subtitle: 'All active patients · name, phone, status, balance',
+            loading: _exportingCsv,
+            onTap: () async {
+              setState(() => _exportingCsv = true);
+              try {
+                final db = ref.read(appDatabaseProvider);
+                final rows = await (db.select(
+                  db.patients,
+                )..where((t) => t.isDeleted.equals(false))).get();
+                final csv = StringBuffer();
+                csv.writeln('Code,Name,Phone,Status,Balance');
+                for (final p in rows) {
+                  csv.writeln(
+                    '${p.code},"${p.fullName}",${p.phone},${p.status},${p.balance}',
+                  );
+                }
+                final bytes = csv.toString().codeUnits;
+                await Printing.sharePdf(
+                  bytes: Uint8List.fromList(bytes),
+                  filename: 'dentos-patients.csv',
+                );
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('CSV export failed: $e')),
+                  );
+                }
+              } finally {
+                if (mounted) setState(() => _exportingCsv = false);
+              }
+            },
+          ),
+          const SizedBox(height: 12),
+
+          // Sync now
+          // _SheetTile(
+          //   d: d,
+          //   icon: Icons.cloud_sync_rounded,
+          //   iconColor: d.warn,
+          //   title: 'Sync to Cloud Now',
+          //   subtitle: 'Push all local changes to Supabase immediately',
+          //   loading: false,
+          //   onTap: () async {
+          //     Navigator.pop(context);
+          //     final msg = await syncNow(widget.parentRef);
+          //     if (context.mounted) {
+          //       ScaffoldMessenger.of(
+          //         context,
+          //       ).showSnackBar(SnackBar(content: Text(msg)));
+          //     }
+          //   },
+          // ),
+          FilledButton.icon(
+            onPressed: () async {
+              final msg = await syncNow(ref);
+              if (context.mounted) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(msg)));
+              }
+            },
+            icon: const Icon(Icons.cloud_sync_rounded),
+            label: const Text('Sync now'),
+          ),
+          const SizedBox(height: 20),
+
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: d.text2,
+              side: BorderSide(color: d.line),
+              minimumSize: const Size.fromHeight(44),
+            ),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SheetTile extends StatelessWidget {
+  const _SheetTile({
+    required this.d,
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.loading,
+    required this.onTap,
+  });
+  final DentColors d;
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final bool loading;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: d.surface2,
+      borderRadius: BorderRadius.circular(13),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(13),
+        onTap: loading ? null : onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: .13),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: loading
+                    ? Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: iconColor,
+                        ),
+                      )
+                    : Icon(icon, color: iconColor, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: d.text1,
+                        fontSize: 9.5.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(color: d.text3, fontSize: 8.sp),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: d.text4, size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<String> syncNow(WidgetRef ref) async {
+  try {
+    debugPrint('SYNC: signing in…');
+    await ref.read(cloudServiceProvider).ensureSignedIn();
+    final clinicId = await ref.read(appDatabaseProvider).currentClinicId();
+    debugPrint('SYNC: start for $clinicId');
+    await ref.read(syncEngineProvider).syncAll(clinicId!);
+    await ref.read(appDatabaseProvider).recordSyncNow(); // ← add this
+    debugPrint('SYNC: done');
+    return 'Synced';
+  } catch (e) {
+    debugPrint('SYNC: FAILED $e');
+    return 'Sync failed: $e';
+  }
 }

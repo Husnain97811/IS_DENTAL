@@ -11,6 +11,7 @@ String _rs(int v) =>
 Future<Uint8List> buildReportsPdf(
   ReportsSummary s, {
   required String clinicName,
+  String? rangeLabel,
 }) async {
   final doc = pw.Document();
   final now = DateTime.now();
@@ -69,7 +70,7 @@ Future<Uint8List> buildReportsPdf(
                   ),
                 ),
                 pw.Text(
-                  'Practice Report · Last 12 months',
+                  'Practice Report · ${rangeLabel ?? 'Last 12 months'}',
                   style: const pw.TextStyle(
                     fontSize: 11,
                     color: PdfColors.grey700,
