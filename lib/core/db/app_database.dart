@@ -240,13 +240,46 @@ class AppDatabase extends _$AppDatabase {
       phone: Value(phone),
     ),
   );
-  Future<void> softDeleteUser(int id) =>
-      (update(users)..where((t) => t.id.equals(id))).write(
-        UsersCompanion(
-          isDeleted: const Value(true),
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
+
+  Future<void> updateStaff({
+    required int id,
+    required String fullName,
+    required String username,
+    String? passwordHash, // null = keep existing
+    required String role,
+    String? branchId,
+    String? email,
+    String? phone,
+  }) => (update(users)..where((t) => t.id.equals(id))).write(
+    UsersCompanion(
+      fullName: Value(fullName),
+      username: Value(username),
+      role: Value(role),
+      branchId: Value(branchId),
+      email: Value(email),
+      phone: Value(phone),
+      updatedAt: Value(DateTime.now()),
+      // only overwrite the password when a new one is provided
+      passwordHash: passwordHash == null
+          ? const Value.absent()
+          : Value(passwordHash),
+    ),
+  );
+
+  Future<void> softDeleteUser(int id) async {
+    final row = await (select(
+      users,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    if (row == null) return;
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    await (update(users)..where((t) => t.id.equals(id))).write(
+      UsersCompanion(
+        isDeleted: const Value(true),
+        username: Value('deleted_${stamp}_${row.username}'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
 
   Future<void> setAppointmentStatus(int id, String status) =>
       (update(appointments)..where((t) => t.id.equals(id))).write(

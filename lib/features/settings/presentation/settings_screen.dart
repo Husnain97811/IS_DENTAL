@@ -65,7 +65,7 @@ class _S extends ConsumerState<SettingsScreen> {
               label,
               style: TextStyle(
                 color: d.text3,
-                fontSize: 9.sp,
+                fontSize: 10.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -74,7 +74,7 @@ class _S extends ConsumerState<SettingsScreen> {
             value,
             style: TextStyle(
               color: d.text1,
-              fontSize: 9.sp,
+              fontSize: 10.sp,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -194,7 +194,7 @@ class _S extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 4),
           Text(
             'Clinic profile, appearance, staff & data.',
-            style: TextStyle(color: d.text3, fontSize: 9.sp),
+            style: TextStyle(color: d.text3, fontSize: 10.sp),
           ),
           SizedBox(height: 2.2.h),
           LayoutBuilder(
@@ -371,7 +371,7 @@ class _S extends ConsumerState<SettingsScreen> {
         ),
         data: (rows) => Column(
           children: [
-            for (final u in rows) _staffRow(d, u.id, u.fullName, u.role),
+            for (final u in rows) _staffRow(d, u),
             if (premium && atLimit)
               Padding(
                 padding: const EdgeInsets.all(14),
@@ -459,7 +459,7 @@ class _S extends ConsumerState<SettingsScreen> {
                     title,
                     style: TextStyle(
                       color: d.text1,
-                      fontSize: 9.sp,
+                      fontSize: 10.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -479,7 +479,7 @@ class _S extends ConsumerState<SettingsScreen> {
           child: TextField(
             controller: c,
             enabled: false,
-            style: TextStyle(fontSize: 9.sp, color: d.text3),
+            style: TextStyle(fontSize: 10.sp, color: d.text3),
             decoration: InputDecoration(
               isDense: true,
               filled: true,
@@ -519,7 +519,7 @@ class _S extends ConsumerState<SettingsScreen> {
                 title,
                 style: TextStyle(
                   color: d.text1,
-                  fontSize: 9.sp,
+                  fontSize: 10.sp,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -534,7 +534,7 @@ class _S extends ConsumerState<SettingsScreen> {
           width: 200,
           child: TextField(
             controller: c,
-            style: TextStyle(fontSize: 9.sp, color: d.text1),
+            style: TextStyle(fontSize: 10.sp, color: d.text1),
             decoration: InputDecoration(
               isDense: true,
               filled: true,
@@ -579,7 +579,7 @@ class _S extends ConsumerState<SettingsScreen> {
                 title,
                 style: TextStyle(
                   color: d.text1,
-                  fontSize: 9.sp,
+                  fontSize: 10.sp,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -615,7 +615,7 @@ class _S extends ConsumerState<SettingsScreen> {
                       'Cloud Sync',
                       style: TextStyle(
                         color: d.text1,
-                        fontSize: 9.sp,
+                        fontSize: 10.sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -660,7 +660,7 @@ class _S extends ConsumerState<SettingsScreen> {
                       'Restore / Export',
                       style: TextStyle(
                         color: d.text1,
-                        fontSize: 9.sp,
+                        fontSize: 10.sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -698,7 +698,7 @@ class _S extends ConsumerState<SettingsScreen> {
                       'Sign Out',
                       style: TextStyle(
                         color: d.alert,
-                        fontSize: 9.sp,
+                        fontSize: 10.sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -761,44 +761,73 @@ class _S extends ConsumerState<SettingsScreen> {
     return buf.toString();
   }
 
-  Widget _staffRow(DentColors d, int id, String name, String role) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-    decoration: BoxDecoration(
-      border: Border(bottom: BorderSide(color: d.line)),
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: TextStyle(
-                  color: d.text1,
-                  fontSize: 9.sp,
-                  fontWeight: FontWeight.w600,
+  Widget _staffRow(DentColors d, User u) {
+    final isOwnerViewing =
+        ref.watch(authControllerProvider)?.role == AppRole.owner;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: d.line)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  u.fullName,
+                  style: TextStyle(
+                    color: d.text1,
+                    fontSize: 9.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              Text(
-                role.isEmpty ? '' : role[0].toUpperCase() + role.substring(1),
-                style: TextStyle(color: d.text3, fontSize: 8.sp),
-              ),
-            ],
+                Text(
+                  u.role.isEmpty
+                      ? ''
+                      : u.role[0].toUpperCase() + u.role.substring(1),
+                  style: TextStyle(color: d.text3, fontSize: 8.sp),
+                ),
+              ],
+            ),
           ),
-        ),
-        StatusChip(
-          role == 'owner' ? 'Owner' : 'Active',
-          kind: role == 'owner' ? ChipKind.inProgress : ChipKind.done,
-        ),
-        if (role != 'owner')
-          IconButton(
-            icon: Icon(Icons.delete_outline_rounded, size: 16, color: d.text4),
-            onPressed: () => ref.read(appDatabaseProvider).softDeleteUser(id),
+          StatusChip(
+            u.role == 'owner' ? 'Owner' : 'Active',
+            kind: u.role == 'owner' ? ChipKind.inProgress : ChipKind.done,
           ),
-      ],
-    ),
-  );
+          // Owner can edit any non-owner user
+          if (isOwnerViewing && u.role != 'owner')
+            IconButton(
+              icon: Icon(Icons.edit_outlined, size: 16, color: d.text4),
+              onPressed: () => showStaffEditor(context, existing: u),
+            ),
+          if (u.role != 'owner')
+            IconButton(
+              icon: Icon(
+                Icons.delete_outline_rounded,
+                size: 16,
+                color: d.text4,
+              ),
+              onPressed: () async {
+                final ok = await showDentDialog(
+                  context,
+                  kind: DentDialogKind.warning,
+                  title: 'Delete user?',
+                  message:
+                      'Remove ${u.fullName}\'s login. They will no longer be able to sign in. This cannot be undone.',
+                  confirmLabel: 'Delete',
+                  cancelLabel: 'Cancel',
+                );
+                if (ok == true) {
+                  await ref.read(appDatabaseProvider).softDeleteUser(u.id);
+                }
+              },
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _branchRow(DentColors d, Branch b) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -817,7 +846,7 @@ class _S extends ConsumerState<SettingsScreen> {
                 b.name,
                 style: TextStyle(
                   color: d.text1,
-                  fontSize: 9.sp,
+                  fontSize: 10.sp,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -835,8 +864,20 @@ class _S extends ConsumerState<SettingsScreen> {
         ),
         IconButton(
           icon: Icon(Icons.delete_outline_rounded, size: 16, color: d.text4),
-          onPressed: () =>
-              ref.read(branchRepositoryProvider).softDeleteBranch(b.id),
+          onPressed: () async {
+            final ok = await showDentDialog(
+              context,
+              kind: DentDialogKind.warning,
+              title: 'Delete branch?',
+              message:
+                  'Remove ${b.name}. Staff assigned to this branch will lose their location. This cannot be undone.',
+              confirmLabel: 'Delete',
+              cancelLabel: 'Cancel',
+            );
+            if (ok == true) {
+              await ref.read(branchRepositoryProvider).softDeleteBranch(b.id);
+            }
+          },
         ),
       ],
     ),
@@ -893,7 +934,7 @@ class _ManageSheetState extends ConsumerState<_ManageSheet> {
           const SizedBox(height: 6),
           Text(
             'Export your clinic data or run a manual backup.',
-            style: TextStyle(color: d.text3, fontSize: 9.sp),
+            style: TextStyle(color: d.text3, fontSize: 10.sp),
           ),
           const SizedBox(height: 24),
 

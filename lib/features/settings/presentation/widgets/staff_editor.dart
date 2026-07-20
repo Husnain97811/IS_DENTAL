@@ -10,11 +10,15 @@ import '../../../../core/widgets/dent_field.dart';
 
 const _roles = ['admin', 'clinician', 'receptionist'];
 
-Future<void> showStaffEditor(BuildContext context) =>
-    showDialog(context: context, builder: (_) => const StaffEditorDialog());
+Future<void> showStaffEditor(BuildContext context, {User? existing}) =>
+    showDialog(
+      context: context,
+      builder: (_) => StaffEditorDialog(existing: existing),
+    );
 
 class StaffEditorDialog extends ConsumerStatefulWidget {
-  const StaffEditorDialog({super.key});
+  const StaffEditorDialog({super.key, this.existing});
+  final User? existing;
   @override
   ConsumerState<StaffEditorDialog> createState() => _S();
 }
@@ -33,17 +37,31 @@ class _S extends ConsumerState<StaffEditorDialog> {
   @override
   void initState() {
     super.initState();
+    final existing = widget.existing;
+
+    if (existing != null) {
+      // EDIT MODE — prefill
+      _name.text = existing.fullName;
+      _user.text = existing.username;
+      _email.text = existing.email ?? '';
+      _phone.text = existing.phone ?? '';
+      _role = existing.role;
+      _branchUuid = existing.branchId;
+      return;
+    }
+
+    // CREATE MODE
     final session = ref.read(authControllerProvider);
-    // Admin is pinned to their branch; owner can pick freely.
     if (session != null && session.role == AppRole.admin) {
       _branchUuid = session.branchId;
     }
-    // Owner: default to first branch so the field isn't empty
     if (session != null && session.role == AppRole.owner) {
       final branches = ref.read(branchesStreamProvider).value ?? [];
       if (branches.isNotEmpty) _branchUuid = branches.first.uuid;
     }
   }
+
+  bool get _isEdit => widget.existing != null;
 
   @override
   void dispose() {
@@ -83,10 +101,21 @@ class _S extends ConsumerState<StaffEditorDialog> {
     final email = _email.text.trim();
     final phone = _phone.text.trim();
 
-    if (name.isEmpty || username.isEmpty || password.length < 6) {
+    // In edit mode, blank password = keep current
+    if (name.isEmpty || username.isEmpty) {
+      setState(() => _error = 'Enter a name and username.');
+      return;
+    }
+    if (!_isEdit && password.length < 6) {
+      setState(
+        () => _error = 'Generate, or type a username + 6+ char password.',
+      );
+      return;
+    }
+    if (_isEdit && password.isNotEmpty && password.length < 6) {
       setState(
         () => _error =
-            'Enter a name, then Generate (or type a username + 6+ char password).',
+            'New password must be 6+ characters (or leave blank to keep current).',
       );
       return;
     }
@@ -109,37 +138,62 @@ class _S extends ConsumerState<StaffEditorDialog> {
     });
 
     final db = ref.read(appDatabaseProvider);
-    final clinicId = await db.currentClinicId() ?? '';
 
     try {
-      await db.addStaff(
-        clinicId: clinicId,
-        branchId: _branchUuid,
-        fullName: name,
-        username: username,
-        passwordHash: BCrypt.hashpw(password, BCrypt.gensalt()),
-        role: _role,
-        email: email,
-        phone: phone,
-      );
+      if (_isEdit) {
+        await db.updateStaff(
+          id: widget.existing!.id,
+          fullName: name,
+          username: username,
+          passwordHash: password.isEmpty
+              ? null
+              : BCrypt.hashpw(password, BCrypt.gensalt()),
+          role: _role,
+          branchId: _branchUuid,
+          email: email,
+          phone: phone,
+        );
+      } else {
+        final clinicId = await db.currentClinicId() ?? '';
+        await db.addStaff(
+          clinicId: clinicId,
+          branchId: _branchUuid,
+          fullName: name,
+          username: username,
+          passwordHash: BCrypt.hashpw(password, BCrypt.gensalt()),
+          role: _role,
+          email: email,
+          phone: phone,
+        );
+      }
     } catch (_) {
       setState(() {
         _busy = false;
-        _error = 'That username already exists — Generate again.';
+        _error = 'That username already exists — choose another.';
       });
       return;
     }
 
     if (!mounted) return;
 
-    // Copy credentials silently
+    if (_isEdit) {
+      Navigator.pop(context);
+      if (!context.mounted) return;
+      await showDentDialog(
+        context,
+        kind: DentDialogKind.success,
+        title: 'User Updated',
+        message: '$name\'s details have been saved.',
+        confirmLabel: 'Done',
+      );
+      return;
+    }
+
+    // create mode — copy credentials & confirm
     await Clipboard.setData(
       ClipboardData(text: 'Username: $username\nPassword: $password'),
     );
-
     final roleName = _role[0].toUpperCase() + _role.substring(1);
-
-    // Close create dialog then show confirmation popup
     Navigator.pop(context);
     if (!context.mounted) return;
     await showDentDialog(
@@ -174,7 +228,7 @@ class _S extends ConsumerState<StaffEditorDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Create Staff Login',
+                  _isEdit ? 'Edit Staff' : 'Create Staff Login',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 4),
@@ -319,23 +373,30 @@ class _S extends ConsumerState<StaffEditorDialog> {
                 DentField(
                   label: 'Password',
                   controller: _pass,
-                  hint: 'auto-generated',
+                  hint: _isEdit
+                      ? 'leave blank to keep current'
+                      : 'auto-generated',
                 ),
                 const SizedBox(height: 10),
 
                 // Generate button
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    onPressed: _generate,
-                    icon: const Icon(Icons.auto_awesome_rounded, size: 16),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: d.ice,
-                      side: BorderSide(color: d.line),
-                    ),
-                    label: const Text('Generate ID & password'),
-                  ),
-                ),
+                _isEdit
+                    ? const SizedBox.shrink()
+                    : Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: _generate,
+                          icon: const Icon(
+                            Icons.auto_awesome_rounded,
+                            size: 16,
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: d.ice,
+                            side: BorderSide(color: d.line),
+                          ),
+                          label: const Text('Generate ID & password'),
+                        ),
+                      ),
 
                 if (_error != null)
                   Padding(
@@ -370,7 +431,7 @@ class _S extends ConsumerState<StaffEditorDialog> {
                                 color: AppPalette.onAccent,
                               ),
                             )
-                          : const Text('Create login'),
+                          : Text(_isEdit ? 'Save changes' : 'Create login'),
                     ),
                   ],
                 ),
