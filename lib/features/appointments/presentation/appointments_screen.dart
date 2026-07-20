@@ -101,7 +101,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                         style: TextStyle(fontSize: 8.5.sp, color: d.text1),
                       ),
                     ),
-                    for (final doc in kDentistsShort)
+                    for (final doc in ref.watch(dentistsProvider).value ?? [])
                       DropdownMenuItem<String?>(
                         value: doc,
                         child: Text(
@@ -140,9 +140,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                     final filtered = dentistFilter == null
                         ? list
                         : list
-                              .where(
-                                (a) => a.dentist.startsWith(dentistFilter!),
-                              )
+                              .where((a) => a.dentist == dentistFilter)
                               .toList();
                     return filtered.isEmpty
                         ? Padding(

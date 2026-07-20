@@ -6,8 +6,10 @@ import '../data/appointment_repository_impl.dart';
 import '../domain/appointment.dart';
 import '../domain/appointment_repository.dart';
 import 'package:flutter/material.dart' show TimeOfDay;
+import 'package:drift/drift.dart'
+    show OrderingTerm, OrderingMode, BooleanExpressionOperators;
 
-const kDentists = ['Dr. Ayesha Khan', 'Dr. Bilal Ahmed', 'Dr. Sara Malik'];
+// const kDentists = ['Dr. Ayesha Khan', 'Dr. Bilal Ahmed', 'Dr. Sara Malik'];
 const kProcedures = [
   'Scaling & Polishing',
   'Composite Filling',
@@ -139,5 +141,17 @@ final daySlotsProvider = Provider.autoDispose
 final dentistFilterProvider = StateProvider<String?>((_) => null);
 
 /// Must match the SHORT names stored in the DB by the booking code.
-
-const kDentistsShort = ['Dr. Ayesha Khan', 'Dr. Bilal Ahmed', 'Dr. Sara Malik'];
+/// Live list of dentist full names from the Users table (owner + clinician roles).
+final dentistsProvider = StreamProvider<List<String>>((ref) {
+  final db = ref.watch(appDatabaseProvider);
+  return (db.select(db.users)
+        ..where(
+          (u) =>
+              u.isDeleted.equals(false) &
+              u.role.isIn(const ['owner', 'clinician']),
+        )
+        ..orderBy([(u) => OrderingTerm.asc(u.fullName)]))
+      .watch()
+      .map((rows) => rows.map((u) => u.fullName).toList());
+});
+// const kDentistsShort = ['Dr. Ayesha', 'Dr. Bilal', 'Dr. Sara'];

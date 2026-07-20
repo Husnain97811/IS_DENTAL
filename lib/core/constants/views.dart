@@ -38,3 +38,4 @@ export '../shell/app_shell.dart';
 export 'package:is_dental/core/widgets/dent_avatar.dart';
 export 'package:is_dental/core/widgets/segmented_control.dart';
 export 'package:is_dental/features/patients/presentation/widgets/tooth_model_3d.dart';
+export 'package:is_dental/core/shell/widgets/all_purpose_dialog.dart';

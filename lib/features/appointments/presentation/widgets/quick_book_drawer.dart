@@ -20,10 +20,11 @@ class QuickBookDrawer extends ConsumerStatefulWidget {
 class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
   PatientChoice? _patientChoice;
   String _procedure = kProcedures.first;
-  String _dentist = kDentists.first;
+  String? _dentist; // null until dentists load
   DateTime? _slot;
   int _durationMin = 20;
   bool _busy = false;
+  int _formKey = 0;
 
   @override
   void initState() {
@@ -31,12 +32,11 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
     _durationMin = ref.read(clinicScheduleProvider).slotMinutes;
   }
 
-  int _formKey = 0; // bump to reset the picker after a successful booking
-
-  Future<void> _confirm() async {
+  Future<void> _confirm(List<String> dentists) async {
     final choice = _patientChoice;
     final slot = _slot;
-    if (choice == null || slot == null) return;
+    final dentist = _dentist;
+    if (choice == null || slot == null || dentist == null) return;
 
     // ── Conflict check ──
     final day = ref.read(selectedDateProvider);
@@ -69,11 +69,7 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
     }
 
     setState(() => _busy = true);
-    final dentist = _dentist
-        .replaceFirst('Dr. Ayesha', 'Dr.')
-        .replaceFirst('Dr. Bilal Ahmed', 'Dr. Bilal')
-        .replaceFirst('Dr. Sara Malik', 'Dr. Sara');
-    final chair = 1 + kDentists.indexOf(_dentist);
+    final chair = 1 + dentists.indexOf(dentist);
 
     try {
       switch (choice) {
@@ -86,7 +82,7 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
                 chair: chair,
                 procedure: _procedure,
                 startsAt: slot,
-                durationMin: 45,
+                durationMin: _durationMin,
               );
         case NewPatientChoice(:final name):
           await ref.read(bookWithNewPatientProvider)(
@@ -95,7 +91,7 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
             chair: chair,
             procedure: _procedure,
             startsAt: slot,
-            durationMin: 45,
+            durationMin: _durationMin,
           );
       }
     } catch (e) {
@@ -113,7 +109,7 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
       _busy = false;
       _slot = null;
       _patientChoice = null;
-      _formKey++; // clears the picker's text
+      _formKey++;
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -132,7 +128,13 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
     final patients = ref.watch(patientsStreamProvider).value ?? [];
     final day = ref.watch(selectedDateProvider);
     final slots = ref.watch(daySlotsProvider(day));
+    final dentists = ref.watch(dentistsProvider).value ?? [];
     String two(int v) => v.toString().padLeft(2, '0');
+
+    // Once dentists load, seed the selection if not yet set
+    if (_dentist == null && dentists.isNotEmpty) {
+      _dentist = dentists.first;
+    }
 
     return Container(
       width: 332,
@@ -143,6 +145,7 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
+          // ── Header ──
           Container(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
             decoration: BoxDecoration(
@@ -169,7 +172,7 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
             ),
           ),
 
-          // live-search patient picker (existing or create-new)
+          // ── Patient picker ──
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: PatientPickerField(
@@ -179,6 +182,7 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
             ),
           ),
 
+          // ── Procedure ──
           _label(d, 'Procedure'),
           _box(
             d,
@@ -199,26 +203,38 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
               onChanged: (v) => setState(() => _procedure = v!),
             ),
           ),
+
+          // ── Dentist (live from DB) ──
           _label(d, 'Dentist'),
-          _box(
-            d,
-            DropdownButton<String>(
-              isExpanded: true,
-              underline: const SizedBox(),
-              value: _dentist,
-              items: [
-                for (final p in kDentists)
-                  DropdownMenuItem(
-                    value: p,
-                    child: Text(
-                      p,
-                      style: TextStyle(fontSize: 9.sp, color: d.text1),
-                    ),
+          dentists.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'No clinicians found. Add staff in Settings.',
+                    style: TextStyle(color: d.text4, fontSize: 8.5.sp),
                   ),
-              ],
-              onChanged: (v) => setState(() => _dentist = v!),
-            ),
-          ),
+                )
+              : _box(
+                  d,
+                  DropdownButton<String>(
+                    isExpanded: true,
+                    underline: const SizedBox(),
+                    value: _dentist,
+                    items: [
+                      for (final name in dentists)
+                        DropdownMenuItem(
+                          value: name,
+                          child: Text(
+                            name,
+                            style: TextStyle(fontSize: 9.sp, color: d.text1),
+                          ),
+                        ),
+                    ],
+                    onChanged: (v) => setState(() => _dentist = v),
+                  ),
+                ),
+
+          // ── Slots ──
           _label(d, 'Available slots — ${day.day}/${day.month}'),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -238,6 +254,7 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
             ),
           ),
 
+          // ── Duration ──
           _label(d, 'Duration (min)'),
           _box(
             d,
@@ -258,6 +275,8 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
               onChanged: (v) => setState(() => _durationMin = v!),
             ),
           ),
+
+          // ── Confirm ──
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
             child: FilledButton.icon(
@@ -266,9 +285,13 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
                 foregroundColor: AppPalette.onAccent,
                 minimumSize: const Size.fromHeight(42),
               ),
-              onPressed: (_busy || _patientChoice == null || _slot == null)
+              onPressed:
+                  (_busy ||
+                      _patientChoice == null ||
+                      _slot == null ||
+                      _dentist == null)
                   ? null
-                  : _confirm,
+                  : () => _confirm(dentists),
               icon: _busy
                   ? const SizedBox(
                       width: 16,

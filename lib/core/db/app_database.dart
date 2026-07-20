@@ -30,6 +30,8 @@ class Users extends Table {
       text().withDefault(const Constant(''))(); // ← this line
   TextColumn get clinicId => text()();
   TextColumn get fullName => text()();
+  TextColumn get email => text().nullable()();
+  TextColumn get phone => text().nullable()();
   TextColumn get username => text().unique()();
   TextColumn get passwordHash => text()();
   TextColumn get branchId =>
@@ -62,7 +64,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 9;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -184,10 +186,17 @@ class AppDatabase extends _$AppDatabase {
 
     onUpgrade: (m, from, to) async {
       if (from < 9) {
-        await m.addColumn(invoices, invoices.appointmentId);
+        await m.addColumn(users, users.email);
+        await m.addColumn(users, users.phone);
       }
       if (from < 8) {
         await m.addColumn(appointments, appointments.billed);
+      }
+      if (from < 7) {
+        await m.addColumn(users, users.branchId);
+      }
+      if (from < 6) {
+        await m.createTable(branches);
       }
     },
   );
@@ -217,6 +226,8 @@ class AppDatabase extends _$AppDatabase {
     required String username,
     required String passwordHash,
     required String role,
+    String? email,
+    String? phone,
   }) => into(users).insert(
     UsersCompanion.insert(
       clinicId: clinicId,
@@ -225,6 +236,8 @@ class AppDatabase extends _$AppDatabase {
       username: username,
       passwordHash: passwordHash,
       role: role,
+      email: Value(email),
+      phone: Value(phone),
     ),
   );
   Future<void> softDeleteUser(int id) =>

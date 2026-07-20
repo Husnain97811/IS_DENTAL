@@ -32,11 +32,11 @@ class _AppointmentEditor extends ConsumerStatefulWidget {
 class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
   PatientChoice? _patient;
   String _procedure = kProcedures.first;
-  String _dentist = kDentists.first;
+  String? _dentist; // null until dentists load from DB
   late DateTime _date;
   DateTime? _slot;
-  int _durationMin = 20; // ← add
-  bool _customTime = false; // ← add
+  int _durationMin = 20;
+  bool _customTime = false;
   bool _busy = false;
 
   @override
@@ -75,12 +75,13 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
     });
   }
 
-  Future<void> _confirm() async {
+  Future<void> _confirm(List<String> dentists) async {
     final choice = _patient;
     final slot = _slot;
-    if (choice == null || slot == null) return;
+    final dentist = _dentist;
+    if (choice == null || slot == null || dentist == null) return;
 
-    // ── Conflict check: block any overlap with existing bookings ──
+    // Conflict check
     final existing =
         ref.read(appointmentsForDayFamilyProvider(_date)).value ?? const [];
     final newEnd = slot.add(Duration(minutes: _durationMin));
@@ -110,11 +111,10 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
     }
 
     setState(() => _busy = true);
-    final dentist = _dentist
-        .replaceFirst('Dr. Ayesha', 'Dr.')
-        .replaceFirst('Dr. Bilal Ahmed', 'Dr. Bilal')
-        .replaceFirst('Dr. Sara Malik', 'Dr. Sara');
-    final chair = 1 + kDentists.indexOf(_dentist);
+
+    // chair = 1-based index in live dentists list; clamp to 1 if not found
+    final idx = dentists.indexOf(dentist);
+    final int chair = idx < 0 ? 1 : idx + 1;
 
     try {
       switch (choice) {
@@ -127,7 +127,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                 chair: chair,
                 procedure: _procedure,
                 startsAt: slot,
-                durationMin: _durationMin, // ← was 45
+                durationMin: _durationMin,
               );
         case NewPatientChoice(:final name):
           await ref.read(bookWithNewPatientProvider)(
@@ -136,7 +136,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
             chair: chair,
             procedure: _procedure,
             startsAt: slot,
-            durationMin: _durationMin, // ← was 45
+            durationMin: _durationMin,
           );
       }
     } catch (e) {
@@ -176,8 +176,14 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
     final patients =
         ref.watch(patientsStreamProvider).value ?? const <Patient>[];
     final slots = ref.watch(daySlotsProvider(_date));
+    final dentists = ref.watch(dentistsProvider).value ?? [];
     String two(int v) => v.toString().padLeft(2, '0');
     final initialPatient = _initialPatient(patients);
+
+    // seed selection once dentists load
+    if (_dentist == null && dentists.isNotEmpty) {
+      _dentist = dentists.first;
+    }
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: 60.w, maxHeight: 80.h),
@@ -190,6 +196,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // ── Header ──
             Container(
               padding: const EdgeInsets.fromLTRB(20, 18, 14, 14),
               decoration: BoxDecoration(
@@ -214,18 +221,22 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                 ],
               ),
             ),
+
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ── Patient ──
                     PatientPickerField(
                       key: ValueKey(initialPatient?.id),
                       initial: initialPatient,
                       patients: patients,
                       onChanged: (c) => setState(() => _patient = c),
                     ),
+
+                    // ── Procedure ──
                     _label(d, 'Procedure'),
                     _box(
                       d,
@@ -249,29 +260,44 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                         onChanged: (v) => setState(() => _procedure = v!),
                       ),
                     ),
+
+                    // ── Dentist (live from DB) ──
                     _label(d, 'Dentist'),
-                    _box(
-                      d,
-                      DropdownButton<String>(
-                        isExpanded: true,
-                        underline: const SizedBox(),
-                        value: _dentist,
-                        items: [
-                          for (final p in kDentists)
-                            DropdownMenuItem(
-                              value: p,
-                              child: Text(
-                                p,
-                                style: TextStyle(
-                                  fontSize: 9.sp,
-                                  color: d.text1,
-                                ),
+                    dentists.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              'No clinicians found. Add staff in Settings.',
+                              style: TextStyle(
+                                color: d.text4,
+                                fontSize: 8.5.sp,
                               ),
                             ),
-                        ],
-                        onChanged: (v) => setState(() => _dentist = v!),
-                      ),
-                    ),
+                          )
+                        : _box(
+                            d,
+                            DropdownButton<String>(
+                              isExpanded: true,
+                              underline: const SizedBox(),
+                              value: _dentist,
+                              items: [
+                                for (final name in dentists)
+                                  DropdownMenuItem(
+                                    value: name,
+                                    child: Text(
+                                      name,
+                                      style: TextStyle(
+                                        fontSize: 9.sp,
+                                        color: d.text1,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                              onChanged: (v) => setState(() => _dentist = v),
+                            ),
+                          ),
+
+                    // ── Date ──
                     _label(d, 'Date'),
                     InkWell(
                       onTap: _pickDate,
@@ -306,6 +332,8 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                         ),
                       ),
                     ),
+
+                    // ── Slots ──
                     _label(d, 'Available slots'),
                     Wrap(
                       spacing: 8,
@@ -329,55 +357,62 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                             'No slots for this day.',
                             style: TextStyle(color: d.text4, fontSize: 8.5.sp),
                           ),
-                        _label(d, 'Duration (min)'),
-                        _box(
-                          d,
-                          DropdownButton<int>(
-                            isExpanded: true,
-                            underline: const SizedBox(),
-                            value: _durationMin,
-                            items: [
-                              for (final m in const [
-                                15,
-                                20,
-                                25,
-                                30,
-                                45,
-                                50,
-                                60,
-                                90,
-                              ])
-                                DropdownMenuItem(
-                                  value: m,
-                                  child: Text(
-                                    '$m min',
-                                    style: TextStyle(
-                                      fontSize: 9.sp,
-                                      color: d.text1,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                            onChanged: (v) => setState(() => _durationMin = v!),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          onPressed: _pickCustomTime,
-                          icon: Icon(Icons.more_time_rounded, size: 11.sp),
-                          label: Text(
-                            _customTime && _slot != null
-                                ? 'Custom time: ${_slot!.hour.toString().padLeft(2, '0')}:${_slot!.minute.toString().padLeft(2, '0')}'
-                                : 'Set custom time',
-                            style: TextStyle(fontSize: 8.5.sp),
-                          ),
-                        ),
                       ],
                     ),
+
+                    // ── Duration ──
+                    _label(d, 'Duration (min)'),
+                    _box(
+                      d,
+                      DropdownButton<int>(
+                        isExpanded: true,
+                        underline: const SizedBox(),
+                        value: _durationMin,
+                        items: [
+                          for (final m in const [
+                            15,
+                            20,
+                            25,
+                            30,
+                            45,
+                            50,
+                            60,
+                            90,
+                          ])
+                            DropdownMenuItem(
+                              value: m,
+                              child: Text(
+                                '$m min',
+                                style: TextStyle(
+                                  fontSize: 9.sp,
+                                  color: d.text1,
+                                ),
+                              ),
+                            ),
+                        ],
+                        onChanged: (v) => setState(() => _durationMin = v!),
+                      ),
+                    ),
+
+                    // ── Custom time ──
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _pickCustomTime,
+                      icon: Icon(Icons.more_time_rounded, size: 11.sp),
+                      label: Text(
+                        _customTime && _slot != null
+                            ? 'Custom: ${_slot!.hour.toString().padLeft(2, '0')}:${_slot!.minute.toString().padLeft(2, '0')}'
+                            : 'Set custom time',
+                        style: TextStyle(fontSize: 8.5.sp),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                   ],
                 ),
               ),
             ),
+
+            // ── Confirm ──
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
               child: FilledButton.icon(
@@ -386,9 +421,13 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                   foregroundColor: AppPalette.onAccent,
                   minimumSize: const Size.fromHeight(44),
                 ),
-                onPressed: (_busy || _patient == null || _slot == null)
+                onPressed:
+                    (_busy ||
+                        _patient == null ||
+                        _slot == null ||
+                        _dentist == null)
                     ? null
-                    : _confirm,
+                    : () => _confirm(dentists),
                 icon: _busy
                     ? const SizedBox(
                         width: 16,

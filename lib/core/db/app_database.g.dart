@@ -699,6 +699,24 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _usernameMeta = const VerificationMeta(
     'username',
   );
@@ -775,6 +793,8 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     uuid,
     clinicId,
     fullName,
+    email,
+    phone,
     username,
     passwordHash,
     branchId,
@@ -818,6 +838,18 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
       );
     } else if (isInserting) {
       context.missing(_fullNameMeta);
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
     }
     if (data.containsKey('username')) {
       context.handle(
@@ -889,6 +921,14 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
         DriftSqlType.string,
         data['${effectivePrefix}full_name'],
       )!,
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      ),
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      ),
       username: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}username'],
@@ -927,6 +967,8 @@ class User extends DataClass implements Insertable<User> {
   final String uuid;
   final String clinicId;
   final String fullName;
+  final String? email;
+  final String? phone;
   final String username;
   final String passwordHash;
   final String? branchId;
@@ -938,6 +980,8 @@ class User extends DataClass implements Insertable<User> {
     required this.uuid,
     required this.clinicId,
     required this.fullName,
+    this.email,
+    this.phone,
     required this.username,
     required this.passwordHash,
     this.branchId,
@@ -952,6 +996,12 @@ class User extends DataClass implements Insertable<User> {
     map['uuid'] = Variable<String>(uuid);
     map['clinic_id'] = Variable<String>(clinicId);
     map['full_name'] = Variable<String>(fullName);
+    if (!nullToAbsent || email != null) {
+      map['email'] = Variable<String>(email);
+    }
+    if (!nullToAbsent || phone != null) {
+      map['phone'] = Variable<String>(phone);
+    }
     map['username'] = Variable<String>(username);
     map['password_hash'] = Variable<String>(passwordHash);
     if (!nullToAbsent || branchId != null) {
@@ -969,6 +1019,12 @@ class User extends DataClass implements Insertable<User> {
       uuid: Value(uuid),
       clinicId: Value(clinicId),
       fullName: Value(fullName),
+      email: email == null && nullToAbsent
+          ? const Value.absent()
+          : Value(email),
+      phone: phone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(phone),
       username: Value(username),
       passwordHash: Value(passwordHash),
       branchId: branchId == null && nullToAbsent
@@ -990,6 +1046,8 @@ class User extends DataClass implements Insertable<User> {
       uuid: serializer.fromJson<String>(json['uuid']),
       clinicId: serializer.fromJson<String>(json['clinicId']),
       fullName: serializer.fromJson<String>(json['fullName']),
+      email: serializer.fromJson<String?>(json['email']),
+      phone: serializer.fromJson<String?>(json['phone']),
       username: serializer.fromJson<String>(json['username']),
       passwordHash: serializer.fromJson<String>(json['passwordHash']),
       branchId: serializer.fromJson<String?>(json['branchId']),
@@ -1006,6 +1064,8 @@ class User extends DataClass implements Insertable<User> {
       'uuid': serializer.toJson<String>(uuid),
       'clinicId': serializer.toJson<String>(clinicId),
       'fullName': serializer.toJson<String>(fullName),
+      'email': serializer.toJson<String?>(email),
+      'phone': serializer.toJson<String?>(phone),
       'username': serializer.toJson<String>(username),
       'passwordHash': serializer.toJson<String>(passwordHash),
       'branchId': serializer.toJson<String?>(branchId),
@@ -1020,6 +1080,8 @@ class User extends DataClass implements Insertable<User> {
     String? uuid,
     String? clinicId,
     String? fullName,
+    Value<String?> email = const Value.absent(),
+    Value<String?> phone = const Value.absent(),
     String? username,
     String? passwordHash,
     Value<String?> branchId = const Value.absent(),
@@ -1031,6 +1093,8 @@ class User extends DataClass implements Insertable<User> {
     uuid: uuid ?? this.uuid,
     clinicId: clinicId ?? this.clinicId,
     fullName: fullName ?? this.fullName,
+    email: email.present ? email.value : this.email,
+    phone: phone.present ? phone.value : this.phone,
     username: username ?? this.username,
     passwordHash: passwordHash ?? this.passwordHash,
     branchId: branchId.present ? branchId.value : this.branchId,
@@ -1044,6 +1108,8 @@ class User extends DataClass implements Insertable<User> {
       uuid: data.uuid.present ? data.uuid.value : this.uuid,
       clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
       fullName: data.fullName.present ? data.fullName.value : this.fullName,
+      email: data.email.present ? data.email.value : this.email,
+      phone: data.phone.present ? data.phone.value : this.phone,
       username: data.username.present ? data.username.value : this.username,
       passwordHash: data.passwordHash.present
           ? data.passwordHash.value
@@ -1062,6 +1128,8 @@ class User extends DataClass implements Insertable<User> {
           ..write('uuid: $uuid, ')
           ..write('clinicId: $clinicId, ')
           ..write('fullName: $fullName, ')
+          ..write('email: $email, ')
+          ..write('phone: $phone, ')
           ..write('username: $username, ')
           ..write('passwordHash: $passwordHash, ')
           ..write('branchId: $branchId, ')
@@ -1078,6 +1146,8 @@ class User extends DataClass implements Insertable<User> {
     uuid,
     clinicId,
     fullName,
+    email,
+    phone,
     username,
     passwordHash,
     branchId,
@@ -1093,6 +1163,8 @@ class User extends DataClass implements Insertable<User> {
           other.uuid == this.uuid &&
           other.clinicId == this.clinicId &&
           other.fullName == this.fullName &&
+          other.email == this.email &&
+          other.phone == this.phone &&
           other.username == this.username &&
           other.passwordHash == this.passwordHash &&
           other.branchId == this.branchId &&
@@ -1106,6 +1178,8 @@ class UsersCompanion extends UpdateCompanion<User> {
   final Value<String> uuid;
   final Value<String> clinicId;
   final Value<String> fullName;
+  final Value<String?> email;
+  final Value<String?> phone;
   final Value<String> username;
   final Value<String> passwordHash;
   final Value<String?> branchId;
@@ -1117,6 +1191,8 @@ class UsersCompanion extends UpdateCompanion<User> {
     this.uuid = const Value.absent(),
     this.clinicId = const Value.absent(),
     this.fullName = const Value.absent(),
+    this.email = const Value.absent(),
+    this.phone = const Value.absent(),
     this.username = const Value.absent(),
     this.passwordHash = const Value.absent(),
     this.branchId = const Value.absent(),
@@ -1129,6 +1205,8 @@ class UsersCompanion extends UpdateCompanion<User> {
     this.uuid = const Value.absent(),
     required String clinicId,
     required String fullName,
+    this.email = const Value.absent(),
+    this.phone = const Value.absent(),
     required String username,
     required String passwordHash,
     this.branchId = const Value.absent(),
@@ -1145,6 +1223,8 @@ class UsersCompanion extends UpdateCompanion<User> {
     Expression<String>? uuid,
     Expression<String>? clinicId,
     Expression<String>? fullName,
+    Expression<String>? email,
+    Expression<String>? phone,
     Expression<String>? username,
     Expression<String>? passwordHash,
     Expression<String>? branchId,
@@ -1157,6 +1237,8 @@ class UsersCompanion extends UpdateCompanion<User> {
       if (uuid != null) 'uuid': uuid,
       if (clinicId != null) 'clinic_id': clinicId,
       if (fullName != null) 'full_name': fullName,
+      if (email != null) 'email': email,
+      if (phone != null) 'phone': phone,
       if (username != null) 'username': username,
       if (passwordHash != null) 'password_hash': passwordHash,
       if (branchId != null) 'branch_id': branchId,
@@ -1171,6 +1253,8 @@ class UsersCompanion extends UpdateCompanion<User> {
     Value<String>? uuid,
     Value<String>? clinicId,
     Value<String>? fullName,
+    Value<String?>? email,
+    Value<String?>? phone,
     Value<String>? username,
     Value<String>? passwordHash,
     Value<String?>? branchId,
@@ -1183,6 +1267,8 @@ class UsersCompanion extends UpdateCompanion<User> {
       uuid: uuid ?? this.uuid,
       clinicId: clinicId ?? this.clinicId,
       fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
       username: username ?? this.username,
       passwordHash: passwordHash ?? this.passwordHash,
       branchId: branchId ?? this.branchId,
@@ -1206,6 +1292,12 @@ class UsersCompanion extends UpdateCompanion<User> {
     }
     if (fullName.present) {
       map['full_name'] = Variable<String>(fullName.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
     }
     if (username.present) {
       map['username'] = Variable<String>(username.value);
@@ -1235,6 +1327,8 @@ class UsersCompanion extends UpdateCompanion<User> {
           ..write('uuid: $uuid, ')
           ..write('clinicId: $clinicId, ')
           ..write('fullName: $fullName, ')
+          ..write('email: $email, ')
+          ..write('phone: $phone, ')
           ..write('username: $username, ')
           ..write('passwordHash: $passwordHash, ')
           ..write('branchId: $branchId, ')
@@ -7990,6 +8084,8 @@ typedef $$UsersTableCreateCompanionBuilder =
       Value<String> uuid,
       required String clinicId,
       required String fullName,
+      Value<String?> email,
+      Value<String?> phone,
       required String username,
       required String passwordHash,
       Value<String?> branchId,
@@ -8003,6 +8099,8 @@ typedef $$UsersTableUpdateCompanionBuilder =
       Value<String> uuid,
       Value<String> clinicId,
       Value<String> fullName,
+      Value<String?> email,
+      Value<String?> phone,
       Value<String> username,
       Value<String> passwordHash,
       Value<String?> branchId,
@@ -8036,6 +8134,16 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
 
   ColumnFilters<String> get fullName => $composableBuilder(
     column: $table.fullName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8099,6 +8207,16 @@ class $$UsersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get username => $composableBuilder(
     column: $table.username,
     builder: (column) => ColumnOrderings(column),
@@ -8150,6 +8268,12 @@ class $$UsersTableAnnotationComposer
 
   GeneratedColumn<String> get fullName =>
       $composableBuilder(column: $table.fullName, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
 
   GeneratedColumn<String> get username =>
       $composableBuilder(column: $table.username, builder: (column) => column);
@@ -8204,6 +8328,8 @@ class $$UsersTableTableManager
                 Value<String> uuid = const Value.absent(),
                 Value<String> clinicId = const Value.absent(),
                 Value<String> fullName = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
                 Value<String> username = const Value.absent(),
                 Value<String> passwordHash = const Value.absent(),
                 Value<String?> branchId = const Value.absent(),
@@ -8215,6 +8341,8 @@ class $$UsersTableTableManager
                 uuid: uuid,
                 clinicId: clinicId,
                 fullName: fullName,
+                email: email,
+                phone: phone,
                 username: username,
                 passwordHash: passwordHash,
                 branchId: branchId,
@@ -8228,6 +8356,8 @@ class $$UsersTableTableManager
                 Value<String> uuid = const Value.absent(),
                 required String clinicId,
                 required String fullName,
+                Value<String?> email = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
                 required String username,
                 required String passwordHash,
                 Value<String?> branchId = const Value.absent(),
@@ -8239,6 +8369,8 @@ class $$UsersTableTableManager
                 uuid: uuid,
                 clinicId: clinicId,
                 fullName: fullName,
+                email: email,
+                phone: phone,
                 username: username,
                 passwordHash: passwordHash,
                 branchId: branchId,

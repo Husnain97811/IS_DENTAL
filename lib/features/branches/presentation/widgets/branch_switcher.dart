@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
-
-import '../../../../auth/presentation/auth_controller.dart';
-import '../../../../core/theme/dent_colors.dart';
+import '../../../../core/constants/views.dart';
 import '../../../../licensing/presentation/license_providers.dart';
 import '../branch_controller.dart';
 
@@ -16,8 +14,8 @@ class BranchSwitcher extends ConsumerWidget {
     final branches = ref.watch(branchesStreamProvider).value ?? [];
     if (branches.isEmpty) return const SizedBox.shrink();
     final active = ref.watch(activeBranchProvider);
-    final isAdmin = ref.watch(authControllerProvider)?.isAdmin ?? false;
-
+    final role = ref.watch(authControllerProvider)?.role;
+    final isOwner = role == AppRole.owner;
     Widget shell(Widget child) => Container(
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -30,7 +28,7 @@ class BranchSwitcher extends ConsumerWidget {
     );
 
     // Branch staff: pinned. Read-only label.
-    if (!isAdmin) {
+    if (!isOwner) {
       final match = branches.where((b) => b.uuid == active);
       if (match.isEmpty) return const SizedBox.shrink();
       return shell(

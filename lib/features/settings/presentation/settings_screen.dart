@@ -5,12 +5,6 @@ import 'package:is_dental/cloud/data/sync_engine.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/constants/views.dart';
-import '../../../core/db/app_database.dart';
-import '../../../core/theme/app_palette.dart';
-import '../../../core/theme/dent_colors.dart';
-import '../../../core/theme/theme_controller.dart';
-import '../../../core/widgets/dent_panel.dart';
-import '../../../core/widgets/status_chip.dart';
 import '../../../licensing/presentation/license_providers.dart';
 import '../../branches/domain/branch.dart';
 import '../../branches/presentation/branch_controller.dart';
@@ -41,6 +35,105 @@ class _S extends ConsumerState<SettingsScreen> {
     _branch.dispose();
     _currency.dispose();
     super.dispose();
+  }
+
+  Widget _myProfileCard(DentColors d, AuthSession? session) {
+    final branches = ref.watch(branchesStreamProvider).value ?? [];
+    final branchName = session?.branchId == null
+        ? 'All branches'
+        : (branches
+                  .where((b) => b.uuid == session?.branchId)
+                  .map((b) => b.name)
+                  .firstOrNull ??
+              '—');
+    String roleLabel(AppRole r) => switch (r) {
+      AppRole.owner => 'Owner',
+      AppRole.admin => 'Admin',
+      AppRole.clinician => 'Clinician',
+      AppRole.receptionist => 'Receptionist',
+    };
+    final roleName = session == null ? '' : roleLabel(session.role);
+    Widget infoRow(String label, String value) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: d.line)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: d.text3,
+                fontSize: 9.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: d.text1,
+              fontSize: 9.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return DentPanel(
+      title: 'My Profile',
+      subtitle: 'Your account details',
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: d.ice.withValues(alpha: .14),
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Text(
+                    session?.initials ?? '?',
+                    style: TextStyle(
+                      color: d.ice,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11.sp,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      session?.fullName ?? '—',
+                      style: TextStyle(
+                        color: d.text1,
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      '@${session?.username ?? ''}',
+                      style: TextStyle(color: d.text3, fontSize: 8.5.sp),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          infoRow('Role', roleName),
+          infoRow('Branch', branchName),
+        ],
+      ),
+    );
   }
 
   Future<String> syncNow(WidgetRef ref) async {
@@ -113,11 +206,26 @@ class _S extends ConsumerState<SettingsScreen> {
                   _appearancePanel(d, isDark),
                 ],
               );
+              final session = ref.watch(authControllerProvider);
+              final role = session?.role;
+              final isOwner = role == AppRole.owner;
+              final isAdmin = role == AppRole.admin;
+              final canManageStaff = isOwner || isAdmin;
+
               final right = Column(
                 children: [
-                  _staffPanel(d),
-                  const SizedBox(height: 18),
-                  if (premium) ...[
+                  // Everyone except owner sees their own profile card
+                  if (!isOwner) ...[
+                    _myProfileCard(d, session),
+                    const SizedBox(height: 18),
+                  ],
+                  // Owner/admin: staff management
+                  if (canManageStaff) ...[
+                    _staffPanel(d),
+                    const SizedBox(height: 18),
+                  ],
+                  // Owner only: branches
+                  if (premium && isOwner) ...[
                     _branchesPanel(d),
                     const SizedBox(height: 18),
                   ],
@@ -147,34 +255,34 @@ class _S extends ConsumerState<SettingsScreen> {
     title: 'Clinic Profile',
     child: Column(
       children: [
-        _fieldRow(d, 'Clinic Name', 'Appears on invoices & reports', _name),
-        _fieldRow(d, 'Branch', 'Primary location label', _branch),
-        _fieldRow(d, 'Currency', 'Billing currency', _currency),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 4, 18, 16),
-          child: Row(
-            children: [
-              const Spacer(),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: d.ice,
-                  foregroundColor: AppPalette.onAccent,
-                ),
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppPalette.onAccent,
-                        ),
-                      )
-                    : const Text('Save'),
-              ),
-            ],
-          ),
-        ),
+        _fieldRowLocked(d, 'Clinic Name', 'Set during clinic setup', _name),
+        _fieldRowLocked(d, 'Branch', 'Set during clinic setup', _branch),
+        _fieldRowLocked(d, 'Currency', 'Billing currency', _currency),
+        // Padding(
+        //   padding: const EdgeInsets.fromLTRB(18, 4, 18, 16),
+        //   child: Row(
+        //     children: [
+        //       const Spacer(),
+        //       FilledButton(
+        //         style: FilledButton.styleFrom(
+        //           backgroundColor: d.ice,
+        //           foregroundColor: AppPalette.onAccent,
+        //         ),
+        //         onPressed: _saving ? null : _save,
+        //         child: _saving
+        //             ? const SizedBox(
+        //                 width: 16,
+        //                 height: 16,
+        //                 child: CircularProgressIndicator(
+        //                   strokeWidth: 2,
+        //                   color: AppPalette.onAccent,
+        //                 ),
+        //               )
+        //             : const Text('Save'),
+        //       ),
+        //     ],
+        //   ),
+        // ),
       ],
     ),
   );
@@ -192,42 +300,42 @@ class _S extends ConsumerState<SettingsScreen> {
               .read(themeModeProvider.notifier)
               .set(v ? ThemeMode.dark : ThemeMode.light),
         ),
-        Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Accent Colour',
-                      style: TextStyle(
-                        color: d.text1,
-                        fontSize: 9.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      'Primary highlight',
-                      style: TextStyle(color: d.text3, fontSize: 8.sp),
-                    ),
-                  ],
-                ),
-              ),
-              for (final col in [d.ice, d.teal, const Color(0xFF8B5CF6)])
-                Container(
-                  width: 24,
-                  height: 24,
-                  margin: const EdgeInsets.only(left: 8),
-                  decoration: BoxDecoration(
-                    color: col,
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                ),
-            ],
-          ),
-        ),
+        // Padding(
+        //   padding: const EdgeInsets.all(18),
+        //   child: Row(
+        //     children: [
+        //       Expanded(
+        //         child: Column(
+        //           crossAxisAlignment: CrossAxisAlignment.start,
+        //           children: [
+        //             Text(
+        //               'Accent Colour',
+        //               style: TextStyle(
+        //                 color: d.text1,
+        //                 fontSize: 9.sp,
+        //                 fontWeight: FontWeight.w600,
+        //               ),
+        //             ),
+        //             Text(
+        //               'Primary highlight',
+        //               style: TextStyle(color: d.text3, fontSize: 8.sp),
+        //             ),
+        //           ],
+        //         ),
+        //       ),
+        //       for (final col in [d.ice, d.teal, const Color(0xFF8B5CF6)])
+        //         Container(
+        //           width: 24,
+        //           height: 24,
+        //           margin: const EdgeInsets.only(left: 8),
+        //           decoration: BoxDecoration(
+        //             color: col,
+        //             borderRadius: BorderRadius.circular(7),
+        //           ),
+        //         ),
+        //     ],
+        //   ),
+        // ),
       ],
     ),
   );
@@ -328,6 +436,68 @@ class _S extends ConsumerState<SettingsScreen> {
       ),
     );
   }
+
+  Widget _fieldRowLocked(
+    DentColors d,
+    String title,
+    String sub,
+    TextEditingController c,
+  ) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+    decoration: BoxDecoration(
+      border: Border(bottom: BorderSide(color: d.line)),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: d.text1,
+                      fontSize: 9.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(Icons.lock_outline_rounded, size: 12, color: d.text4),
+                ],
+              ),
+              Text(
+                sub,
+                style: TextStyle(color: d.text3, fontSize: 8.sp),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          width: 200,
+          child: TextField(
+            controller: c,
+            enabled: false,
+            style: TextStyle(fontSize: 9.sp, color: d.text3),
+            decoration: InputDecoration(
+              isDense: true,
+              filled: true,
+              fillColor: d.surface2,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: d.line),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _fieldRow(
     DentColors d,
@@ -508,6 +678,58 @@ class _S extends ConsumerState<SettingsScreen> {
                   side: BorderSide(color: d.line),
                 ),
                 child: const Text('Manage'),
+              ),
+            ],
+          ),
+        ),
+
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: d.line)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Sign Out',
+                      style: TextStyle(
+                        color: d.alert,
+                        fontSize: 9.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Returns to the login screen',
+                      style: TextStyle(color: d.text3, fontSize: 8.sp),
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final ok = await showDentDialog(
+                    context,
+                    kind: DentDialogKind.warning,
+                    title: 'Sign out?',
+                    message:
+                        'You will be returned to the login screen. Local data stays safe.',
+                    confirmLabel: 'Sign out',
+                    cancelLabel: 'Cancel',
+                  );
+                  if (ok == true && context.mounted) {
+                    ref.read(authControllerProvider.notifier).logout();
+                  }
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: d.alert,
+                  side: BorderSide(color: d.alert.withValues(alpha: .4)),
+                ),
+                icon: const Icon(Icons.logout_rounded, size: 16),
+                label: const Text('Sign out'),
               ),
             ],
           ),
