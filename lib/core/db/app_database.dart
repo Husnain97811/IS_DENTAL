@@ -68,47 +68,88 @@ class AppDatabase extends _$AppDatabase {
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
-  Stream<int> watchPatientCount() {
-    final c = countAll();
-    final q = selectOnly(patients)
-      ..addColumns([c])
-      ..where(patients.isDeleted.equals(false));
-    return q.map((r) => r.read(c) ?? 0).watchSingle();
-  }
+  /// One-time: assign a branch to all rows that have no branchId yet.
+  /// Uses the first branch as the default home for legacy data.
+  // Future<int> backfillBranchIds() async {
+  //   final firstBranch =
+  //       await (select(branches)
+  //             ..where((t) => t.isDeleted.equals(false))
+  //             ..limit(1))
+  //           .getSingleOrNull();
+  //   if (firstBranch == null) return 0; // no branches → nothing to do
+  //   final uuid = firstBranch.uuid;
 
-  Future<void> recordSyncNow() =>
-      setSetting(_kLastSync, DateTime.now().toIso8601String());
+  //   var touched = 0;
 
-  Future<DateTime?> lastSyncAt() async {
-    final v = await getSetting(_kLastSync);
-    if (v == null || v.isEmpty) return null;
-    return DateTime.tryParse(v);
-  }
+  //   Future<void> stamp(TableInfo table, GeneratedColumn branchCol) async {
+  //     touched += await customUpdate(
+  //       'UPDATE ${table.actualTableName} '
+  //       'SET branch_id = ? '
+  //       'WHERE branch_id IS NULL OR branch_id = ?',
+  //       variables: [Variable.withString(uuid), Variable.withString('')],
+  //       updates: {table},
+  //     );
+  //   }
 
-  Stream<int> watchInTreatmentCount() {
+  //   await stamp(patients, patients.branchId);
+  //   await stamp(appointments, appointments.branchId);
+  //   await stamp(invoices, invoices.branchId);
+  //   await stamp(inventoryItems, inventoryItems.branchId);
+
+  //   return touched;
+  // }
+
+  Stream<int> watchPatientCount({String? branchId}) {
     final c = countAll();
     final q = selectOnly(patients)
       ..addColumns([c])
       ..where(
         patients.isDeleted.equals(false) &
-            patients.status.equals('inTreatment'),
+            (branchId == null
+                ? const Constant(true)
+                : patients.branchId.equals(branchId)),
       );
     return q.map((r) => r.read(c) ?? 0).watchSingle();
   }
 
-  Stream<int> watchAppointmentCount(DateTime start, DateTime end) {
+  Stream<int> watchInTreatmentCount({String? branchId}) {
+    final c = countAll();
+    final q = selectOnly(patients)
+      ..addColumns([c])
+      ..where(
+        patients.isDeleted.equals(false) &
+            patients.status.equals('inTreatment') &
+            (branchId == null
+                ? const Constant(true)
+                : patients.branchId.equals(branchId)),
+      );
+    return q.map((r) => r.read(c) ?? 0).watchSingle();
+  }
+
+  Stream<int> watchAppointmentCount(
+    DateTime start,
+    DateTime end, {
+    String? branchId,
+  }) {
     final c = countAll();
     final q = selectOnly(appointments)
       ..addColumns([c])
       ..where(
         appointments.isDeleted.equals(false) &
             appointments.startsAt.isBiggerOrEqualValue(start) &
-            appointments.startsAt.isSmallerThanValue(end),
+            appointments.startsAt.isSmallerThanValue(end) &
+            (branchId == null
+                ? const Constant(true)
+                : appointments.branchId.equals(branchId)),
       );
     return q.map((r) => r.read(c) ?? 0).watchSingle();
   }
 
-  Stream<int> watchPaidRevenue(DateTime start, DateTime end) {
+  Stream<int> watchPaidRevenue(
+    DateTime start,
+    DateTime end, {
+    String? branchId,
+  }) {
     final s = invoices.total.sum();
     final q = selectOnly(invoices)
       ..addColumns([s])
@@ -116,19 +157,25 @@ class AppDatabase extends _$AppDatabase {
         invoices.isDeleted.equals(false) &
             invoices.status.equals('paid') &
             invoices.issuedAt.isBiggerOrEqualValue(start) &
-            invoices.issuedAt.isSmallerThanValue(end),
+            invoices.issuedAt.isSmallerThanValue(end) &
+            (branchId == null
+                ? const Constant(true)
+                : invoices.branchId.equals(branchId)),
       );
     return q.map((r) => r.read(s) ?? 0).watchSingle();
   }
 
-  Stream<({int sum, int count})> watchUnpaidTotals() {
+  Stream<({int sum, int count})> watchUnpaidTotals({String? branchId}) {
     final s = invoices.total.sum();
     final c = countAll();
     final q = selectOnly(invoices)
       ..addColumns([s, c])
       ..where(
         invoices.isDeleted.equals(false) &
-            invoices.status.isIn(const ['pending', 'overdue']),
+            invoices.status.isIn(const ['pending', 'overdue']) &
+            (branchId == null
+                ? const Constant(true)
+                : invoices.branchId.equals(branchId)),
       );
     return q
         .map((r) => (sum: r.read(s) ?? 0, count: r.read(c) ?? 0))
@@ -139,6 +186,7 @@ class AppDatabase extends _$AppDatabase {
     DateTime start,
     DateTime end, {
     int limit = 5,
+    String? branchId,
   }) {
     final c = countAll();
     final q = selectOnly(appointments)
@@ -146,7 +194,10 @@ class AppDatabase extends _$AppDatabase {
       ..where(
         appointments.isDeleted.equals(false) &
             appointments.startsAt.isBiggerOrEqualValue(start) &
-            appointments.startsAt.isSmallerThanValue(end),
+            appointments.startsAt.isSmallerThanValue(end) &
+            (branchId == null
+                ? const Constant(true)
+                : appointments.branchId.equals(branchId)),
       )
       ..groupBy([appointments.procedure])
       ..orderBy([OrderingTerm(expression: c, mode: OrderingMode.desc)])
@@ -161,20 +212,32 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
-  // Only the current week's paid invoices (small set), bucketed by day in Dart.
   Stream<List<({DateTime issuedAt, int total})>> watchPaidInvoicesBetween(
     DateTime start,
-    DateTime end,
-  ) {
+    DateTime end, {
+    String? branchId,
+  }) {
     final q = select(invoices)
       ..where(
         (t) =>
             t.isDeleted.equals(false) &
             t.status.equals('paid') &
             t.issuedAt.isBiggerOrEqualValue(start) &
-            t.issuedAt.isSmallerThanValue(end),
+            t.issuedAt.isSmallerThanValue(end) &
+            (branchId == null
+                ? const Constant(true)
+                : t.branchId.equals(branchId)),
       );
     return q.map((r) => (issuedAt: r.issuedAt, total: r.total)).watch();
+  }
+
+  Future<void> recordSyncNow() =>
+      setSetting(_kLastSync, DateTime.now().toIso8601String());
+
+  Future<DateTime?> lastSyncAt() async {
+    final v = await getSetting(_kLastSync);
+    if (v == null || v.isEmpty) return null;
+    return DateTime.tryParse(v);
   }
 
   @override

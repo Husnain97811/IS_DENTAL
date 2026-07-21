@@ -131,8 +131,11 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
     final dentists = ref.watch(dentistsProvider).value ?? [];
     String two(int v) => v.toString().padLeft(2, '0');
 
-    // Once dentists load, seed the selection if not yet set
-    if (_dentist == null && dentists.isNotEmpty) {
+    // Seed on first load, and reset if the current selection is no longer
+    // in the list (e.g. after a branch switch).
+    if (dentists.isEmpty) {
+      _dentist = null;
+    } else if (_dentist == null || !dentists.contains(_dentist)) {
       _dentist = dentists.first;
     }
 

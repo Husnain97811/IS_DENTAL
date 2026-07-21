@@ -37,6 +37,18 @@ class _S extends ConsumerState<SettingsScreen> {
     super.dispose();
   }
 
+  //temporary init
+
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   // TEMP — run once to stamp legacy rows, then remove
+  //   WidgetsBinding.instance.addPostFrameCallback((_) async {
+  //     final n = await ref.read(appDatabaseProvider).backfillBranchIds();
+  //     debugPrint('Backfilled $n rows with branch');
+  //   });
+  // }
+
   Widget _myProfileCard(DentColors d, AuthSession? session) {
     final branches = ref.watch(branchesStreamProvider).value ?? [];
     final branchName = session?.branchId == null
@@ -344,7 +356,7 @@ class _S extends ConsumerState<SettingsScreen> {
     final staff = ref.watch(staffProvider);
     final premium = ref.watch(isPremiumProvider);
     final maxUsers = ref.watch(maxUsersProvider);
-    final count = staff.value?.length ?? 0;
+    final count = ref.watch(totalStaffCountProvider).value ?? 0;
     final atLimit = count >= maxUsers;
     return DentPanel(
       title: 'Staff & Roles',
@@ -369,19 +381,25 @@ class _S extends ConsumerState<SettingsScreen> {
           padding: const EdgeInsets.all(18),
           child: Text('$e', style: TextStyle(color: d.alert)),
         ),
-        data: (rows) => Column(
-          children: [
-            for (final u in rows) _staffRow(d, u),
-            if (premium && atLimit)
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Text(
-                  'All $maxUsers seats are in use. Remove a user or upgrade to add more.',
-                  style: TextStyle(color: d.text4, fontSize: 8.sp),
+        data: (allRows) {
+          final active = ref.watch(activeBranchProvider);
+          final rows = active == null
+              ? allRows
+              : allRows.where((b) => b.uuid == active).toList();
+          return Column(
+            children: [
+              for (final u in rows) _staffRow(d, u),
+              if (premium && atLimit)
+                Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Text(
+                    'All $maxUsers seats are in use. Remove a user or upgrade to add more.',
+                    style: TextStyle(color: d.text4, fontSize: 8.sp),
+                  ),
                 ),
-              ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }

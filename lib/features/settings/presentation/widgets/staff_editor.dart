@@ -55,9 +55,16 @@ class _S extends ConsumerState<StaffEditorDialog> {
     if (session != null && session.role == AppRole.admin) {
       _branchUuid = session.branchId;
     }
+    // Owner: default to the currently selected branch; if "All branches"
+    // is active, fall back to first branch (owner can change it freely).
     if (session != null && session.role == AppRole.owner) {
-      final branches = ref.read(branchesStreamProvider).value ?? [];
-      if (branches.isNotEmpty) _branchUuid = branches.first.uuid;
+      final active = ref.read(activeBranchProvider);
+      if (active != null) {
+        _branchUuid = active;
+      } else {
+        final branches = ref.read(branchesStreamProvider).value ?? [];
+        if (branches.isNotEmpty) _branchUuid = branches.first.uuid;
+      }
     }
   }
 

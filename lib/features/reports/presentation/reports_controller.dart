@@ -1,4 +1,6 @@
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/branches/presentation/branch_controller.dart';
 import '../../../core/db/app_database.dart';
 
 class ReportsSummary {
@@ -51,15 +53,35 @@ final reportsSummaryProvider = FutureProvider.autoDispose<ReportsSummary>((
   ref,
 ) async {
   final db = ref.watch(appDatabaseProvider);
-  final invoices = await (db.select(
-    db.invoices,
-  )..where((t) => t.isDeleted.equals(false))).get();
-  final patients = await (db.select(
-    db.patients,
-  )..where((t) => t.isDeleted.equals(false))).get();
-  final appts = await (db.select(
-    db.appointments,
-  )..where((t) => t.isDeleted.equals(false))).get();
+  final branchId = ref.watch(activeBranchProvider);
+
+  final invoices =
+      await (db.select(db.invoices)..where(
+            (t) =>
+                t.isDeleted.equals(false) &
+                (branchId == null
+                    ? const Constant(true)
+                    : t.branchId.equals(branchId)),
+          ))
+          .get();
+  final patients =
+      await (db.select(db.patients)..where(
+            (t) =>
+                t.isDeleted.equals(false) &
+                (branchId == null
+                    ? const Constant(true)
+                    : t.branchId.equals(branchId)),
+          ))
+          .get();
+  final appts =
+      await (db.select(db.appointments)..where(
+            (t) =>
+                t.isDeleted.equals(false) &
+                (branchId == null
+                    ? const Constant(true)
+                    : t.branchId.equals(branchId)),
+          ))
+          .get();
 
   final totalRevenue = invoices
       .where((i) => i.status == 'paid')
@@ -141,16 +163,35 @@ final reportsSummaryProvider = FutureProvider.autoDispose<ReportsSummary>((
 final reportsSummaryRangeProvider = FutureProvider.autoDispose
     .family<ReportsSummary, ({DateTime from, DateTime to})>((ref, range) async {
       final db = ref.watch(appDatabaseProvider);
+      final branchId = ref.watch(activeBranchProvider);
 
-      final allInvoices = await (db.select(
-        db.invoices,
-      )..where((t) => t.isDeleted.equals(false))).get();
-      final allPatients = await (db.select(
-        db.patients,
-      )..where((t) => t.isDeleted.equals(false))).get();
-      final allAppts = await (db.select(
-        db.appointments,
-      )..where((t) => t.isDeleted.equals(false))).get();
+      final allInvoices =
+          await (db.select(db.invoices)..where(
+                (t) =>
+                    t.isDeleted.equals(false) &
+                    (branchId == null
+                        ? const Constant(true)
+                        : t.branchId.equals(branchId)),
+              ))
+              .get();
+      final allPatients =
+          await (db.select(db.patients)..where(
+                (t) =>
+                    t.isDeleted.equals(false) &
+                    (branchId == null
+                        ? const Constant(true)
+                        : t.branchId.equals(branchId)),
+              ))
+              .get();
+      final allAppts =
+          await (db.select(db.appointments)..where(
+                (t) =>
+                    t.isDeleted.equals(false) &
+                    (branchId == null
+                        ? const Constant(true)
+                        : t.branchId.equals(branchId)),
+              ))
+              .get();
 
       // filter to range
       final invoices = allInvoices

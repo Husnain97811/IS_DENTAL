@@ -7,31 +7,9 @@ import 'package:is_dental/features/patients/presentation/widgets/inventory_edito
 import 'package:is_dental/features/reports/data/reports_pdf.dart';
 import 'package:is_dental/features/reports/presentation/reports_controller.dart';
 import 'package:sizer/sizer.dart';
-
 import '../../constants/views.dart';
 import '../../router/nav_destinations.dart';
-import '../../theme/app_palette.dart';
-import '../../theme/app_typography.dart';
-import '../../theme/dent_colors.dart';
-import '../../theme/theme_controller.dart';
-
 import '../../router/app_routes.dart';
-import '../../../features/patients/presentation/widgets/patient_editor.dart';
-import '../../../features/billing/presentation/widgets/invoice_editor.dart';
-import '../../../features/appointments/presentation/widgets/appointment_editor.dart';
-import '../../../features/treatments/presentation/widgets/treatment_editor.dart';
-import '../../../features/branches/presentation/widgets/branch_switcher.dart';
-
-import 'package:is_dental/features/patients/domain/patient.dart';
-import 'package:is_dental/features/patients/presentation/patients_controller.dart';
-import 'package:is_dental/features/billing/domain/invoice.dart';
-import 'package:is_dental/features/billing/presentation/billing_controller.dart';
-import 'package:is_dental/features/inventory/domain/inventory_item.dart';
-import 'package:is_dental/features/inventory/presentation/inventory_controller.dart';
-import 'package:is_dental/features/treatments/domain/treatment.dart';
-import 'package:is_dental/features/treatments/presentation/treatments_controller.dart';
-import 'package:is_dental/features/appointments/domain/appointment.dart';
-import 'package:is_dental/features/appointments/presentation/appointments_controller.dart';
 
 String _money(int v) => v.toString().replaceAllMapped(
   RegExp(r'(\d)(?=(\d{3})+$)'),
@@ -327,8 +305,10 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
               SizedBox(width: 3.w),
               Expanded(child: _searchField(context, route, results, monthName)),
               const SizedBox(width: 10),
-              const BranchSwitcher(),
-              SizedBox(width: 2.w),
+
+              //remove switcher so no all screns need switcher
+              // const BranchSwitcher(),
+              // SizedBox(width: 2.w),
               _iconBtn(
                 context,
                 isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,

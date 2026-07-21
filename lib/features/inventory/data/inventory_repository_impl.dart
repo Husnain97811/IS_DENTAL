@@ -9,9 +9,15 @@ class InventoryRepositoryImpl implements InventoryRepository {
   final AppDatabase _db;
 
   @override
-  Stream<List<InventoryItem>> watchItems() =>
+  Stream<List<InventoryItem>> watchItems({String? branchId}) =>
       (_db.select(_db.inventoryItems)
-            ..where((t) => t.isDeleted.equals(false))
+            ..where(
+              (t) =>
+                  t.isDeleted.equals(false) &
+                  (branchId == null
+                      ? const Constant(true)
+                      : t.branchId.equals(branchId)),
+            )
             ..orderBy([(t) => OrderingTerm.asc(t.name)]))
           .watch()
           .map(
@@ -48,6 +54,9 @@ class InventoryRepositoryImpl implements InventoryRepository {
   @override
   Future<void> upsertItem(InventoryItem item) async {
     final clinicId = await _db.currentClinicId() ?? '';
+    final Value<String?> stampBranch = item.id == 0
+        ? Value(await _db.currentBranchId())
+        : const Value.absent();
     await _db
         .into(_db.inventoryItems)
         .insertOnConflictUpdate(
@@ -55,6 +64,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
             id: item.id == 0 ? const Value.absent() : Value(item.id),
             uuid: Value(item.uuid.isEmpty ? Uuids.v4() : item.uuid),
             clinicId: Value(clinicId),
+            branchId: stampBranch,
             name: Value(item.name),
             category: Value(item.category),
             inStock: Value(item.inStock),

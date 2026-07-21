@@ -17,8 +17,8 @@ class BranchSwitcher extends ConsumerWidget {
     final role = ref.watch(authControllerProvider)?.role;
     final isOwner = role == AppRole.owner;
     Widget shell(Widget child) => Container(
-      height: 42,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      // height: 42,
+      padding: EdgeInsets.all(6.sp),
       decoration: BoxDecoration(
         color: d.surface,
         borderRadius: BorderRadius.circular(12),
@@ -102,7 +102,27 @@ class BranchSwitcher extends ConsumerWidget {
               ),
             ),
         ],
-        onChanged: (v) => ref.read(activeBranchProvider.notifier).select(v),
+        onChanged: (v) async {
+          final label = v == null
+              ? 'All branches'
+              : branches
+                        .where((b) => b.uuid == v)
+                        .map((b) => b.name)
+                        .firstOrNull ??
+                    'this branch';
+          final ok = await showDentDialog(
+            context,
+            kind: DentDialogKind.warning,
+            title: 'Switch branch?',
+            message:
+                'The whole app will reload to show data for $label only. Continue?',
+            confirmLabel: 'Switch',
+            cancelLabel: 'Cancel',
+          );
+          if (ok == true) {
+            await ref.read(activeBranchProvider.notifier).select(v);
+          }
+        },
       ),
     );
   }

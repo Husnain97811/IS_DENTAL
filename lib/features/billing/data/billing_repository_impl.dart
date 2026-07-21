@@ -9,7 +9,7 @@ class BillingRepositoryImpl implements BillingRepository {
   final AppDatabase _db;
 
   @override
-  Stream<List<Invoice>> watchInvoices() {
+  Stream<List<Invoice>> watchInvoices({String? branchId}) {
     final q =
         _db.select(_db.invoices).join([
             innerJoin(
@@ -17,7 +17,12 @@ class BillingRepositoryImpl implements BillingRepository {
               _db.patients.id.equalsExp(_db.invoices.patientId),
             ),
           ])
-          ..where(_db.invoices.isDeleted.equals(false))
+          ..where(
+            _db.invoices.isDeleted.equals(false) &
+                (branchId == null
+                    ? const Constant(true)
+                    : _db.invoices.branchId.equals(branchId)),
+          )
           ..orderBy([OrderingTerm.desc(_db.invoices.issuedAt)]);
     return q.watch().map(
       (rows) => rows.map((r) {
@@ -58,6 +63,8 @@ class BillingRepositoryImpl implements BillingRepository {
           InvoicesCompanion.insert(
             uuid: Uuids.v4(),
             clinicId: clinicId,
+            branchId: Value(await _db.currentBranchId()),
+
             patientId: patientId,
             invoiceNo: invoiceNo,
             issuedAt: issuedAt,

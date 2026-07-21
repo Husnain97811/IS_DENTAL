@@ -9,7 +9,10 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
   final AppDatabase _db;
 
   @override
-  Stream<List<Appointment>> watchAppointmentsForDay(DateTime day) {
+  Stream<List<Appointment>> watchAppointmentsForDay(
+    DateTime day, {
+    String? branchId,
+  }) {
     final start = DateTime(day.year, day.month, day.day);
     final end = start.add(const Duration(days: 1));
     final q =
@@ -22,7 +25,10 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
           ..where(
             _db.appointments.isDeleted.equals(false) &
                 _db.appointments.startsAt.isBiggerOrEqualValue(start) &
-                _db.appointments.startsAt.isSmallerThanValue(end),
+                _db.appointments.startsAt.isSmallerThanValue(end) &
+                (branchId == null
+                    ? const Constant(true)
+                    : _db.appointments.branchId.equals(branchId)),
           )
           ..orderBy([OrderingTerm.asc(_db.appointments.startsAt)]);
     return q.watch().map(
@@ -46,7 +52,11 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
   }
 
   @override
-  Stream<List<Appointment>> watchAppointmentsForMonth(int year, int month) {
+  Stream<List<Appointment>> watchAppointmentsForMonth(
+    int year,
+    int month, {
+    String? branchId,
+  }) {
     final start = DateTime(year, month, 1);
     final end = DateTime(year, month + 1, 1);
     final q =
@@ -59,7 +69,10 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
           ..where(
             _db.appointments.isDeleted.equals(false) &
                 _db.appointments.startsAt.isBiggerOrEqualValue(start) &
-                _db.appointments.startsAt.isSmallerThanValue(end),
+                _db.appointments.startsAt.isSmallerThanValue(end) &
+                (branchId == null
+                    ? const Constant(true)
+                    : _db.appointments.branchId.equals(branchId)),
           )
           ..orderBy([OrderingTerm.asc(_db.appointments.startsAt)]);
     return q.watch().map(
@@ -126,14 +139,17 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
       );
 
   @override
-  Stream<Set<int>> watchMarkedDays(int year, int month) {
+  Stream<Set<int>> watchMarkedDays(int year, int month, {String? branchId}) {
     final start = DateTime(year, month, 1);
     final end = DateTime(year, month + 1, 1);
     return (_db.select(_db.appointments)..where(
           (t) =>
               t.isDeleted.equals(false) &
               t.startsAt.isBiggerOrEqualValue(start) &
-              t.startsAt.isSmallerThanValue(end),
+              t.startsAt.isSmallerThanValue(end) &
+              (branchId == null
+                  ? const Constant(true)
+                  : t.branchId.equals(branchId)),
         ))
         .watch()
         .map((rows) => rows.map((r) => r.startsAt.day).toSet());
@@ -180,6 +196,7 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
           AppointmentsCompanion.insert(
             uuid: Uuids.v4(),
             clinicId: clinicId,
+            branchId: Value(await _db.currentBranchId()),
             patientId: patientId,
             dentist: dentist,
             chair: Value(chair),

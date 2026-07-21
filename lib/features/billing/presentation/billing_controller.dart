@@ -4,12 +4,15 @@ import '../../../core/db/app_database.dart';
 import '../data/billing_repository_impl.dart';
 import '../domain/billing_repository.dart';
 import '../domain/invoice.dart';
+import '../../branches/presentation/branch_controller.dart';
 
 final billingRepositoryProvider = Provider<BillingRepository>(
   (ref) => BillingRepositoryImpl(ref.watch(appDatabaseProvider)),
 );
 final invoicesStreamProvider = StreamProvider.autoDispose<List<Invoice>>(
-  (ref) => ref.watch(billingRepositoryProvider).watchInvoices(),
+  (ref) => ref
+      .watch(billingRepositoryProvider)
+      .watchInvoices(branchId: ref.watch(activeBranchProvider)),
 );
 final selectedInvoiceIdProvider = StateProvider<int?>((_) => null);
 final clinicNameProvider = FutureProvider<String>(

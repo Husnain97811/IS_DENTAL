@@ -5,9 +5,10 @@ import '../../../core/db/app_database.dart';
 import '../data/appointment_repository_impl.dart';
 import '../domain/appointment.dart';
 import '../domain/appointment_repository.dart';
+import '../../branches/presentation/branch_controller.dart';
 import 'package:flutter/material.dart' show TimeOfDay;
 import 'package:drift/drift.dart'
-    show OrderingTerm, OrderingMode, BooleanExpressionOperators;
+    show OrderingTerm, OrderingMode, BooleanExpressionOperators, Constant;
 
 // const kDentists = ['Dr. Ayesha Khan', 'Dr. Bilal Ahmed', 'Dr. Sara Malik'];
 const kProcedures = [
@@ -33,21 +34,32 @@ final appointmentsForDayProvider =
     StreamProvider.autoDispose<List<Appointment>>(
       (ref) => ref
           .watch(appointmentRepositoryProvider)
-          .watchAppointmentsForDay(ref.watch(selectedDateProvider)),
+          .watchAppointmentsForDay(
+            ref.watch(selectedDateProvider),
+            branchId: ref.watch(activeBranchProvider),
+          ),
     );
 
 final appointmentsForMonthProvider = StreamProvider.autoDispose
     .family<List<Appointment>, ({int year, int month})>(
       (ref, ym) => ref
           .watch(appointmentRepositoryProvider)
-          .watchAppointmentsForMonth(ym.year, ym.month),
+          .watchAppointmentsForMonth(
+            ym.year,
+            ym.month,
+            branchId: ref.watch(activeBranchProvider),
+          ),
     );
 
 final markedDaysProvider = StreamProvider.autoDispose
     .family<Set<int>, ({int year, int month})>(
       (ref, ym) => ref
           .watch(appointmentRepositoryProvider)
-          .watchMarkedDays(ym.year, ym.month),
+          .watchMarkedDays(
+            ym.year,
+            ym.month,
+            branchId: ref.watch(activeBranchProvider),
+          ),
     );
 
 final viewedMonthProvider = StateProvider<({int year, int month})>((ref) {
@@ -102,8 +114,12 @@ bool rangesOverlap(
 /// Appointments for any given day (family version — works for the editor's picked date).
 final appointmentsForDayFamilyProvider = StreamProvider.autoDispose
     .family<List<Appointment>, DateTime>(
-      (ref, day) =>
-          ref.watch(appointmentRepositoryProvider).watchAppointmentsForDay(day),
+      (ref, day) => ref
+          .watch(appointmentRepositoryProvider)
+          .watchAppointmentsForDay(
+            day,
+            branchId: ref.watch(activeBranchProvider),
+          ),
     );
 
 /// Slot grid built from clinic schedule. A slot is busy if its range
@@ -144,11 +160,15 @@ final dentistFilterProvider = StateProvider<String?>((_) => null);
 /// Live list of dentist full names from the Users table (owner + clinician roles).
 final dentistsProvider = StreamProvider<List<String>>((ref) {
   final db = ref.watch(appDatabaseProvider);
+  final branchId = ref.watch(activeBranchProvider);
   return (db.select(db.users)
         ..where(
           (u) =>
               u.isDeleted.equals(false) &
-              u.role.isIn(const ['owner', 'clinician']),
+              u.role.isIn(const ['owner', 'clinician']) &
+              (branchId == null
+                  ? const Constant(true)
+                  : u.branchId.equals(branchId)),
         )
         ..orderBy([(u) => OrderingTerm.asc(u.fullName)]))
       .watch()

@@ -27,7 +27,7 @@ class PatientRepositoryImpl implements PatientRepository {
   @override
   Future<void> upsertPatient(Patient p) async {
     final clinicId = await _db.currentClinicId() ?? '';
-    final stampBranch = p.id == 0
+    final Value<String?> stampBranch = p.id == 0
         ? Value(await _db.currentBranchId())
         : const Value.absent();
     await _db
@@ -37,6 +37,8 @@ class PatientRepositoryImpl implements PatientRepository {
             id: p.id == 0 ? const Value.absent() : Value(p.id),
             uuid: Value(p.uuid.isEmpty ? Uuids.v4() : p.uuid),
             clinicId: Value(clinicId),
+            branchId: stampBranch,
+
             code: Value(p.code),
             fullName: Value(p.fullName),
             gender: Value(p.gender.name),

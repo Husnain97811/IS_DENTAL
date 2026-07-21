@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:is_dental/features/branches/presentation/branch_controller.dart';
+import 'package:is_dental/features/branches/presentation/widgets/branch_switcher.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/db/app_database.dart';
@@ -27,7 +29,10 @@ final _todayApptsProvider = StreamProvider.autoDispose<List<Appointment>>((
   final n = DateTime.now();
   return ref
       .watch(appointmentRepositoryProvider)
-      .watchAppointmentsForDay(DateTime(n.year, n.month, n.day));
+      .watchAppointmentsForDay(
+        DateTime(n.year, n.month, n.day),
+        branchId: ref.watch(activeBranchProvider),
+      );
 });
 
 final _clinicNameProvider = FutureProvider.autoDispose<String>(
@@ -37,31 +42,57 @@ final _clinicNameProvider = FutureProvider.autoDispose<String>(
 
 // DB-side aggregates
 final _patientCountProvider = StreamProvider.autoDispose<int>(
-  (ref) => ref.watch(appDatabaseProvider).watchPatientCount(),
+  (ref) => ref
+      .watch(appDatabaseProvider)
+      .watchPatientCount(branchId: ref.watch(activeBranchProvider)),
 );
 final _inTreatmentProvider = StreamProvider.autoDispose<int>(
-  (ref) => ref.watch(appDatabaseProvider).watchInTreatmentCount(),
+  (ref) => ref
+      .watch(appDatabaseProvider)
+      .watchInTreatmentCount(branchId: ref.watch(activeBranchProvider)),
 );
 final _unpaidProvider = StreamProvider.autoDispose<({int sum, int count})>(
-  (ref) => ref.watch(appDatabaseProvider).watchUnpaidTotals(),
+  (ref) => ref
+      .watch(appDatabaseProvider)
+      .watchUnpaidTotals(branchId: ref.watch(activeBranchProvider)),
 );
 final _apptCountProvider = StreamProvider.autoDispose.family<int, _Range>(
-  (ref, r) =>
-      ref.watch(appDatabaseProvider).watchAppointmentCount(r.start, r.end),
+  (ref, r) => ref
+      .watch(appDatabaseProvider)
+      .watchAppointmentCount(
+        r.start,
+        r.end,
+        branchId: ref.watch(activeBranchProvider),
+      ),
 );
 final _revenueProvider = StreamProvider.autoDispose.family<int, _Range>(
-  (ref, r) => ref.watch(appDatabaseProvider).watchPaidRevenue(r.start, r.end),
+  (ref, r) => ref
+      .watch(appDatabaseProvider)
+      .watchPaidRevenue(
+        r.start,
+        r.end,
+        branchId: ref.watch(activeBranchProvider),
+      ),
 );
 final _topProcProvider = StreamProvider.autoDispose
     .family<List<({String procedure, int count})>, _Range>(
-      (ref, r) =>
-          ref.watch(appDatabaseProvider).watchTopProcedures(r.start, r.end),
+      (ref, r) => ref
+          .watch(appDatabaseProvider)
+          .watchTopProcedures(
+            r.start,
+            r.end,
+            branchId: ref.watch(activeBranchProvider),
+          ),
     );
 final _weekPaidProvider = StreamProvider.autoDispose
     .family<List<({DateTime issuedAt, int total})>, _Range>(
       (ref, r) => ref
           .watch(appDatabaseProvider)
-          .watchPaidInvoicesBetween(r.start, r.end),
+          .watchPaidInvoicesBetween(
+            r.start,
+            r.end,
+            branchId: ref.watch(activeBranchProvider),
+          ),
     );
 
 String _money(int v) => v.toString().replaceAllMapped(
@@ -194,6 +225,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ],
                 ),
               ),
+              SizedBox(width: 3.w),
+              const BranchSwitcher(),
               SegmentedControl(
                 items: const ['Today', 'Week', 'Month'],
                 selected: _range,
