@@ -7,6 +7,7 @@ import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dent_colors.dart';
 import '../../../patients/presentation/patients_controller.dart';
+import '../../../treatments/presentation/treatments_controller.dart';
 import '../../application/book_with_new_patient.dart';
 import '../appointments_controller.dart';
 import 'patient_picker_field.dart';
@@ -19,7 +20,7 @@ class QuickBookDrawer extends ConsumerStatefulWidget {
 
 class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
   PatientChoice? _patientChoice;
-  String _procedure = kProcedures.first;
+  String? _procedure; // null until catalog loads
   String? _dentist; // null until dentists load
   DateTime? _slot;
   int _durationMin = 20;
@@ -36,7 +37,13 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
     final choice = _patientChoice;
     final slot = _slot;
     final dentist = _dentist;
-    if (choice == null || slot == null || dentist == null) return;
+    final procedure = _procedure;
+    if (choice == null ||
+        slot == null ||
+        dentist == null ||
+        procedure == null) {
+      return;
+    }
 
     // ── Conflict check ──
     final day = ref.read(selectedDateProvider);
@@ -80,7 +87,7 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
                 patientId: patient.id,
                 dentist: dentist,
                 chair: chair,
-                procedure: _procedure,
+                procedure: procedure,
                 startsAt: slot,
                 durationMin: _durationMin,
               );
@@ -89,7 +96,7 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
             fullName: name,
             dentist: dentist,
             chair: chair,
-            procedure: _procedure,
+            procedure: procedure,
             startsAt: slot,
             durationMin: _durationMin,
           );
@@ -129,10 +136,17 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
     final day = ref.watch(selectedDateProvider);
     final slots = ref.watch(daySlotsProvider(day));
     final dentists = ref.watch(dentistsProvider).value ?? [];
+    final procedures = ref.watch(proceduresProvider);
     String two(int v) => v.toString().padLeft(2, '0');
 
-    // Seed on first load, and reset if the current selection is no longer
-    // in the list (e.g. after a branch switch).
+    // Seed/reset procedure from catalog (handles branch switch too)
+    if (procedures.isEmpty) {
+      _procedure = null;
+    } else if (_procedure == null || !procedures.contains(_procedure)) {
+      _procedure = procedures.first;
+    }
+
+    // Seed/reset dentist (handles branch switch)
     if (dentists.isEmpty) {
       _dentist = null;
     } else if (_dentist == null || !dentists.contains(_dentist)) {
@@ -185,27 +199,35 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
             ),
           ),
 
-          // ── Procedure ──
+          // ── Procedure (live from catalog) ──
           _label(d, 'Procedure'),
-          _box(
-            d,
-            DropdownButton<String>(
-              isExpanded: true,
-              underline: const SizedBox(),
-              value: _procedure,
-              items: [
-                for (final p in kProcedures)
-                  DropdownMenuItem(
-                    value: p,
-                    child: Text(
-                      p,
-                      style: TextStyle(fontSize: 9.sp, color: d.text1),
-                    ),
+          procedures.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'No procedures yet. Add them in Treatments.',
+                    style: TextStyle(color: d.text4, fontSize: 8.5.sp),
                   ),
-              ],
-              onChanged: (v) => setState(() => _procedure = v!),
-            ),
-          ),
+                )
+              : _box(
+                  d,
+                  DropdownButton<String>(
+                    isExpanded: true,
+                    underline: const SizedBox(),
+                    value: _procedure,
+                    items: [
+                      for (final p in procedures)
+                        DropdownMenuItem(
+                          value: p,
+                          child: Text(
+                            p,
+                            style: TextStyle(fontSize: 9.sp, color: d.text1),
+                          ),
+                        ),
+                    ],
+                    onChanged: (v) => setState(() => _procedure = v),
+                  ),
+                ),
 
           // ── Dentist (live from DB) ──
           _label(d, 'Dentist'),
@@ -292,7 +314,8 @@ class _QuickBookDrawerState extends ConsumerState<QuickBookDrawer> {
                   (_busy ||
                       _patientChoice == null ||
                       _slot == null ||
-                      _dentist == null)
+                      _dentist == null ||
+                      _procedure == null)
                   ? null
                   : () => _confirm(dentists),
               icon: _busy

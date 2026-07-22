@@ -6,9 +6,11 @@ import 'package:sizer/sizer.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dent_colors.dart';
-import '../../../../core/widgets/dent_field.dart';
+import '../../../patients/domain/patient.dart';
 import '../../../patients/presentation/patients_controller.dart';
+import '../../../treatments/presentation/treatments_controller.dart';
 import '../billing_controller.dart';
+import '../../../../core/constants/app_flags.dart';
 
 Future<bool?> showInvoiceEditor(
   BuildContext context, {
@@ -29,17 +31,22 @@ class InvoiceEditorDialog extends ConsumerStatefulWidget {
 }
 
 class _Line {
-  _Line() : desc = TextEditingController(), amt = TextEditingController();
-  final TextEditingController desc, amt;
+  final desc = TextEditingController();
+  final amt = TextEditingController();
+  void dispose() {
+    desc.dispose();
+    amt.dispose();
+  }
 }
 
 class _S extends ConsumerState<InvoiceEditorDialog> {
+  late final TextEditingController _no;
+  late final TextEditingController _adjustment;
+  final List<_Line> _lines = [_Line()];
   int? _patientId;
   String _status = 'pending';
-  late final TextEditingController _no, _adjustment;
-  final List<_Line> _lines = [_Line()];
   bool _busy = false;
-  static const int kConsultationFee = 1500; // change to your clinic's fee
+  String? _error;
 
   @override
   void initState() {
@@ -48,14 +55,36 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
     _adjustment = TextEditingController(text: '0');
     _patientId = widget.patientId;
 
-    // Auto consultation fee as the first line (removable via the × icon)
+    _lines.clear();
+
+    // Consultation fee — prefer the catalog price, else fall back to code.
+    final prices = ref.read(procedurePriceProvider);
+    final consultFee = _lookupConsultationFee(prices) ?? _kFallbackConsultFee;
     final consult = _Line();
     consult.desc.text = 'Consultation Fee';
-    consult.amt.text = '$kConsultationFee';
-    _lines.insert(0, consult);
+    consult.amt.text = '$consultFee';
+    _lines.add(consult);
 
+    // If billed from an appointment, add the procedure as its own line
     final proc = widget.procedure?.trim();
-    if (proc != null && proc.isNotEmpty) _lines.last.desc.text = proc;
+    if (proc != null && proc.isNotEmpty) {
+      final line = _Line();
+      line.desc.text = proc;
+      final price = prices[proc];
+      if (price != null) line.amt.text = '$price';
+      _lines.add(line);
+    }
+  }
+
+  /// Fallback if no consultation entry exists in the Treatments catalog.
+  static const int _kFallbackConsultFee = 2000;
+
+  /// Finds a "consultation" priced item in the catalog, case-insensitive.
+  int? _lookupConsultationFee(Map<String, int> prices) {
+    for (final entry in prices.entries) {
+      if (entry.key.toLowerCase().contains('consult')) return entry.value;
+    }
+    return null;
   }
 
   @override
@@ -63,307 +92,505 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
     _no.dispose();
     _adjustment.dispose();
     for (final l in _lines) {
-      l.desc.dispose();
-      l.amt.dispose();
+      l.dispose();
     }
     super.dispose();
   }
 
-  int get _subtotal =>
-      _lines.fold(0, (s, l) => s + (int.tryParse(l.amt.text) ?? 0));
-  int get _total => _subtotal - (int.tryParse(_adjustment.text) ?? 0);
-  String _m(int v) => v.toString().replaceAllMapped(
-    RegExp(r'(\d)(?=(\d{3})+$)'),
-    (x) => '${x[1]},',
-  );
+  int get _subtotal {
+    var sum = 0;
+    for (final l in _lines) {
+      sum += int.tryParse(l.amt.text.trim()) ?? 0;
+    }
+    return sum;
+  }
+
+  int get _adj => int.tryParse(_adjustment.text.trim()) ?? 0;
+  int get _total => _subtotal - _adj;
+
+  Future<void> _addFromCatalog() async {
+    final treatments = ref.read(treatmentsStreamProvider).value ?? const [];
+    if (treatments.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No procedures in the catalog yet.')),
+      );
+      return;
+    }
+    final d = context.dent;
+    final picked = await showDialog<({String name, int price})>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: d.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420, maxHeight: 480),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 8, 8),
+                child: Row(
+                  children: [
+                    Text(
+                      'Add from Catalog',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: treatments.length,
+                  itemBuilder: (_, i) {
+                    final t = treatments[i];
+                    return ListTile(
+                      title: Text(
+                        t.name,
+                        style: TextStyle(fontSize: 9.5.sp, color: d.text1),
+                      ),
+                      subtitle: Text(
+                        t.category,
+                        style: TextStyle(fontSize: 8.sp, color: d.text3),
+                      ),
+                      trailing: Text(
+                        'Rs ${t.price}',
+                        style: AppTypography.mono(size: 9.sp, color: d.text1),
+                      ),
+                      onTap: () =>
+                          Navigator.pop(ctx, (name: t.name, price: t.price)),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (picked != null) {
+      setState(() {
+        // reuse the first empty line, else add a new one
+        final target = _lines.firstWhere(
+          (l) => l.desc.text.trim().isEmpty,
+          orElse: () {
+            final line = _Line();
+            _lines.add(line);
+            return line;
+          },
+        );
+        target.desc.text = picked.name;
+        target.amt.text = '${picked.price}';
+      });
+    }
+  }
 
   Future<void> _save() async {
-    final items = [
-      for (final l in _lines)
-        if (l.desc.text.trim().isNotEmpty &&
-            (int.tryParse(l.amt.text) ?? 0) > 0)
-          (description: l.desc.text.trim(), amount: int.parse(l.amt.text)),
-    ];
-    if (_patientId == null || items.isEmpty) return;
-    setState(() => _busy = true);
-    await ref
-        .read(billingRepositoryProvider)
-        .createInvoice(
-          patientId: _patientId!,
-          invoiceNo: _no.text.trim(),
-          issuedAt: DateTime.now(),
-          status: _status,
-          summary: items
-              .firstWhere(
-                (i) => i.description != 'Consultation Fee',
-                orElse: () => items.first,
-              )
-              .description,
-          adjustment: int.tryParse(_adjustment.text) ?? 0,
-          items: items,
-        );
-    if (mounted) Navigator.pop(context, true);
+    if (_patientId == null) {
+      setState(() => _error = 'Select a patient.');
+      return;
+    }
+    final items = <({String description, int amount})>[];
+    for (final l in _lines) {
+      final desc = l.desc.text.trim();
+      final amt = int.tryParse(l.amt.text.trim()) ?? 0;
+      if (desc.isEmpty && amt == 0) continue;
+      items.add((description: desc, amount: amt));
+    }
+    if (items.isEmpty) {
+      setState(() => _error = 'Add at least one line item.');
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    try {
+      await ref
+          .read(billingRepositoryProvider)
+          .createInvoice(
+            patientId: _patientId!,
+            invoiceNo: _no.text.trim(),
+            issuedAt: DateTime.now(),
+            status: _status,
+            summary: items.first.description,
+            adjustment: _adj,
+            items: items,
+          );
+    } catch (e) {
+      setState(() {
+        _busy = false;
+        _error = 'Could not save: $e';
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context, true);
   }
 
   @override
   Widget build(BuildContext context) {
     final d = context.dent;
-    final patients = ref.watch(patientsStreamProvider).value ?? [];
+    final patients =
+        ref.watch(patientsStreamProvider).value ?? const <Patient>[];
+
     return Dialog(
       backgroundColor: d.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'New Invoice',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                SizedBox(height: 2.h),
-                Row(
+        constraints: BoxConstraints(maxWidth: 62.w, maxHeight: 84.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Header ──
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 18, 14, 14),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: d.line)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'New Invoice',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 12.sp,
+                      color: d.text3,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _dd<int>(
-                        d,
-                        'Patient',
-                        patients
-                            .map(
-                              (p) => DropdownMenuItem(
-                                value: p.id,
-                                child: Text(
-                                  p.fullName,
+                    // ── Patient ──
+                    _label(d, 'Patient'),
+                    _box(
+                      d,
+                      DropdownButton<int>(
+                        isExpanded: true,
+                        underline: const SizedBox(),
+                        value: _patientId,
+                        hint: Text(
+                          'Select patient',
+                          style: TextStyle(fontSize: 9.sp, color: d.text4),
+                        ),
+                        items: [
+                          for (final p in patients)
+                            DropdownMenuItem(
+                              value: p.id,
+                              child: Text(
+                                p.fullName,
+                                style: TextStyle(
+                                  fontSize: 9.sp,
+                                  color: d.text1,
+                                ),
+                              ),
+                            ),
+                        ],
+                        onChanged: (v) => setState(() => _patientId = v),
+                      ),
+                    ),
+
+                    // ── Invoice No + Status ──
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _label(d, 'Invoice No.'),
+                              _box(
+                                d,
+                                TextField(
+                                  controller: _no,
                                   style: TextStyle(
                                     fontSize: 9.sp,
                                     color: d.text1,
                                   ),
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                  ),
                                 ),
                               ),
-                            )
-                            .toList(),
-                        _patientId,
-                        (v) => setState(() => _patientId = v),
-                        hint: 'Select…',
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DentField(label: 'Invoice no.', controller: _no),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _dd<String>(
-                  d,
-                  'Status',
-                  const ['pending', 'paid', 'overdue']
-                      .map(
-                        (s) => DropdownMenuItem(
-                          value: s,
-                          child: Text('${s[0].toUpperCase()}${s.substring(1)}'),
-                        ),
-                      )
-                      .toList(),
-                  _status,
-                  (v) => setState(() => _status = v!),
-                ),
-                SizedBox(height: 1.6.h),
-                Text(
-                  'LINE ITEMS',
-                  style: TextStyle(
-                    color: d.text4,
-                    fontSize: 7.sp,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: .5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                for (var i = 0; i < _lines.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: TextField(
-                            controller: _lines[i].desc,
-                            style: TextStyle(fontSize: 9.sp, color: d.text1),
-                            decoration: _dec(d, 'Description'),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 12),
                         Expanded(
-                          flex: 1,
-                          child: TextField(
-                            controller: _lines[i].amt,
-                            keyboardType: TextInputType.number,
-                            onChanged: (_) => setState(() {}),
-                            style: TextStyle(fontSize: 9.sp, color: d.text1),
-                            decoration: _dec(d, 'Amount'),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: _lines.length == 1
-                              ? null
-                              : () => setState(() {
-                                  _lines[i].desc.dispose();
-                                  _lines[i].amt.dispose();
-                                  _lines.removeAt(i);
-                                }),
-                          icon: Icon(
-                            Icons.close_rounded,
-                            size: 16,
-                            color: d.text4,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _label(d, 'Status'),
+                              _box(
+                                d,
+                                DropdownButton<String>(
+                                  isExpanded: true,
+                                  underline: const SizedBox(),
+                                  value: _status,
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'pending',
+                                      child: Text('Pending'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'paid',
+                                      child: Text('Paid'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'overdue',
+                                      child: Text('Overdue'),
+                                    ),
+                                  ],
+                                  onChanged: (v) =>
+                                      setState(() => _status = v!),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                  ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () => setState(() => _lines.add(_Line())),
-                    icon: const Icon(Icons.add_rounded, size: 16),
-                    label: const Text('Add line'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DentField(
-                        label: 'Insurance adjustment',
+
+                    // ── Line items ──
+                    _label(d, 'Line items'),
+                    for (var i = 0; i < _lines.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: _box(
+                                d,
+                                TextField(
+                                  controller: _lines[i].desc,
+                                  style: TextStyle(
+                                    fontSize: 9.sp,
+                                    color: d.text1,
+                                  ),
+                                  decoration: InputDecoration(
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    hintText: 'Description',
+                                    hintStyle: TextStyle(
+                                      color: d.text4,
+                                      fontSize: 9.sp,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 1,
+                              child: _box(
+                                d,
+                                TextField(
+                                  controller: _lines[i].amt,
+                                  keyboardType: TextInputType.number,
+                                  onChanged: (_) => setState(() {}),
+                                  style: TextStyle(
+                                    fontSize: 9.sp,
+                                    color: d.text1,
+                                  ),
+                                  decoration: InputDecoration(
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    hintText: 'Rs',
+                                    hintStyle: TextStyle(
+                                      color: d.text4,
+                                      fontSize: 9.sp,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (_lines.length > 1)
+                              IconButton(
+                                icon: Icon(
+                                  Icons.remove_circle_outline_rounded,
+                                  size: 18,
+                                  color: d.text4,
+                                ),
+                                onPressed: () => setState(() {
+                                  _lines[i].dispose();
+                                  _lines.removeAt(i);
+                                }),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                    // ── Add buttons ──
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _addFromCatalog,
+                          icon: const Icon(
+                            Icons.playlist_add_rounded,
+                            size: 16,
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: d.ice,
+                            side: BorderSide(color: d.line),
+                          ),
+                          label: const Text('Add from catalog'),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => setState(() => _lines.add(_Line())),
+                          icon: const Icon(Icons.add_rounded, size: 16),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: d.text2,
+                            side: BorderSide(color: d.line),
+                          ),
+                          label: const Text('Add line'),
+                        ),
+                      ],
+                    ),
+
+                    // ── Adjustment ──
+                    _label(d, 'Adjustment (Rs)'),
+                    _box(
+                      d,
+                      TextField(
                         controller: _adjustment,
                         keyboardType: TextInputType.number,
                         onChanged: (_) => setState(() {}),
+                        style: TextStyle(fontSize: 9.sp, color: d.text1),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'TOTAL',
-                          style: TextStyle(
-                            color: d.text4,
-                            fontSize: 7.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
+
+                    // ── Totals ──
+                    const SizedBox(height: 14),
+                    _totalRow(d, 'Subtotal', _subtotal),
+                    if (_adj != 0) _totalRow(d, 'Adjustment', -_adj),
+                    const SizedBox(height: 4),
+                    _totalRow(d, 'Total', _total, bold: true),
+
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Text(
+                          _error!,
+                          style: TextStyle(color: d.alert, fontSize: 8.5.sp),
                         ),
-                        Text(
-                          'Rs ${_m(_total)}',
-                          style: TextStyle(
-                            fontFamily: AppFonts.display,
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w600,
-                            color: d.text1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                SizedBox(height: 2.4.h),
-                Row(
-                  children: [
-                    const Spacer(),
-                    TextButton(
-                      onPressed: _busy ? null : () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: d.ice,
-                        foregroundColor: AppPalette.onAccent,
                       ),
-                      onPressed: (_busy || _patientId == null) ? null : _save,
-                      child: _busy
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppPalette.onAccent,
-                              ),
-                            )
-                          : const Text('Create Invoice'),
-                    ),
+                    const SizedBox(height: 8),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
+
+            // ── Save ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: d.ice,
+                  foregroundColor: AppPalette.onAccent,
+                  minimumSize: const Size.fromHeight(44),
+                ),
+                onPressed: _busy ? null : _save,
+                icon: _busy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppPalette.onAccent,
+                        ),
+                      )
+                    : const Icon(Icons.check_rounded, size: 17),
+                label: const Text('Save Invoice'),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  InputDecoration _dec(DentColors d, String hint) => InputDecoration(
-    hintText: hint,
-    isDense: true,
-    filled: true,
-    fillColor: d.surface2,
-    hintStyle: TextStyle(color: d.text4, fontSize: 8.5.sp),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 11, vertical: 11),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(color: d.line),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(color: d.ice, width: 1.5),
+  Widget _label(DentColors d, String t) => Padding(
+    padding: const EdgeInsets.fromLTRB(0, 14, 0, 7),
+    child: Text(
+      t.toUpperCase(),
+      style: TextStyle(
+        color: d.text4,
+        fontSize: 7.sp,
+        fontWeight: FontWeight.w700,
+        letterSpacing: .5,
+      ),
     ),
   );
 
-  Widget _dd<T>(
-    DentColors d,
-    String label,
-    List<DropdownMenuItem<T>> items,
-    T? value,
-    ValueChanged<T?> onChanged, {
-    String? hint,
-  }) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        label.toUpperCase(),
-        style: TextStyle(
-          color: d.text4,
-          fontSize: 7.sp,
-          fontWeight: FontWeight.w700,
-          letterSpacing: .5,
-        ),
-      ),
-      const SizedBox(height: 6),
-      Container(
-        height: 42,
-        padding: const EdgeInsets.symmetric(horizontal: 13),
-        decoration: BoxDecoration(
-          color: d.surface2,
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: d.line),
-        ),
-        child: DropdownButton<T>(
-          value: value,
-          isExpanded: true,
-          underline: const SizedBox(),
-          hint: hint == null
-              ? null
-              : Text(
-                  hint,
-                  style: TextStyle(color: d.text4, fontSize: 9.sp),
-                ),
-          items: items,
-          onChanged: onChanged,
-        ),
-      ),
-    ],
+  Widget _box(DentColors d, Widget child) => Container(
+    height: 42,
+    padding: const EdgeInsets.symmetric(horizontal: 13),
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: d.surface2,
+      borderRadius: BorderRadius.circular(11),
+      border: Border.all(color: d.line),
+    ),
+    child: child,
   );
+
+  Widget _totalRow(DentColors d, String label, int value, {bool bold = false}) {
+    final m = value.toString().replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+$)'),
+      (x) => '${x[1]},',
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: bold ? d.text1 : d.text3,
+              fontSize: bold ? 10.sp : 9.sp,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+          Text(
+            'Rs $m',
+            style: AppTypography.mono(
+              size: bold ? 10.sp : 9.sp,
+              color: d.text1,
+              weight: bold ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

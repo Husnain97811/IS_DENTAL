@@ -8,6 +8,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dent_colors.dart';
 import '../../../patients/domain/patient.dart';
 import '../../../patients/presentation/patients_controller.dart';
+import '../../../treatments/presentation/treatments_controller.dart';
 import '../../application/book_with_new_patient.dart';
 import '../appointments_controller.dart';
 import 'patient_picker_field.dart';
@@ -31,7 +32,7 @@ class _AppointmentEditor extends ConsumerStatefulWidget {
 
 class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
   PatientChoice? _patient;
-  String _procedure = kProcedures.first;
+  String? _procedure; // null until catalog loads
   String? _dentist; // null until dentists load from DB
   late DateTime _date;
   DateTime? _slot;
@@ -79,7 +80,13 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
     final choice = _patient;
     final slot = _slot;
     final dentist = _dentist;
-    if (choice == null || slot == null || dentist == null) return;
+    final procedure = _procedure;
+    if (choice == null ||
+        slot == null ||
+        dentist == null ||
+        procedure == null) {
+      return;
+    }
 
     // Conflict check
     final existing =
@@ -125,7 +132,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                 patientId: patient.id,
                 dentist: dentist,
                 chair: chair,
-                procedure: _procedure,
+                procedure: procedure,
                 startsAt: slot,
                 durationMin: _durationMin,
               );
@@ -134,7 +141,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
             fullName: name,
             dentist: dentist,
             chair: chair,
-            procedure: _procedure,
+            procedure: procedure,
             startsAt: slot,
             durationMin: _durationMin,
           );
@@ -177,11 +184,21 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
         ref.watch(patientsStreamProvider).value ?? const <Patient>[];
     final slots = ref.watch(daySlotsProvider(_date));
     final dentists = ref.watch(dentistsProvider).value ?? [];
+    final procedures = ref.watch(proceduresProvider);
     String two(int v) => v.toString().padLeft(2, '0');
     final initialPatient = _initialPatient(patients);
 
-    // seed selection once dentists load
-    if (_dentist == null && dentists.isNotEmpty) {
+    // seed/reset procedure from catalog
+    if (procedures.isEmpty) {
+      _procedure = null;
+    } else if (_procedure == null || !procedures.contains(_procedure)) {
+      _procedure = procedures.first;
+    }
+
+    // seed/reset dentist (handles branch switch)
+    if (dentists.isEmpty) {
+      _dentist = null;
+    } else if (_dentist == null || !dentists.contains(_dentist)) {
       _dentist = dentists.first;
     }
 
@@ -236,30 +253,41 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                       onChanged: (c) => setState(() => _patient = c),
                     ),
 
-                    // ── Procedure ──
+                    // ── Procedure (live from catalog) ──
                     _label(d, 'Procedure'),
-                    _box(
-                      d,
-                      DropdownButton<String>(
-                        isExpanded: true,
-                        underline: const SizedBox(),
-                        value: _procedure,
-                        items: [
-                          for (final p in kProcedures)
-                            DropdownMenuItem(
-                              value: p,
-                              child: Text(
-                                p,
-                                style: TextStyle(
-                                  fontSize: 9.sp,
-                                  color: d.text1,
-                                ),
+                    procedures.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              'No procedures yet. Add them in Treatments.',
+                              style: TextStyle(
+                                color: d.text4,
+                                fontSize: 8.5.sp,
                               ),
                             ),
-                        ],
-                        onChanged: (v) => setState(() => _procedure = v!),
-                      ),
-                    ),
+                          )
+                        : _box(
+                            d,
+                            DropdownButton<String>(
+                              isExpanded: true,
+                              underline: const SizedBox(),
+                              value: _procedure,
+                              items: [
+                                for (final p in procedures)
+                                  DropdownMenuItem(
+                                    value: p,
+                                    child: Text(
+                                      p,
+                                      style: TextStyle(
+                                        fontSize: 9.sp,
+                                        color: d.text1,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                              onChanged: (v) => setState(() => _procedure = v),
+                            ),
+                          ),
 
                     // ── Dentist (live from DB) ──
                     _label(d, 'Dentist'),
@@ -425,7 +453,8 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                     (_busy ||
                         _patient == null ||
                         _slot == null ||
-                        _dentist == null)
+                        _dentist == null ||
+                        _procedure == null)
                     ? null
                     : () => _confirm(dentists),
                 icon: _busy

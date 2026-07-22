@@ -64,40 +64,42 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 9;
+  @override
+  int get schemaVersion => 10;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
   /// One-time: assign a branch to all rows that have no branchId yet.
   /// Uses the first branch as the default home for legacy data.
-  // Future<int> backfillBranchIds() async {
-  //   final firstBranch =
-  //       await (select(branches)
-  //             ..where((t) => t.isDeleted.equals(false))
-  //             ..limit(1))
-  //           .getSingleOrNull();
-  //   if (firstBranch == null) return 0; // no branches → nothing to do
-  //   final uuid = firstBranch.uuid;
+  Future<int> backfillBranchIds() async {
+    final firstBranch =
+        await (select(branches)
+              ..where((t) => t.isDeleted.equals(false))
+              ..limit(1))
+            .getSingleOrNull();
+    if (firstBranch == null) return 0; // no branches → nothing to do
+    final uuid = firstBranch.uuid;
 
-  //   var touched = 0;
+    var touched = 0;
 
-  //   Future<void> stamp(TableInfo table, GeneratedColumn branchCol) async {
-  //     touched += await customUpdate(
-  //       'UPDATE ${table.actualTableName} '
-  //       'SET branch_id = ? '
-  //       'WHERE branch_id IS NULL OR branch_id = ?',
-  //       variables: [Variable.withString(uuid), Variable.withString('')],
-  //       updates: {table},
-  //     );
-  //   }
+    Future<void> stamp(TableInfo table, GeneratedColumn branchCol) async {
+      touched += await customUpdate(
+        'UPDATE ${table.actualTableName} '
+        'SET branch_id = ? '
+        'WHERE branch_id IS NULL OR branch_id = ?',
+        variables: [Variable.withString(uuid), Variable.withString('')],
+        updates: {table},
+      );
+    }
 
-  //   await stamp(patients, patients.branchId);
-  //   await stamp(appointments, appointments.branchId);
-  //   await stamp(invoices, invoices.branchId);
-  //   await stamp(inventoryItems, inventoryItems.branchId);
+    await stamp(patients, patients.branchId);
+    await stamp(appointments, appointments.branchId);
+    await stamp(invoices, invoices.branchId);
+    await stamp(inventoryItems, inventoryItems.branchId);
+    await stamp(treatments, treatments.branchId); // ← add this line
 
-  //   return touched;
-  // }
+    return touched;
+  }
 
   Stream<int> watchPatientCount({String? branchId}) {
     final c = countAll();
@@ -248,6 +250,9 @@ class AppDatabase extends _$AppDatabase {
     },
 
     onUpgrade: (m, from, to) async {
+      if (from < 10) {
+        await m.addColumn(treatments, treatments.branchId);
+      }
       if (from < 9) {
         await m.addColumn(users, users.email);
         await m.addColumn(users, users.phone);

@@ -5,6 +5,7 @@ class Treatments extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get uuid => text().unique()();
   TextColumn get clinicId => text()();
+  TextColumn get branchId => text().nullable()();
   TextColumn get name => text()();
   TextColumn get category => text()();
   IntColumn get price => integer().withDefault(const Constant(0))();

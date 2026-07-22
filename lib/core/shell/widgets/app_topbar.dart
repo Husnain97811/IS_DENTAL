@@ -318,8 +318,10 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
               _notificationBell(context, notifs),
               const SizedBox(width: 10),
               _DbStatusButton(destination: widget.destination),
-              const SizedBox(width: 10),
-              _primaryButton(context, ref),
+              if (widget.destination.route != AppRoutes.settings) ...[
+                const SizedBox(width: 10),
+                _primaryButton(context, ref),
+              ],
             ],
           ),
         ),

@@ -9,9 +9,15 @@ class TreatmentRepositoryImpl implements TreatmentRepository {
   final AppDatabase _db;
 
   @override
-  Stream<List<Treatment>> watchTreatments() =>
+  Stream<List<Treatment>> watchTreatments({String? branchId}) =>
       (_db.select(_db.treatments)
-            ..where((t) => t.isDeleted.equals(false))
+            ..where(
+              (t) =>
+                  t.isDeleted.equals(false) &
+                  (branchId == null
+                      ? const Constant(true)
+                      : t.branchId.equals(branchId)),
+            )
             ..orderBy([
               (t) => OrderingTerm.asc(t.category),
               (t) => OrderingTerm.asc(t.name),
@@ -35,6 +41,9 @@ class TreatmentRepositoryImpl implements TreatmentRepository {
   @override
   Future<void> upsertTreatment(Treatment t) async {
     final clinicId = await _db.currentClinicId() ?? '';
+    final Value<String?> stampBranch = t.id == 0
+        ? Value(await _db.currentBranchId())
+        : const Value.absent();
     await _db
         .into(_db.treatments)
         .insertOnConflictUpdate(
@@ -42,6 +51,7 @@ class TreatmentRepositoryImpl implements TreatmentRepository {
             id: t.id == 0 ? const Value.absent() : Value(t.id),
             uuid: Value(t.uuid.isEmpty ? Uuids.v4() : t.uuid),
             clinicId: Value(clinicId),
+            branchId: stampBranch,
             name: Value(t.name),
             category: Value(t.category),
             price: Value(t.price),

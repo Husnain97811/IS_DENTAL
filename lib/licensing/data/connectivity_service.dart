@@ -14,7 +14,8 @@ class ConnectivityService {
   final CloudService _cloud;
   final SyncEngine _sync;
 
-  static const window = Duration(hours: 48);
+  // static const window = Duration(hours: 48);
+  static const window = Duration(seconds: 48);
   static const _kLastContact = 'last_contact_ms';
 
   Future<Duration?> sinceLastContact() async {

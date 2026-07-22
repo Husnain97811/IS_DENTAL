@@ -385,7 +385,7 @@ class _S extends ConsumerState<SettingsScreen> {
           final active = ref.watch(activeBranchProvider);
           final rows = active == null
               ? allRows
-              : allRows.where((b) => b.uuid == active).toList();
+              : allRows.where((u) => u.branchId == active).toList();
           return Column(
             children: [
               for (final u in rows) _staffRow(d, u),

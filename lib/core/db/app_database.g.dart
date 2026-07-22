@@ -6667,6 +6667,17 @@ class $TreatmentsTable extends Treatments
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -6741,6 +6752,7 @@ class $TreatmentsTable extends Treatments
     id,
     uuid,
     clinicId,
+    branchId,
     name,
     category,
     price,
@@ -6778,6 +6790,12 @@ class $TreatmentsTable extends Treatments
       );
     } else if (isInserting) {
       context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -6840,6 +6858,10 @@ class $TreatmentsTable extends Treatments
         DriftSqlType.string,
         data['${effectivePrefix}clinic_id'],
       )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      ),
       name: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}name'],
@@ -6877,6 +6899,7 @@ class TreatmentRow extends DataClass implements Insertable<TreatmentRow> {
   final int id;
   final String uuid;
   final String clinicId;
+  final String? branchId;
   final String name;
   final String category;
   final int price;
@@ -6887,6 +6910,7 @@ class TreatmentRow extends DataClass implements Insertable<TreatmentRow> {
     required this.id,
     required this.uuid,
     required this.clinicId,
+    this.branchId,
     required this.name,
     required this.category,
     required this.price,
@@ -6900,6 +6924,9 @@ class TreatmentRow extends DataClass implements Insertable<TreatmentRow> {
     map['id'] = Variable<int>(id);
     map['uuid'] = Variable<String>(uuid);
     map['clinic_id'] = Variable<String>(clinicId);
+    if (!nullToAbsent || branchId != null) {
+      map['branch_id'] = Variable<String>(branchId);
+    }
     map['name'] = Variable<String>(name);
     map['category'] = Variable<String>(category);
     map['price'] = Variable<int>(price);
@@ -6914,6 +6941,9 @@ class TreatmentRow extends DataClass implements Insertable<TreatmentRow> {
       id: Value(id),
       uuid: Value(uuid),
       clinicId: Value(clinicId),
+      branchId: branchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchId),
       name: Value(name),
       category: Value(category),
       price: Value(price),
@@ -6932,6 +6962,7 @@ class TreatmentRow extends DataClass implements Insertable<TreatmentRow> {
       id: serializer.fromJson<int>(json['id']),
       uuid: serializer.fromJson<String>(json['uuid']),
       clinicId: serializer.fromJson<String>(json['clinicId']),
+      branchId: serializer.fromJson<String?>(json['branchId']),
       name: serializer.fromJson<String>(json['name']),
       category: serializer.fromJson<String>(json['category']),
       price: serializer.fromJson<int>(json['price']),
@@ -6947,6 +6978,7 @@ class TreatmentRow extends DataClass implements Insertable<TreatmentRow> {
       'id': serializer.toJson<int>(id),
       'uuid': serializer.toJson<String>(uuid),
       'clinicId': serializer.toJson<String>(clinicId),
+      'branchId': serializer.toJson<String?>(branchId),
       'name': serializer.toJson<String>(name),
       'category': serializer.toJson<String>(category),
       'price': serializer.toJson<int>(price),
@@ -6960,6 +6992,7 @@ class TreatmentRow extends DataClass implements Insertable<TreatmentRow> {
     int? id,
     String? uuid,
     String? clinicId,
+    Value<String?> branchId = const Value.absent(),
     String? name,
     String? category,
     int? price,
@@ -6970,6 +7003,7 @@ class TreatmentRow extends DataClass implements Insertable<TreatmentRow> {
     id: id ?? this.id,
     uuid: uuid ?? this.uuid,
     clinicId: clinicId ?? this.clinicId,
+    branchId: branchId.present ? branchId.value : this.branchId,
     name: name ?? this.name,
     category: category ?? this.category,
     price: price ?? this.price,
@@ -6982,6 +7016,7 @@ class TreatmentRow extends DataClass implements Insertable<TreatmentRow> {
       id: data.id.present ? data.id.value : this.id,
       uuid: data.uuid.present ? data.uuid.value : this.uuid,
       clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
       name: data.name.present ? data.name.value : this.name,
       category: data.category.present ? data.category.value : this.category,
       price: data.price.present ? data.price.value : this.price,
@@ -6997,6 +7032,7 @@ class TreatmentRow extends DataClass implements Insertable<TreatmentRow> {
           ..write('id: $id, ')
           ..write('uuid: $uuid, ')
           ..write('clinicId: $clinicId, ')
+          ..write('branchId: $branchId, ')
           ..write('name: $name, ')
           ..write('category: $category, ')
           ..write('price: $price, ')
@@ -7012,6 +7048,7 @@ class TreatmentRow extends DataClass implements Insertable<TreatmentRow> {
     id,
     uuid,
     clinicId,
+    branchId,
     name,
     category,
     price,
@@ -7026,6 +7063,7 @@ class TreatmentRow extends DataClass implements Insertable<TreatmentRow> {
           other.id == this.id &&
           other.uuid == this.uuid &&
           other.clinicId == this.clinicId &&
+          other.branchId == this.branchId &&
           other.name == this.name &&
           other.category == this.category &&
           other.price == this.price &&
@@ -7038,6 +7076,7 @@ class TreatmentsCompanion extends UpdateCompanion<TreatmentRow> {
   final Value<int> id;
   final Value<String> uuid;
   final Value<String> clinicId;
+  final Value<String?> branchId;
   final Value<String> name;
   final Value<String> category;
   final Value<int> price;
@@ -7048,6 +7087,7 @@ class TreatmentsCompanion extends UpdateCompanion<TreatmentRow> {
     this.id = const Value.absent(),
     this.uuid = const Value.absent(),
     this.clinicId = const Value.absent(),
+    this.branchId = const Value.absent(),
     this.name = const Value.absent(),
     this.category = const Value.absent(),
     this.price = const Value.absent(),
@@ -7059,6 +7099,7 @@ class TreatmentsCompanion extends UpdateCompanion<TreatmentRow> {
     this.id = const Value.absent(),
     required String uuid,
     required String clinicId,
+    this.branchId = const Value.absent(),
     required String name,
     required String category,
     this.price = const Value.absent(),
@@ -7073,6 +7114,7 @@ class TreatmentsCompanion extends UpdateCompanion<TreatmentRow> {
     Expression<int>? id,
     Expression<String>? uuid,
     Expression<String>? clinicId,
+    Expression<String>? branchId,
     Expression<String>? name,
     Expression<String>? category,
     Expression<int>? price,
@@ -7084,6 +7126,7 @@ class TreatmentsCompanion extends UpdateCompanion<TreatmentRow> {
       if (id != null) 'id': id,
       if (uuid != null) 'uuid': uuid,
       if (clinicId != null) 'clinic_id': clinicId,
+      if (branchId != null) 'branch_id': branchId,
       if (name != null) 'name': name,
       if (category != null) 'category': category,
       if (price != null) 'price': price,
@@ -7097,6 +7140,7 @@ class TreatmentsCompanion extends UpdateCompanion<TreatmentRow> {
     Value<int>? id,
     Value<String>? uuid,
     Value<String>? clinicId,
+    Value<String?>? branchId,
     Value<String>? name,
     Value<String>? category,
     Value<int>? price,
@@ -7108,6 +7152,7 @@ class TreatmentsCompanion extends UpdateCompanion<TreatmentRow> {
       id: id ?? this.id,
       uuid: uuid ?? this.uuid,
       clinicId: clinicId ?? this.clinicId,
+      branchId: branchId ?? this.branchId,
       name: name ?? this.name,
       category: category ?? this.category,
       price: price ?? this.price,
@@ -7128,6 +7173,9 @@ class TreatmentsCompanion extends UpdateCompanion<TreatmentRow> {
     }
     if (clinicId.present) {
       map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
@@ -7156,6 +7204,7 @@ class TreatmentsCompanion extends UpdateCompanion<TreatmentRow> {
           ..write('id: $id, ')
           ..write('uuid: $uuid, ')
           ..write('clinicId: $clinicId, ')
+          ..write('branchId: $branchId, ')
           ..write('name: $name, ')
           ..write('category: $category, ')
           ..write('price: $price, ')
@@ -12333,6 +12382,7 @@ typedef $$TreatmentsTableCreateCompanionBuilder =
       Value<int> id,
       required String uuid,
       required String clinicId,
+      Value<String?> branchId,
       required String name,
       required String category,
       Value<int> price,
@@ -12345,6 +12395,7 @@ typedef $$TreatmentsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> uuid,
       Value<String> clinicId,
+      Value<String?> branchId,
       Value<String> name,
       Value<String> category,
       Value<int> price,
@@ -12374,6 +12425,11 @@ class $$TreatmentsTableFilterComposer
 
   ColumnFilters<String> get clinicId => $composableBuilder(
     column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12432,6 +12488,11 @@ class $$TreatmentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get name => $composableBuilder(
     column: $table.name,
     builder: (column) => ColumnOrderings(column),
@@ -12480,6 +12541,9 @@ class $$TreatmentsTableAnnotationComposer
 
   GeneratedColumn<String> get clinicId =>
       $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
@@ -12534,6 +12598,7 @@ class $$TreatmentsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> uuid = const Value.absent(),
                 Value<String> clinicId = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> category = const Value.absent(),
                 Value<int> price = const Value.absent(),
@@ -12544,6 +12609,7 @@ class $$TreatmentsTableTableManager
                 id: id,
                 uuid: uuid,
                 clinicId: clinicId,
+                branchId: branchId,
                 name: name,
                 category: category,
                 price: price,
@@ -12556,6 +12622,7 @@ class $$TreatmentsTableTableManager
                 Value<int> id = const Value.absent(),
                 required String uuid,
                 required String clinicId,
+                Value<String?> branchId = const Value.absent(),
                 required String name,
                 required String category,
                 Value<int> price = const Value.absent(),
@@ -12566,6 +12633,7 @@ class $$TreatmentsTableTableManager
                 id: id,
                 uuid: uuid,
                 clinicId: clinicId,
+                branchId: branchId,
                 name: name,
                 category: category,
                 price: price,
