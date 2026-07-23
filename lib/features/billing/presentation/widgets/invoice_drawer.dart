@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/utils/pdf_output.dart';
 import 'package:printing/printing.dart';
+import 'package:is_dental/core/db/app_database.dart';
+import 'package:is_dental/features/patients/presentation/patients_controller.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../../core/theme/app_palette.dart';
@@ -161,10 +163,25 @@ class InvoiceDrawer extends ConsumerWidget {
                         onPressed: () => showPdfOutput(
                           context,
                           build: () async {
+                            final db = ref.read(appDatabaseProvider);
                             final name = await ref.read(
                               clinicNameProvider.future,
                             );
-                            return buildInvoicePdf(inv, clinicName: name);
+                            final clinicId = await db.currentClinicId() ?? '';
+                            final patient = ref.read(
+                              patientByIdProvider(inv.patientId),
+                            );
+                            final profile = await db
+                                .select(db.clinicProfile)
+                                .getSingleOrNull();
+                            return buildInvoicePdf(
+                              inv,
+                              clinicName: name,
+                              clinicId: clinicId,
+                              patientUuid: patient?.uuid ?? '',
+                              patientCode: patient?.code,
+                              clinicBranch: profile?.branch,
+                            );
                           },
                           filename: '${inv.invoiceNo}.pdf',
                         ),

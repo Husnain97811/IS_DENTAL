@@ -4,27 +4,64 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:pointycastle/export.dart';
 
+final _clinicName = 'Fast Dental Clinic';
+final _clinicCity = 'Islamabad';
+
 // Edit the license you want to issue (defaults are fine for testing):
 final licenseFields = <String, dynamic>{
-  'clinicId': 'CL-0001',
-  'clinicName': 'Smile Dental Care',
+  'clinicId': generateClinicId(_clinicName, _clinicCity),
+  'clinicName': _clinicName,
   'tier': 'premium',
   'cloudPackage': 'cloud',
   'maxBranches': 3,
   'maxUsers': 8,
   'issuedAt': DateTime.now(),
+  // 'expiresAt': DateTime.now().add(const Duration(days: -1)),
   'expiresAt': DateTime.now().add(const Duration(days: 365)),
   'machineFingerprint': 'ANY',
 };
 
+/// FAST-ISL-482913  →  <first word of name>-<city code>-<6 random digits>
+/// Run ONCE per clinic at first mint. Reuse the SAME id verbatim for renewals.
+String generateClinicId(String clinicName, String city) {
+  final slug = clinicName
+      .trim()
+      .split(RegExp(r'\s+'))
+      .first
+      .toUpperCase()
+      .replaceAll(RegExp(r'[^A-Z0-9]'), '');
+
+  const cityCodes = <String, String>{
+    'islamabad': 'ISL',
+    'rawalpindi': 'RWP',
+    'lahore': 'LHR',
+    'karachi': 'KHI',
+    'peshawar': 'PEW',
+    'faisalabad': 'FSD',
+    'multan': 'MUX',
+    'quetta': 'UET',
+  };
+  final key = city.trim().toLowerCase();
+  final code =
+      cityCodes[key] ??
+      city
+          .trim()
+          .toUpperCase()
+          .replaceAll(RegExp(r'[^A-Z0-9]'), '')
+          .padRight(3, 'X')
+          .substring(0, 3);
+
+  final rnd = Random.secure();
+  final digits = List.generate(6, (_) => rnd.nextInt(10)).join();
+  final manual_digits = 987463;
+  return '$slug-$code-$manual_digits';
+}
+
 void main() {
+  licenseFields['clinicId'] = generateClinicId(_clinicName, _clinicCity);
   final pair = _loadOrCreateKeys();
   final pub = pair.publicKey as RSAPublicKey;
   final priv = pair.privateKey as RSAPrivateKey;
-
-  print('\n>>> PASTE THIS MODULUS into license_verifier.dart (_modulus):\n');
-  print(pub.modulus);
-  print('');
 
   final payload = _canonical(licenseFields);
   final signer = RSASigner(SHA256Digest(), '0609608648016503040201')

@@ -142,16 +142,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             busy: _busy,
             onPressed: locked ? null : _submit,
           ),
-          if (kDebugMode) ...[
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: _seedTestUser,
-              child: Text(
-                'Create test login (dev)',
-                style: TextStyle(fontSize: 8.5.sp, color: d.text4),
-              ),
-            ),
-          ],
+          // if (kDebugMode) ...[
+          //   const SizedBox(height: 8),
+          //   TextButton(
+          //     onPressed: _seedTestUser,
+          //     child: Text(
+          //       'Create test login (dev)',
+          //       style: TextStyle(fontSize: 8.5.sp, color: d.text4),
+          //     ),
+          //   ),
+          // ],
         ],
       ),
     );

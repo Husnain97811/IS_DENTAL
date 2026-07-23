@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/cloud/data/cloud_service.dart';
 import 'package:is_dental/cloud/data/sync_engine.dart';
+import 'package:is_dental/core/utils/qr_payload.dart';
+import 'package:is_dental/features/settings/data/clinic_qr_pdf.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/constants/views.dart';
@@ -215,6 +219,8 @@ class _S extends ConsumerState<SettingsScreen> {
                 children: [
                   _profilePanel(d),
                   const SizedBox(height: 18),
+                  _patientAppPanel(d),
+                  const SizedBox(height: 18),
                   _appearancePanel(d, isDark),
                 ],
               );
@@ -241,6 +247,7 @@ class _S extends ConsumerState<SettingsScreen> {
                     _branchesPanel(d),
                     const SizedBox(height: 18),
                   ],
+
                   _dataPanel(d),
                 ],
               );
@@ -298,6 +305,122 @@ class _S extends ConsumerState<SettingsScreen> {
       ],
     ),
   );
+
+  Widget _patientAppPanel(DentColors d) {
+    final profile = ref.watch(clinicProfileProvider).value;
+    final clinicCode = profile?.clinicId ?? '';
+    return DentPanel(
+      title: 'Patient App',
+      subtitle: 'Clinic QR & ID for patient linking',
+      child: clinicCode.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.all(18),
+              child: Text(
+                'Clinic not set up yet.',
+                style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+              ),
+            )
+          : Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                children: [
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: d.line),
+                      ),
+                      child: QrImageView(
+                        data: buildClinicQrPayload(clinicId: clinicCode),
+                        size: 160,
+                        backgroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'CLINIC ID',
+                    style: TextStyle(
+                      color: d.text4,
+                      fontSize: 7.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: .8,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  SelectableText(
+                    clinicCode,
+                    style: TextStyle(
+                      color: d.text1,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: d.text2,
+                            side: BorderSide(color: d.line),
+                          ),
+                          onPressed: () async {
+                            await Clipboard.setData(
+                              ClipboardData(text: clinicCode),
+                            );
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Clinic ID copied.'),
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.copy_rounded, size: 15),
+                          label: const Text('Copy ID'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: d.ice,
+                            foregroundColor: AppPalette.onAccent,
+                          ),
+                          onPressed: () async {
+                            try {
+                              await Printing.layoutPdf(
+                                onLayout: (_) => buildClinicQrPdf(
+                                  clinicName: profile?.name ?? 'Clinic',
+                                  clinicCode: clinicCode,
+                                  payload: buildClinicQrPayload(
+                                    clinicId: clinicCode,
+                                  ),
+                                ),
+                              );
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Print failed: $e')),
+                                );
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.print_rounded, size: 15),
+                          label: const Text('Print'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
 
   Widget _appearancePanel(DentColors d, bool isDark) => DentPanel(
     title: 'Appearance',

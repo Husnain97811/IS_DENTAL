@@ -64,8 +64,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -250,6 +249,15 @@ class AppDatabase extends _$AppDatabase {
     },
 
     onUpgrade: (m, from, to) async {
+      if (from < 11) {
+        // Guarded: DBs created fresh while cnic was already in the table
+        // class already have the column — plain addColumn would throw.
+        try {
+          await m.addColumn(patients, patients.cnic);
+        } catch (_) {
+          /* column already exists */
+        }
+      }
       if (from < 10) {
         await m.addColumn(treatments, treatments.branchId);
       }
@@ -394,6 +402,20 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS idx_tooth_patient ON tooth_records(patient_id);',
     );
   }
+
+  /// Active patient with this CNIC (digits-only), excluding [excludeId].
+  Future<PatientRow?> findPatientByCnic(String cnic, {int? excludeId}) =>
+      (select(patients)
+            ..where(
+              (t) =>
+                  t.cnic.equals(cnic) &
+                  t.isDeleted.equals(false) &
+                  (excludeId == null
+                      ? const Constant(true)
+                      : t.id.equals(excludeId).not()),
+            )
+            ..limit(1))
+          .getSingleOrNull();
 
   Future<String?> currentClinicId() async =>
       (await select(clinicProfile).getSingleOrNull())?.clinicId;

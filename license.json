@@ -1,12 +1,12 @@
 {
-  "clinicId": "CL-0001",
-  "clinicName": "Smile Dental Care",
+  "clinicId": "FAST-ISL-987463",
+  "clinicName": "Fast Dental Clinic",
   "tier": "premium",
   "cloudPackage": "cloud",
   "maxBranches": 3,
   "maxUsers": 8,
-  "issuedAt": "2026-06-14T13:42:09.087690Z",
-  "expiresAt": "2027-06-14T13:42:09.087690Z",
+  "issuedAt": "2026-07-23T15:40:32.281481Z",
+  "expiresAt": "2027-07-23T15:40:32.281483Z",
   "machineFingerprint": "ANY",
-  "signature": "VJ0WDsZznFW3j0ubEnrwHinDivH2rLyzwhWg3aA8HrfHXFzuT1Xp6fNwEU4jSKucye1BNKmhfkNiIRWKhj8cX9uan+EpvrG6DTUkhWVssN7eWmqGMBi5lgj7D+T7E0XTrQfsA2NVm/vhnxKV9ncXey2S5YbEqyIXz3iJFlvvzgGOHpWUoOXwKHgEGzSHV4JByI1wYnTbRzbMbgH4h1O75TRyDf6Ahe4E5DkyC11Lt0WTSyb/CSaZb/91RIaAmqiTvBZXQbbq5Nuv3f32v4jI32hYFmoMluejtxZcJmcoKmy4KQ4zBuhO9Zrr1OEol1rA/h9DKhU0kbcbwvdNIEexXg=="
+  "signature": "kXZroQpdtb+ExRbaW6osKmtd+GQxdFtBelVnW2A6saOLrQCH0hBs1m3rOL9KpLHm7nXBGxkYnY4KyuHdQ+Kt05f35srYKodDcx/0xpDsfp1XqGmPYLxpajQkznBjeDDDn1XhL3cx+IUkySFuRT9VuZHyUvAv9MjvIpGb/z+alfpaxhhFtDyPsB6NIJ8Mk0v0k4GxBQ0Hb5vxwX5dO6UJdApIdRDspKlmKWmTKSEZPXfatug+TLjyLmXKYteYDeNB89BbabDBvL1p3paI59FXp/vZcnyPuTeI8MoL37f+EmObqby/eR4jXJ4/KPfuBxoD+5Gcy+V1u+Gq3lhUpbkkmw=="
 }

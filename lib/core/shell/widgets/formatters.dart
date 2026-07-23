@@ -24,3 +24,15 @@ class CnicInputFormatter extends TextInputFormatter {
     );
   }
 }
+
+/// 13 digits → 35202-1234567-1 (same dash positions as CnicInputFormatter).
+String formatCnicDashed(String raw) {
+  final digits = raw.replaceAll(RegExp(r'\D'), '');
+  final capped = digits.length > 13 ? digits.substring(0, 13) : digits;
+  final buf = StringBuffer();
+  for (var i = 0; i < capped.length; i++) {
+    if (i == 5 || i == 12) buf.write('-');
+    buf.write(capped[i]);
+  }
+  return buf.toString();
+}

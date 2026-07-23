@@ -64,6 +64,7 @@ dependencies:
   three_js: ^0.3.0
   sqlite3: ^3.5.0
   sqlite3_flutter_libs: ^0.6.0+eol
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

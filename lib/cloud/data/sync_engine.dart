@@ -90,6 +90,7 @@ class SyncEngine {
             'gender': p.gender,
             'age': p.age,
             'phone': p.phone,
+            'cnic': p.cnic,
             'allergies': p.allergies,
             'insurance': p.insurance,
             'last_visit': _iso(p.lastVisit),
@@ -124,6 +125,7 @@ class SyncEngine {
               gender: Value(r['gender'] ?? 'female'),
               age: Value(r['age'] ?? 0),
               phone: Value(r['phone'] ?? ''),
+              cnic: Value(r['cnic'] ?? ''),
               allergies: Value(r['allergies']),
               insurance: Value(r['insurance']),
               lastVisit: Value(

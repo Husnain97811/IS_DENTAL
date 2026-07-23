@@ -53,7 +53,7 @@ if (userErr && !dup) return json({ ok: false, error: userErr.message }, 400)
 // dup => a previous attempt already created this account; fall through and finish the clinic row.
 
 const { error: clinicErr } = await admin.from('clinics').upsert({
-  id: license.clinicId, name: license.clinicName, tier: license.tier, status: 'active', expires_at: license.expiresAt,
+  id: license.clinicId, name: license.clinicName, tier: license.tier, expires_at: license.expiresAt,
 })
 if (clinicErr) return json({ ok: false, error: clinicErr.message }, 400)
 return json({ ok: true })

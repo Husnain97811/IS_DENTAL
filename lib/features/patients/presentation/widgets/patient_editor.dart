@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/shell/widgets/formatters.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../../core/constants/views.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/dent_colors.dart';
 import '../../../../core/widgets/dent_field.dart';
@@ -35,6 +36,7 @@ class _S extends ConsumerState<PatientEditorDialog> {
   late Gender _gender;
   late PatientStatus _status;
   bool _busy = false;
+  String? _cnicError;
 
   @override
   void initState() {
@@ -45,7 +47,7 @@ class _S extends ConsumerState<PatientEditorDialog> {
       text: e?.code ?? 'PT-${10000 + Random().nextInt(89999)}',
     );
     _phone = TextEditingController(text: e?.phone ?? '');
-    _cnic = TextEditingController(text: e?.cnic ?? '');
+    _cnic = TextEditingController(text: formatCnicDashed(e?.cnic ?? ''));
     _age = TextEditingController(text: e == null ? '' : '${e.age}');
     _allergies = TextEditingController(text: e?.allergies ?? '');
     _insurance = TextEditingController(text: e?.insurance ?? '');
@@ -62,6 +64,35 @@ class _S extends ConsumerState<PatientEditorDialog> {
 
   Future<void> _save() async {
     if (_name.text.trim().isEmpty) return;
+    final cnicDigits = _cnic.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cnicDigits.length != 13) {
+      setState(() => _cnicError = 'CNIC must be 13 digits');
+      return;
+    }
+    if (!RegExp(r'^[1-7]').hasMatch(cnicDigits)) {
+      setState(() => _cnicError = 'Invalid CNIC (must start 1–7)');
+      return;
+    }
+    setState(() => _cnicError = null);
+
+    // Soft duplicate warning (same CNIC on another active patient)
+    final dup = await ref
+        .read(appDatabaseProvider)
+        .findPatientByCnic(cnicDigits, excludeId: widget.existing?.id);
+    if (dup != null && mounted) {
+      final proceed = await showDentDialog(
+        context,
+        kind: DentDialogKind.warning,
+        title: 'Duplicate CNIC',
+        message:
+            'This CNIC is already on "${dup.fullName}" (${dup.code}). '
+            'Save anyway?',
+        confirmLabel: 'Save anyway',
+        cancelLabel: 'Cancel',
+      );
+      if (proceed != true) return;
+    }
+    if (!mounted) return;
     setState(() => _busy = true);
     final e = widget.existing;
     await ref
@@ -76,7 +107,7 @@ class _S extends ConsumerState<PatientEditorDialog> {
             gender: _gender,
             age: int.tryParse(_age.text) ?? 0,
             phone: _phone.text.trim(),
-            cnic: _cnic.text.trim(),
+            cnic: cnicDigits,
             allergies: _allergies.text.trim().isEmpty
                 ? null
                 : _allergies.text.trim(),
@@ -137,14 +168,30 @@ class _S extends ConsumerState<PatientEditorDialog> {
                   // ),
                   // const SizedBox(width: 12),
                   Expanded(
-                    child: DentField(
-                      label: 'CNIC',
-                      controller: _cnic,
-                      hint: '35202-1234567-1',
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        CnicInputFormatter(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        DentField(
+                          label: 'CNIC',
+                          controller: _cnic,
+                          hint: '35202-1234567-1',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            CnicInputFormatter(),
+                          ],
+                        ),
+                        if (_cnicError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              _cnicError!,
+                              style: const TextStyle(
+                                color: Color(0xFFBE123C),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
