@@ -9,6 +9,7 @@ import '../../branches/presentation/branch_controller.dart';
 import 'package:flutter/material.dart' show TimeOfDay;
 import 'package:drift/drift.dart'
     show OrderingTerm, OrderingMode, BooleanExpressionOperators, Constant;
+import '../../branches/presentation/branch_controller.dart';
 
 // const kDentists = ['Dr. Ayesha Khan', 'Dr. Bilal Ahmed', 'Dr. Sara Malik'];
 const kProcedures = [
@@ -98,9 +99,20 @@ class ClinicSchedule {
   );
 }
 
-final clinicScheduleProvider = StateProvider<ClinicSchedule>(
-  (_) => const ClinicSchedule(),
-);
+final clinicScheduleProvider = Provider<ClinicSchedule>((ref) {
+  final branches = ref.watch(branchesStreamProvider).value ?? const [];
+  final active = ref.watch(activeBranchProvider);
+  if (branches.isEmpty) return const ClinicSchedule();
+  // Owner "all branches" (active null) → use primary branch's hours for the grid.
+  final b = active == null
+      ? (branches.where((x) => x.isPrimary).firstOrNull ?? branches.first)
+      : (branches.where((x) => x.uuid == active).firstOrNull ?? branches.first);
+  return ClinicSchedule(
+    start: TimeOfDay(hour: b.openMinutes ~/ 60, minute: b.openMinutes % 60),
+    end: TimeOfDay(hour: b.closeMinutes ~/ 60, minute: b.closeMinutes % 60),
+    slotMinutes: b.slotMinutes,
+  );
+});
 
 /// True only if the two time ranges actually overlap.
 /// Back-to-back ranges (one ends exactly when the next starts) do NOT overlap.
@@ -137,6 +149,20 @@ final daySlotsProvider = Provider.autoDispose
       final close = at(sched.end);
       final step = Duration(minutes: sched.slotMinutes);
       final slots = <({DateTime time, bool busy})>[];
+
+      // Closed-day check (weekday 1=Mon..7=Sun) from the active branch.
+      final branches = ref.watch(branchesStreamProvider).value ?? const [];
+      final active = ref.watch(activeBranchProvider);
+      final b = active == null
+          ? (branches.where((x) => x.isPrimary).firstOrNull ??
+                (branches.isEmpty ? null : branches.first))
+          : branches.where((x) => x.uuid == active).firstOrNull;
+      final closed = (b?.closedDays ?? '')
+          .split(',')
+          .where((s) => s.trim().isNotEmpty)
+          .map((s) => int.tryParse(s.trim()))
+          .toSet();
+      if (closed.contains(day.weekday)) return const [];
 
       for (var t = open; !t.add(step).isAfter(close); t = t.add(step)) {
         final slotEnd = t.add(step);

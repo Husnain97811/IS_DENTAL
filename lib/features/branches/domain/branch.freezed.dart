@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Branch {
 
- int get id; String get uuid; String get name; String get location; bool get isPrimary;
+ int get id; String get uuid; String get name; String get location; bool get isPrimary; int get openMinutes; int get closeMinutes; int get slotMinutes; String get closedDays;
 /// Create a copy of Branch
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $BranchCopyWith<Branch> get copyWith => _$BranchCopyWithImpl<Branch>(this as Bra
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Branch&&(identical(other.id, id) || other.id == id)&&(identical(other.uuid, uuid) || other.uuid == uuid)&&(identical(other.name, name) || other.name == name)&&(identical(other.location, location) || other.location == location)&&(identical(other.isPrimary, isPrimary) || other.isPrimary == isPrimary));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Branch&&(identical(other.id, id) || other.id == id)&&(identical(other.uuid, uuid) || other.uuid == uuid)&&(identical(other.name, name) || other.name == name)&&(identical(other.location, location) || other.location == location)&&(identical(other.isPrimary, isPrimary) || other.isPrimary == isPrimary)&&(identical(other.openMinutes, openMinutes) || other.openMinutes == openMinutes)&&(identical(other.closeMinutes, closeMinutes) || other.closeMinutes == closeMinutes)&&(identical(other.slotMinutes, slotMinutes) || other.slotMinutes == slotMinutes)&&(identical(other.closedDays, closedDays) || other.closedDays == closedDays));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,uuid,name,location,isPrimary);
+int get hashCode => Object.hash(runtimeType,id,uuid,name,location,isPrimary,openMinutes,closeMinutes,slotMinutes,closedDays);
 
 @override
 String toString() {
-  return 'Branch(id: $id, uuid: $uuid, name: $name, location: $location, isPrimary: $isPrimary)';
+  return 'Branch(id: $id, uuid: $uuid, name: $name, location: $location, isPrimary: $isPrimary, openMinutes: $openMinutes, closeMinutes: $closeMinutes, slotMinutes: $slotMinutes, closedDays: $closedDays)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $BranchCopyWith<$Res>  {
   factory $BranchCopyWith(Branch value, $Res Function(Branch) _then) = _$BranchCopyWithImpl;
 @useResult
 $Res call({
- int id, String uuid, String name, String location, bool isPrimary
+ int id, String uuid, String name, String location, bool isPrimary, int openMinutes, int closeMinutes, int slotMinutes, String closedDays
 });
 
 
@@ -62,14 +62,18 @@ class _$BranchCopyWithImpl<$Res>
 
 /// Create a copy of Branch
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? uuid = null,Object? name = null,Object? location = null,Object? isPrimary = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? uuid = null,Object? name = null,Object? location = null,Object? isPrimary = null,Object? openMinutes = null,Object? closeMinutes = null,Object? slotMinutes = null,Object? closedDays = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,uuid: null == uuid ? _self.uuid : uuid // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,location: null == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
 as String,isPrimary: null == isPrimary ? _self.isPrimary : isPrimary // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,openMinutes: null == openMinutes ? _self.openMinutes : openMinutes // ignore: cast_nullable_to_non_nullable
+as int,closeMinutes: null == closeMinutes ? _self.closeMinutes : closeMinutes // ignore: cast_nullable_to_non_nullable
+as int,slotMinutes: null == slotMinutes ? _self.slotMinutes : slotMinutes // ignore: cast_nullable_to_non_nullable
+as int,closedDays: null == closedDays ? _self.closedDays : closedDays // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -154,10 +158,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String uuid,  String name,  String location,  bool isPrimary)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String uuid,  String name,  String location,  bool isPrimary,  int openMinutes,  int closeMinutes,  int slotMinutes,  String closedDays)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Branch() when $default != null:
-return $default(_that.id,_that.uuid,_that.name,_that.location,_that.isPrimary);case _:
+return $default(_that.id,_that.uuid,_that.name,_that.location,_that.isPrimary,_that.openMinutes,_that.closeMinutes,_that.slotMinutes,_that.closedDays);case _:
   return orElse();
 
 }
@@ -175,10 +179,10 @@ return $default(_that.id,_that.uuid,_that.name,_that.location,_that.isPrimary);c
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String uuid,  String name,  String location,  bool isPrimary)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String uuid,  String name,  String location,  bool isPrimary,  int openMinutes,  int closeMinutes,  int slotMinutes,  String closedDays)  $default,) {final _that = this;
 switch (_that) {
 case _Branch():
-return $default(_that.id,_that.uuid,_that.name,_that.location,_that.isPrimary);case _:
+return $default(_that.id,_that.uuid,_that.name,_that.location,_that.isPrimary,_that.openMinutes,_that.closeMinutes,_that.slotMinutes,_that.closedDays);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -195,10 +199,10 @@ return $default(_that.id,_that.uuid,_that.name,_that.location,_that.isPrimary);c
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String uuid,  String name,  String location,  bool isPrimary)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String uuid,  String name,  String location,  bool isPrimary,  int openMinutes,  int closeMinutes,  int slotMinutes,  String closedDays)?  $default,) {final _that = this;
 switch (_that) {
 case _Branch() when $default != null:
-return $default(_that.id,_that.uuid,_that.name,_that.location,_that.isPrimary);case _:
+return $default(_that.id,_that.uuid,_that.name,_that.location,_that.isPrimary,_that.openMinutes,_that.closeMinutes,_that.slotMinutes,_that.closedDays);case _:
   return null;
 
 }
@@ -210,7 +214,7 @@ return $default(_that.id,_that.uuid,_that.name,_that.location,_that.isPrimary);c
 
 
 class _Branch implements Branch {
-  const _Branch({required this.id, required this.uuid, required this.name, this.location = '', this.isPrimary = false});
+  const _Branch({required this.id, required this.uuid, required this.name, this.location = '', this.isPrimary = false, this.openMinutes = 600, this.closeMinutes = 1020, this.slotMinutes = 20, this.closedDays = ''});
   
 
 @override final  int id;
@@ -218,6 +222,10 @@ class _Branch implements Branch {
 @override final  String name;
 @override@JsonKey() final  String location;
 @override@JsonKey() final  bool isPrimary;
+@override@JsonKey() final  int openMinutes;
+@override@JsonKey() final  int closeMinutes;
+@override@JsonKey() final  int slotMinutes;
+@override@JsonKey() final  String closedDays;
 
 /// Create a copy of Branch
 /// with the given fields replaced by the non-null parameter values.
@@ -229,16 +237,16 @@ _$BranchCopyWith<_Branch> get copyWith => __$BranchCopyWithImpl<_Branch>(this, _
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Branch&&(identical(other.id, id) || other.id == id)&&(identical(other.uuid, uuid) || other.uuid == uuid)&&(identical(other.name, name) || other.name == name)&&(identical(other.location, location) || other.location == location)&&(identical(other.isPrimary, isPrimary) || other.isPrimary == isPrimary));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Branch&&(identical(other.id, id) || other.id == id)&&(identical(other.uuid, uuid) || other.uuid == uuid)&&(identical(other.name, name) || other.name == name)&&(identical(other.location, location) || other.location == location)&&(identical(other.isPrimary, isPrimary) || other.isPrimary == isPrimary)&&(identical(other.openMinutes, openMinutes) || other.openMinutes == openMinutes)&&(identical(other.closeMinutes, closeMinutes) || other.closeMinutes == closeMinutes)&&(identical(other.slotMinutes, slotMinutes) || other.slotMinutes == slotMinutes)&&(identical(other.closedDays, closedDays) || other.closedDays == closedDays));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,uuid,name,location,isPrimary);
+int get hashCode => Object.hash(runtimeType,id,uuid,name,location,isPrimary,openMinutes,closeMinutes,slotMinutes,closedDays);
 
 @override
 String toString() {
-  return 'Branch(id: $id, uuid: $uuid, name: $name, location: $location, isPrimary: $isPrimary)';
+  return 'Branch(id: $id, uuid: $uuid, name: $name, location: $location, isPrimary: $isPrimary, openMinutes: $openMinutes, closeMinutes: $closeMinutes, slotMinutes: $slotMinutes, closedDays: $closedDays)';
 }
 
 
@@ -249,7 +257,7 @@ abstract mixin class _$BranchCopyWith<$Res> implements $BranchCopyWith<$Res> {
   factory _$BranchCopyWith(_Branch value, $Res Function(_Branch) _then) = __$BranchCopyWithImpl;
 @override @useResult
 $Res call({
- int id, String uuid, String name, String location, bool isPrimary
+ int id, String uuid, String name, String location, bool isPrimary, int openMinutes, int closeMinutes, int slotMinutes, String closedDays
 });
 
 
@@ -266,14 +274,18 @@ class __$BranchCopyWithImpl<$Res>
 
 /// Create a copy of Branch
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? uuid = null,Object? name = null,Object? location = null,Object? isPrimary = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? uuid = null,Object? name = null,Object? location = null,Object? isPrimary = null,Object? openMinutes = null,Object? closeMinutes = null,Object? slotMinutes = null,Object? closedDays = null,}) {
   return _then(_Branch(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,uuid: null == uuid ? _self.uuid : uuid // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,location: null == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
 as String,isPrimary: null == isPrimary ? _self.isPrimary : isPrimary // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,openMinutes: null == openMinutes ? _self.openMinutes : openMinutes // ignore: cast_nullable_to_non_nullable
+as int,closeMinutes: null == closeMinutes ? _self.closeMinutes : closeMinutes // ignore: cast_nullable_to_non_nullable
+as int,slotMinutes: null == slotMinutes ? _self.slotMinutes : slotMinutes // ignore: cast_nullable_to_non_nullable
+as int,closedDays: null == closedDays ? _self.closedDays : closedDays // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

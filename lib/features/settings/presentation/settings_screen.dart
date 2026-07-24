@@ -7,7 +7,8 @@ import 'package:is_dental/core/utils/qr_payload.dart';
 import 'package:is_dental/features/settings/data/clinic_qr_pdf.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:sizer/sizer.dart';
-
+import '../../appointments/presentation/appointments_controller.dart'; // clinicScheduleProvider not needed, but branches util
+import '../../branches/domain/branch.dart';
 import '../../../core/constants/views.dart';
 import '../../../licensing/presentation/license_providers.dart';
 import '../../branches/domain/branch.dart';
@@ -247,6 +248,8 @@ class _S extends ConsumerState<SettingsScreen> {
                     _branchesPanel(d),
                     const SizedBox(height: 18),
                   ],
+                  _hoursPanel(d),
+                  const SizedBox(height: 18),
 
                   _dataPanel(d),
                 ],
@@ -266,6 +269,347 @@ class _S extends ConsumerState<SettingsScreen> {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _hoursPanel(DentColors d) {
+    final session = ref.watch(authControllerProvider);
+    final role = session?.role;
+    final isOwner = role == AppRole.owner;
+    final branches =
+        ref.watch(branchesStreamProvider).value ?? const <Branch>[];
+
+    // Which branches this user may SEE:
+    //  owner → all; others → only their own branch.
+    final visible = isOwner
+        ? branches
+        : branches.where((b) => b.uuid == session?.branchId).toList();
+
+    if (visible.isEmpty) {
+      return DentPanel(
+        title: 'Clinic Hours',
+        subtitle: 'Working hours & days per branch',
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Text(
+            'No branch assigned.',
+            style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+          ),
+        ),
+      );
+    }
+
+    String hhmm(int mins) =>
+        '${(mins ~/ 60).toString().padLeft(2, '0')}:${(mins % 60).toString().padLeft(2, '0')}';
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    return DentPanel(
+      title: 'Clinic Hours',
+      subtitle: 'Working hours & days per branch',
+      child: Column(
+        children: [
+          for (final b in visible)
+            Builder(
+              builder: (_) {
+                // Editable if owner, or admin of THIS branch.
+                final canEdit =
+                    isOwner ||
+                    (role == AppRole.admin && session?.branchId == b.uuid);
+                final closed = b.closedDays
+                    .split(',')
+                    .where((s) => s.trim().isNotEmpty)
+                    .map((s) => int.tryParse(s.trim()))
+                    .whereType<int>()
+                    .toSet();
+                final openDaysLabel = [
+                  for (var i = 1; i <= 7; i++)
+                    if (!closed.contains(i)) dayNames[i - 1],
+                ].join(' ');
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border(bottom: BorderSide(color: d.line)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.schedule_rounded, size: 18, color: d.ice),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              b.name,
+                              style: TextStyle(
+                                color: d.text1,
+                                fontSize: 10.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              '${hhmm(b.openMinutes)}–${hhmm(b.closeMinutes)} · ${b.slotMinutes}min · ${openDaysLabel.isEmpty ? "no open days" : openDaysLabel}',
+                              style: TextStyle(color: d.text3, fontSize: 8.sp),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (canEdit)
+                        IconButton(
+                          icon: Icon(
+                            Icons.edit_outlined,
+                            size: 16,
+                            color: d.text4,
+                          ),
+                          onPressed: () => _showHoursEditor(d, b),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showHoursEditor(DentColors d, Branch b) async {
+    int open = b.openMinutes, close = b.closeMinutes, slot = b.slotMinutes;
+    final closed = b.closedDays
+        .split(',')
+        .where((s) => s.trim().isNotEmpty)
+        .map((s) => int.tryParse(s.trim()))
+        .whereType<int>()
+        .toSet();
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) {
+          Future<void> pick(bool isOpen) async {
+            final init = isOpen ? open : close;
+            final t = await showTimePicker(
+              context: ctx,
+              initialTime: TimeOfDay(hour: init ~/ 60, minute: init % 60),
+            );
+            if (t != null) {
+              setLocal(() {
+                if (isOpen) {
+                  open = t.hour * 60 + t.minute;
+                } else {
+                  close = t.hour * 60 + t.minute;
+                }
+              });
+            }
+          }
+
+          Widget timeBtn(String label, int mins, bool isOpen) => Expanded(
+            child: InkWell(
+              onTap: () => pick(isOpen),
+              borderRadius: BorderRadius.circular(11),
+              child: Container(
+                height: 46,
+                padding: const EdgeInsets.symmetric(horizontal: 13),
+                decoration: BoxDecoration(
+                  color: d.surface2,
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(color: d.line),
+                ),
+                child: Row(
+                  children: [
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(color: d.text4, fontSize: 7.sp),
+                        ),
+                        Text(
+                          '${(mins ~/ 60).toString().padLeft(2, '0')}:${(mins % 60).toString().padLeft(2, '0')}',
+                          style: TextStyle(
+                            color: d.text1,
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    Icon(Icons.access_time_rounded, size: 15, color: d.text4),
+                  ],
+                ),
+              ),
+            ),
+          );
+
+          return Dialog(
+            backgroundColor: d.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Hours · ${b.name}',
+                      style: Theme.of(ctx).textTheme.headlineSmall,
+                    ),
+                    SizedBox(height: 2.h),
+                    Row(
+                      children: [
+                        timeBtn('OPEN', open, true),
+                        const SizedBox(width: 12),
+                        timeBtn('CLOSE', close, false),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'SLOT LENGTH',
+                      style: TextStyle(
+                        color: d.text4,
+                        fontSize: 7.sp,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: .5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      height: 46,
+                      padding: const EdgeInsets.symmetric(horizontal: 13),
+                      decoration: BoxDecoration(
+                        color: d.surface2,
+                        borderRadius: BorderRadius.circular(11),
+                        border: Border.all(color: d.line),
+                      ),
+                      child: DropdownButton<int>(
+                        value: slot,
+                        isExpanded: true,
+                        underline: const SizedBox(),
+                        items: [
+                          for (final m in const [10, 15, 20, 30, 45, 60])
+                            DropdownMenuItem(
+                              value: m,
+                              child: Text(
+                                '$m min',
+                                style: TextStyle(
+                                  fontSize: 9.sp,
+                                  color: d.text1,
+                                ),
+                              ),
+                            ),
+                        ],
+                        onChanged: (v) => setLocal(() => slot = v ?? slot),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'CLOSED DAYS',
+                      style: TextStyle(
+                        color: d.text4,
+                        fontSize: 7.sp,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: .5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (var i = 1; i <= 7; i++)
+                          GestureDetector(
+                            onTap: () => setLocal(() {
+                              if (closed.contains(i)) {
+                                closed.remove(i);
+                              } else {
+                                closed.add(i);
+                              }
+                            }),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: closed.contains(i)
+                                    ? d.alert.withValues(alpha: .12)
+                                    : d.surface2,
+                                borderRadius: BorderRadius.circular(9),
+                                border: Border.all(
+                                  color: closed.contains(i)
+                                      ? d.alert.withValues(alpha: .4)
+                                      : d.line,
+                                ),
+                              ),
+                              child: Text(
+                                dayNames[i - 1],
+                                style: TextStyle(
+                                  color: closed.contains(i) ? d.alert : d.text2,
+                                  fontSize: 8.5.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 2.4.h),
+                    Row(
+                      children: [
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: d.ice,
+                            foregroundColor: AppPalette.onAccent,
+                          ),
+                          onPressed: () async {
+                            if (close <= open) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Close time must be after open time.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            final csv = (closed.toList()..sort()).join(',');
+                            await ref
+                                .read(appDatabaseProvider)
+                                .updateBranchHours(
+                                  id: b.id,
+                                  openMinutes: open,
+                                  closeMinutes: close,
+                                  slotMinutes: slot,
+                                  closedDays: csv,
+                                );
+                            if (ctx.mounted) Navigator.pop(ctx);
+                          },
+                          child: const Text('Save'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

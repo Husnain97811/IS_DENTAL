@@ -26,6 +26,10 @@ class BranchRepositoryImpl implements BranchRepository {
                     name: r.name,
                     location: r.location,
                     isPrimary: r.isPrimary,
+                    openMinutes: r.openMinutes,
+                    closeMinutes: r.closeMinutes,
+                    slotMinutes: r.slotMinutes,
+                    closedDays: r.closedDays,
                   ),
                 )
                 .toList(),
@@ -44,6 +48,18 @@ class BranchRepositoryImpl implements BranchRepository {
             name: Value(b.name),
             location: Value(b.location),
             isPrimary: Value(b.isPrimary),
+            // Only set hours on CREATE (id==0). On edit, leave them alone so
+            // updateBranchHours() stays the source of truth.
+            openMinutes: b.id == 0
+                ? Value(b.openMinutes)
+                : const Value.absent(),
+            closeMinutes: b.id == 0
+                ? Value(b.closeMinutes)
+                : const Value.absent(),
+            slotMinutes: b.id == 0
+                ? Value(b.slotMinutes)
+                : const Value.absent(),
+            closedDays: b.id == 0 ? Value(b.closedDays) : const Value.absent(),
             updatedAt: Value(DateTime.now()),
           ),
         );

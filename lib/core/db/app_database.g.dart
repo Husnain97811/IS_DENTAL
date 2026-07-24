@@ -7292,6 +7292,54 @@ class $BranchesTable extends Branches
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _openMinutesMeta = const VerificationMeta(
+    'openMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> openMinutes = GeneratedColumn<int>(
+    'open_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(600),
+  );
+  static const VerificationMeta _closeMinutesMeta = const VerificationMeta(
+    'closeMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> closeMinutes = GeneratedColumn<int>(
+    'close_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1020),
+  );
+  static const VerificationMeta _slotMinutesMeta = const VerificationMeta(
+    'slotMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> slotMinutes = GeneratedColumn<int>(
+    'slot_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(20),
+  );
+  static const VerificationMeta _closedDaysMeta = const VerificationMeta(
+    'closedDays',
+  );
+  @override
+  late final GeneratedColumn<String> closedDays = GeneratedColumn<String>(
+    'closed_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _isDeletedMeta = const VerificationMeta(
     'isDeleted',
   );
@@ -7327,6 +7375,10 @@ class $BranchesTable extends Branches
     name,
     location,
     isPrimary,
+    openMinutes,
+    closeMinutes,
+    slotMinutes,
+    closedDays,
     isDeleted,
     updatedAt,
   ];
@@ -7381,6 +7433,39 @@ class $BranchesTable extends Branches
         isPrimary.isAcceptableOrUnknown(data['is_primary']!, _isPrimaryMeta),
       );
     }
+    if (data.containsKey('open_minutes')) {
+      context.handle(
+        _openMinutesMeta,
+        openMinutes.isAcceptableOrUnknown(
+          data['open_minutes']!,
+          _openMinutesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('close_minutes')) {
+      context.handle(
+        _closeMinutesMeta,
+        closeMinutes.isAcceptableOrUnknown(
+          data['close_minutes']!,
+          _closeMinutesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('slot_minutes')) {
+      context.handle(
+        _slotMinutesMeta,
+        slotMinutes.isAcceptableOrUnknown(
+          data['slot_minutes']!,
+          _slotMinutesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('closed_days')) {
+      context.handle(
+        _closedDaysMeta,
+        closedDays.isAcceptableOrUnknown(data['closed_days']!, _closedDaysMeta),
+      );
+    }
     if (data.containsKey('is_deleted')) {
       context.handle(
         _isDeletedMeta,
@@ -7426,6 +7511,22 @@ class $BranchesTable extends Branches
         DriftSqlType.bool,
         data['${effectivePrefix}is_primary'],
       )!,
+      openMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}open_minutes'],
+      )!,
+      closeMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}close_minutes'],
+      )!,
+      slotMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}slot_minutes'],
+      )!,
+      closedDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}closed_days'],
+      )!,
       isDeleted: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_deleted'],
@@ -7450,6 +7551,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
   final String name;
   final String location;
   final bool isPrimary;
+  final int openMinutes;
+  final int closeMinutes;
+  final int slotMinutes;
+  final String closedDays;
   final bool isDeleted;
   final DateTime updatedAt;
   const BranchRow({
@@ -7459,6 +7564,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     required this.name,
     required this.location,
     required this.isPrimary,
+    required this.openMinutes,
+    required this.closeMinutes,
+    required this.slotMinutes,
+    required this.closedDays,
     required this.isDeleted,
     required this.updatedAt,
   });
@@ -7471,6 +7580,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     map['name'] = Variable<String>(name);
     map['location'] = Variable<String>(location);
     map['is_primary'] = Variable<bool>(isPrimary);
+    map['open_minutes'] = Variable<int>(openMinutes);
+    map['close_minutes'] = Variable<int>(closeMinutes);
+    map['slot_minutes'] = Variable<int>(slotMinutes);
+    map['closed_days'] = Variable<String>(closedDays);
     map['is_deleted'] = Variable<bool>(isDeleted);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -7484,6 +7597,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       name: Value(name),
       location: Value(location),
       isPrimary: Value(isPrimary),
+      openMinutes: Value(openMinutes),
+      closeMinutes: Value(closeMinutes),
+      slotMinutes: Value(slotMinutes),
+      closedDays: Value(closedDays),
       isDeleted: Value(isDeleted),
       updatedAt: Value(updatedAt),
     );
@@ -7501,6 +7618,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       name: serializer.fromJson<String>(json['name']),
       location: serializer.fromJson<String>(json['location']),
       isPrimary: serializer.fromJson<bool>(json['isPrimary']),
+      openMinutes: serializer.fromJson<int>(json['openMinutes']),
+      closeMinutes: serializer.fromJson<int>(json['closeMinutes']),
+      slotMinutes: serializer.fromJson<int>(json['slotMinutes']),
+      closedDays: serializer.fromJson<String>(json['closedDays']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -7515,6 +7636,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       'name': serializer.toJson<String>(name),
       'location': serializer.toJson<String>(location),
       'isPrimary': serializer.toJson<bool>(isPrimary),
+      'openMinutes': serializer.toJson<int>(openMinutes),
+      'closeMinutes': serializer.toJson<int>(closeMinutes),
+      'slotMinutes': serializer.toJson<int>(slotMinutes),
+      'closedDays': serializer.toJson<String>(closedDays),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -7527,6 +7652,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     String? name,
     String? location,
     bool? isPrimary,
+    int? openMinutes,
+    int? closeMinutes,
+    int? slotMinutes,
+    String? closedDays,
     bool? isDeleted,
     DateTime? updatedAt,
   }) => BranchRow(
@@ -7536,6 +7665,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     name: name ?? this.name,
     location: location ?? this.location,
     isPrimary: isPrimary ?? this.isPrimary,
+    openMinutes: openMinutes ?? this.openMinutes,
+    closeMinutes: closeMinutes ?? this.closeMinutes,
+    slotMinutes: slotMinutes ?? this.slotMinutes,
+    closedDays: closedDays ?? this.closedDays,
     isDeleted: isDeleted ?? this.isDeleted,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -7547,6 +7680,18 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       name: data.name.present ? data.name.value : this.name,
       location: data.location.present ? data.location.value : this.location,
       isPrimary: data.isPrimary.present ? data.isPrimary.value : this.isPrimary,
+      openMinutes: data.openMinutes.present
+          ? data.openMinutes.value
+          : this.openMinutes,
+      closeMinutes: data.closeMinutes.present
+          ? data.closeMinutes.value
+          : this.closeMinutes,
+      slotMinutes: data.slotMinutes.present
+          ? data.slotMinutes.value
+          : this.slotMinutes,
+      closedDays: data.closedDays.present
+          ? data.closedDays.value
+          : this.closedDays,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -7561,6 +7706,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
           ..write('name: $name, ')
           ..write('location: $location, ')
           ..write('isPrimary: $isPrimary, ')
+          ..write('openMinutes: $openMinutes, ')
+          ..write('closeMinutes: $closeMinutes, ')
+          ..write('slotMinutes: $slotMinutes, ')
+          ..write('closedDays: $closedDays, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -7575,6 +7724,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     name,
     location,
     isPrimary,
+    openMinutes,
+    closeMinutes,
+    slotMinutes,
+    closedDays,
     isDeleted,
     updatedAt,
   );
@@ -7588,6 +7741,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
           other.name == this.name &&
           other.location == this.location &&
           other.isPrimary == this.isPrimary &&
+          other.openMinutes == this.openMinutes &&
+          other.closeMinutes == this.closeMinutes &&
+          other.slotMinutes == this.slotMinutes &&
+          other.closedDays == this.closedDays &&
           other.isDeleted == this.isDeleted &&
           other.updatedAt == this.updatedAt);
 }
@@ -7599,6 +7756,10 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
   final Value<String> name;
   final Value<String> location;
   final Value<bool> isPrimary;
+  final Value<int> openMinutes;
+  final Value<int> closeMinutes;
+  final Value<int> slotMinutes;
+  final Value<String> closedDays;
   final Value<bool> isDeleted;
   final Value<DateTime> updatedAt;
   const BranchesCompanion({
@@ -7608,6 +7769,10 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     this.name = const Value.absent(),
     this.location = const Value.absent(),
     this.isPrimary = const Value.absent(),
+    this.openMinutes = const Value.absent(),
+    this.closeMinutes = const Value.absent(),
+    this.slotMinutes = const Value.absent(),
+    this.closedDays = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -7618,6 +7783,10 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     required String name,
     this.location = const Value.absent(),
     this.isPrimary = const Value.absent(),
+    this.openMinutes = const Value.absent(),
+    this.closeMinutes = const Value.absent(),
+    this.slotMinutes = const Value.absent(),
+    this.closedDays = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : uuid = Value(uuid),
@@ -7630,6 +7799,10 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     Expression<String>? name,
     Expression<String>? location,
     Expression<bool>? isPrimary,
+    Expression<int>? openMinutes,
+    Expression<int>? closeMinutes,
+    Expression<int>? slotMinutes,
+    Expression<String>? closedDays,
     Expression<bool>? isDeleted,
     Expression<DateTime>? updatedAt,
   }) {
@@ -7640,6 +7813,10 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
       if (name != null) 'name': name,
       if (location != null) 'location': location,
       if (isPrimary != null) 'is_primary': isPrimary,
+      if (openMinutes != null) 'open_minutes': openMinutes,
+      if (closeMinutes != null) 'close_minutes': closeMinutes,
+      if (slotMinutes != null) 'slot_minutes': slotMinutes,
+      if (closedDays != null) 'closed_days': closedDays,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -7652,6 +7829,10 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     Value<String>? name,
     Value<String>? location,
     Value<bool>? isPrimary,
+    Value<int>? openMinutes,
+    Value<int>? closeMinutes,
+    Value<int>? slotMinutes,
+    Value<String>? closedDays,
     Value<bool>? isDeleted,
     Value<DateTime>? updatedAt,
   }) {
@@ -7662,6 +7843,10 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
       name: name ?? this.name,
       location: location ?? this.location,
       isPrimary: isPrimary ?? this.isPrimary,
+      openMinutes: openMinutes ?? this.openMinutes,
+      closeMinutes: closeMinutes ?? this.closeMinutes,
+      slotMinutes: slotMinutes ?? this.slotMinutes,
+      closedDays: closedDays ?? this.closedDays,
       isDeleted: isDeleted ?? this.isDeleted,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -7688,6 +7873,18 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     if (isPrimary.present) {
       map['is_primary'] = Variable<bool>(isPrimary.value);
     }
+    if (openMinutes.present) {
+      map['open_minutes'] = Variable<int>(openMinutes.value);
+    }
+    if (closeMinutes.present) {
+      map['close_minutes'] = Variable<int>(closeMinutes.value);
+    }
+    if (slotMinutes.present) {
+      map['slot_minutes'] = Variable<int>(slotMinutes.value);
+    }
+    if (closedDays.present) {
+      map['closed_days'] = Variable<String>(closedDays.value);
+    }
     if (isDeleted.present) {
       map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
@@ -7706,6 +7903,10 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
           ..write('name: $name, ')
           ..write('location: $location, ')
           ..write('isPrimary: $isPrimary, ')
+          ..write('openMinutes: $openMinutes, ')
+          ..write('closeMinutes: $closeMinutes, ')
+          ..write('slotMinutes: $slotMinutes, ')
+          ..write('closedDays: $closedDays, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -12674,6 +12875,10 @@ typedef $$BranchesTableCreateCompanionBuilder =
       required String name,
       Value<String> location,
       Value<bool> isPrimary,
+      Value<int> openMinutes,
+      Value<int> closeMinutes,
+      Value<int> slotMinutes,
+      Value<String> closedDays,
       Value<bool> isDeleted,
       Value<DateTime> updatedAt,
     });
@@ -12685,6 +12890,10 @@ typedef $$BranchesTableUpdateCompanionBuilder =
       Value<String> name,
       Value<String> location,
       Value<bool> isPrimary,
+      Value<int> openMinutes,
+      Value<int> closeMinutes,
+      Value<int> slotMinutes,
+      Value<String> closedDays,
       Value<bool> isDeleted,
       Value<DateTime> updatedAt,
     });
@@ -12725,6 +12934,26 @@ class $$BranchesTableFilterComposer
 
   ColumnFilters<bool> get isPrimary => $composableBuilder(
     column: $table.isPrimary,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get openMinutes => $composableBuilder(
+    column: $table.openMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get closeMinutes => $composableBuilder(
+    column: $table.closeMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get slotMinutes => $composableBuilder(
+    column: $table.slotMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get closedDays => $composableBuilder(
+    column: $table.closedDays,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12778,6 +13007,26 @@ class $$BranchesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get openMinutes => $composableBuilder(
+    column: $table.openMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get closeMinutes => $composableBuilder(
+    column: $table.closeMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get slotMinutes => $composableBuilder(
+    column: $table.slotMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get closedDays => $composableBuilder(
+    column: $table.closedDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isDeleted => $composableBuilder(
     column: $table.isDeleted,
     builder: (column) => ColumnOrderings(column),
@@ -12815,6 +13064,26 @@ class $$BranchesTableAnnotationComposer
 
   GeneratedColumn<bool> get isPrimary =>
       $composableBuilder(column: $table.isPrimary, builder: (column) => column);
+
+  GeneratedColumn<int> get openMinutes => $composableBuilder(
+    column: $table.openMinutes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get closeMinutes => $composableBuilder(
+    column: $table.closeMinutes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get slotMinutes => $composableBuilder(
+    column: $table.slotMinutes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get closedDays => $composableBuilder(
+    column: $table.closedDays,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
@@ -12857,6 +13126,10 @@ class $$BranchesTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String> location = const Value.absent(),
                 Value<bool> isPrimary = const Value.absent(),
+                Value<int> openMinutes = const Value.absent(),
+                Value<int> closeMinutes = const Value.absent(),
+                Value<int> slotMinutes = const Value.absent(),
+                Value<String> closedDays = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => BranchesCompanion(
@@ -12866,6 +13139,10 @@ class $$BranchesTableTableManager
                 name: name,
                 location: location,
                 isPrimary: isPrimary,
+                openMinutes: openMinutes,
+                closeMinutes: closeMinutes,
+                slotMinutes: slotMinutes,
+                closedDays: closedDays,
                 isDeleted: isDeleted,
                 updatedAt: updatedAt,
               ),
@@ -12877,6 +13154,10 @@ class $$BranchesTableTableManager
                 required String name,
                 Value<String> location = const Value.absent(),
                 Value<bool> isPrimary = const Value.absent(),
+                Value<int> openMinutes = const Value.absent(),
+                Value<int> closeMinutes = const Value.absent(),
+                Value<int> slotMinutes = const Value.absent(),
+                Value<String> closedDays = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => BranchesCompanion.insert(
@@ -12886,6 +13167,10 @@ class $$BranchesTableTableManager
                 name: name,
                 location: location,
                 isPrimary: isPrimary,
+                openMinutes: openMinutes,
+                closeMinutes: closeMinutes,
+                slotMinutes: slotMinutes,
+                closedDays: closedDays,
                 isDeleted: isDeleted,
                 updatedAt: updatedAt,
               ),

@@ -9,5 +9,9 @@ abstract class Branch with _$Branch {
     required String name,
     @Default('') String location,
     @Default(false) bool isPrimary,
+    @Default(600) int openMinutes,
+    @Default(1020) int closeMinutes,
+    @Default(20) int slotMinutes,
+    @Default('') String closedDays,
   }) = _Branch;
 }

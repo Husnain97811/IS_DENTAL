@@ -37,6 +37,7 @@ class Users extends Table {
   TextColumn get branchId =>
       text().nullable()(); // null = clinic-wide (owner/admin)
   TextColumn get role => text()(); // owner | admin | clinician | receptionist
+
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -64,7 +65,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -249,6 +250,20 @@ class AppDatabase extends _$AppDatabase {
     },
 
     onUpgrade: (m, from, to) async {
+      if (from < 12) {
+        try {
+          await m.addColumn(branches, branches.openMinutes);
+        } catch (_) {}
+        try {
+          await m.addColumn(branches, branches.closeMinutes);
+        } catch (_) {}
+        try {
+          await m.addColumn(branches, branches.slotMinutes);
+        } catch (_) {}
+        try {
+          await m.addColumn(branches, branches.closedDays);
+        } catch (_) {}
+      }
       if (from < 11) {
         // Guarded: DBs created fresh while cnic was already in the table
         // class already have the column — plain addColumn would throw.
@@ -294,6 +309,22 @@ class AppDatabase extends _$AppDatabase {
     final v = await getSetting('active_branch');
     return (v == null || v.isEmpty) ? null : v;
   }
+
+  Future<void> updateBranchHours({
+    required int id,
+    required int openMinutes,
+    required int closeMinutes,
+    required int slotMinutes,
+    required String closedDays,
+  }) => (update(branches)..where((t) => t.id.equals(id))).write(
+    BranchesCompanion(
+      openMinutes: Value(openMinutes),
+      closeMinutes: Value(closeMinutes),
+      slotMinutes: Value(slotMinutes),
+      closedDays: Value(closedDays),
+      updatedAt: Value(DateTime.now()),
+    ),
+  );
 
   Future<void> addStaff({
     required String clinicId,
