@@ -191,7 +191,7 @@ final dentistsProvider = StreamProvider<List<String>>((ref) {
         ..where(
           (u) =>
               u.isDeleted.equals(false) &
-              u.role.isIn(const ['owner', 'clinician']) &
+              u.role.isIn(const ['clinician']) &
               (branchId == null
                   ? const Constant(true)
                   : u.branchId.equals(branchId)),

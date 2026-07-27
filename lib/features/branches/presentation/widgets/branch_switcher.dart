@@ -4,6 +4,7 @@ import 'package:sizer/sizer.dart';
 import '../../../../core/constants/views.dart';
 import '../../../../licensing/presentation/license_providers.dart';
 import '../branch_controller.dart';
+import 'package:collection/collection.dart';
 
 class BranchSwitcher extends ConsumerWidget {
   const BranchSwitcher({super.key});
@@ -51,35 +52,18 @@ class BranchSwitcher extends ConsumerWidget {
     }
 
     // Owner/admin: free switching (only worth showing with 2+ branches).
+    // Owner/admin: free switching (only worth showing with 2+ branches).
     if (branches.length < 2) return const SizedBox.shrink();
     final exists = active != null && branches.any((b) => b.uuid == active);
     return shell(
-      DropdownButton<String?>(
-        value: exists ? active : null,
+      DropdownButton<String>(
+        value: exists ? active : branches.first.uuid,
         underline: const SizedBox(),
         isDense: true,
         icon: Icon(Icons.expand_more_rounded, size: 18, color: d.text3),
         items: [
-          DropdownMenuItem<String?>(
-            value: null,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.apps_rounded, size: 14, color: d.text3),
-                const SizedBox(width: 7),
-                Text(
-                  'All branches',
-                  style: TextStyle(
-                    fontSize: 9.sp,
-                    color: d.text1,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
           for (final b in branches)
-            DropdownMenuItem<String?>(
+            DropdownMenuItem<String>(
               value: b.uuid,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -103,13 +87,13 @@ class BranchSwitcher extends ConsumerWidget {
             ),
         ],
         onChanged: (v) async {
-          final label = v == null
-              ? 'All branches'
-              : branches
-                        .where((b) => b.uuid == v)
-                        .map((b) => b.name)
-                        .firstOrNull ??
-                    'this branch';
+          if (v == null) return;
+          final label =
+              branches
+                  .where((b) => b.uuid == v)
+                  .map((b) => b.name)
+                  .firstOrNull ??
+              'this branch';
           final ok = await showDentDialog(
             context,
             kind: DentDialogKind.warning,

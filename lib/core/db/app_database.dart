@@ -337,6 +337,7 @@ class AppDatabase extends _$AppDatabase {
     String? phone,
   }) => into(users).insert(
     UsersCompanion.insert(
+      uuid: Value(Uuids.v4()), // ← ADD THIS LINE
       clinicId: clinicId,
       branchId: Value(branchId),
       fullName: fullName,

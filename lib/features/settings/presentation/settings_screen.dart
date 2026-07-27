@@ -44,15 +44,43 @@ class _S extends ConsumerState<SettingsScreen> {
 
   //temporary init
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   // TEMP — run once to stamp legacy rows, then remove
-  //   WidgetsBinding.instance.addPostFrameCallback((_) async {
-  //     final n = await ref.read(appDatabaseProvider).backfillBranchIds();
-  //     debugPrint('Backfilled $n rows with branch');
-  //   });
-  // }
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final db = ref.read(appDatabaseProvider);
+      await db.customStatement(
+        "DELETE FROM appointments WHERE branch_id IS NULL OR branch_id = ''",
+      );
+      await db.customStatement(
+        "DELETE FROM patients WHERE branch_id IS NULL OR branch_id = ''",
+      );
+      await db.customStatement(
+        "DELETE FROM invoices WHERE branch_id IS NULL OR branch_id = ''",
+      );
+      await db.customStatement(
+        "DELETE FROM inventory_items WHERE branch_id IS NULL OR branch_id = ''",
+      );
+      await db.customStatement(
+        "DELETE FROM treatments WHERE branch_id IS NULL OR branch_id = ''",
+      );
+      debugPrint('Deleted null-branch rows');
+    });
+    //   WidgetsBinding.instance.addPostFrameCallback((_) async {
+    //     final db = ref.read(appDatabaseProvider);
+    //     await db.backfillUserUuids(); // stamp any missing uuids (clinician)
+    //     await db.setSetting(
+    //       'sync_push_users',
+    //       '',
+    //     ); // reset cursor → re-push ALL users
+    //     debugPrint('Reset users sync; uuids backfilled');
+    //   });
+    // TEMP — run once to stamp legacy rows, then remove
+    // WidgetsBinding.instance.addPostFrameCallback((_) async {
+    //   final n = await ref.read(appDatabaseProvider).backfillBranchIds();
+    //   debugPrint('Backfilled $n rows with branch');
+    // });
+  }
 
   Widget _myProfileCard(DentColors d, AuthSession? session) {
     final branches = ref.watch(branchesStreamProvider).value ?? [];
