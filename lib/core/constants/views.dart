@@ -50,3 +50,5 @@ export 'package:is_dental/features/inventory/presentation/inventory_controller.d
 export 'package:is_dental/features/treatments/domain/treatment.dart';
 export 'package:is_dental/features/treatments/presentation/treatments_controller.dart';
 export 'package:is_dental/features/appointments/domain/appointment.dart';
+export 'package:is_dental/features/requests/presentation/widgets/approve_request_dialog.dart';
+export 'package:is_dental/features/requests/domain/booking_request.dart';

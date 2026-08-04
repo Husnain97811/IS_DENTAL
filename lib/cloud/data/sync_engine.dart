@@ -40,7 +40,12 @@ class SyncEngine {
     await step('inventory', () => _syncInventory(clinicId));
     await step('users', () => _syncUsers(clinicId));
     await step('appointments', () => _syncAppointments(clinicId));
+    await step('booking_requests', () => _syncBookingRequests(clinicId));
+
     await step('invoices', () => _syncInvoices(clinicId));
+
+    // housekeeping — remove decided requests older than 30 days
+    await step('purge_requests', () => _db.purgeOldDecidedRequests());
   }
 
   // ---- cursor + helpers ----
@@ -322,6 +327,78 @@ class SyncEngine {
             ),
           );
       if (u.isAfter(pullSince)) await _setCur('pull_appointments', u);
+    }
+  }
+
+  // ================= BOOKING REQUESTS =================
+  // Patient-authored (mobile writes). Desktop pulls all, and pushes back only
+  // rows it changed (status / modifiedBy / acceptedBy / decidedAt).
+  Future<void> _syncBookingRequests(String clinicId) async {
+    // ---- PUSH desktop-side changes ----
+    final since = await _cur('push_booking_requests');
+    final changed = await (_db.select(
+      _db.bookingRequests,
+    )..where((t) => t.updatedAt.isBiggerThanValue(since))).get();
+    if (changed.isNotEmpty) {
+      await _sb.from('booking_requests').upsert([
+        for (final r in changed)
+          {
+            'uuid': r.uuid,
+            'clinic_id': clinicId,
+            'branch_id': r.branchId,
+            'patient_uuid': r.patientUuid,
+            'patient_account_id': r.patientAccountId,
+            'dentist': r.dentist,
+            'procedure': r.procedure,
+            'requested_slot': _iso(r.requestedSlot),
+            'duration_min': r.durationMin,
+            'status': r.status,
+            'modified_by': r.modifiedBy,
+            'accepted_by': r.acceptedBy,
+            'decided_at': _iso(r.decidedAt),
+            'updated_at': _iso(r.updatedAt),
+          },
+      ], onConflict: 'uuid');
+      await _setCur(
+        'push_booking_requests',
+        _max(changed.map((e) => e.updatedAt)),
+      );
+    }
+
+    // ---- PULL all requests for this clinic ----
+    final pullSince = await _cur('pull_booking_requests');
+    for (final r in await _pull('booking_requests', clinicId, pullSince)) {
+      final u = DateTime.parse(r['updated_at']);
+      final existing = await (_db.select(
+        _db.bookingRequests,
+      )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
+      await _db
+          .into(_db.bookingRequests)
+          .insertOnConflictUpdate(
+            BookingRequestsCompanion(
+              id: existing == null ? const Value.absent() : Value(existing.id),
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              branchId: Value(r['branch_id']),
+              patientUuid: Value(r['patient_uuid'] ?? ''),
+              patientAccountId: Value(r['patient_account_id']),
+              dentist: Value(r['dentist'] ?? ''),
+              procedure: Value(r['procedure'] ?? ''),
+              requestedSlot: Value(DateTime.parse(r['requested_slot'])),
+              durationMin: Value(r['duration_min'] ?? 30),
+              status: Value(r['status'] ?? 'pending'),
+              modifiedBy: Value(r['modified_by']),
+              acceptedBy: Value(r['accepted_by']),
+              decidedAt: Value(
+                r['decided_at'] == null
+                    ? null
+                    : DateTime.parse(r['decided_at']),
+              ),
+              updatedAt: Value(u),
+            ),
+          );
+      if (u.isAfter(pullSince)) await _setCur('pull_booking_requests', u);
     }
   }
 

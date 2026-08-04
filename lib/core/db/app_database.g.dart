@@ -7914,6 +7914,963 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
   }
 }
 
+class $BookingRequestsTable extends BookingRequests
+    with TableInfo<$BookingRequestsTable, BookingRequestRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BookingRequestsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _clinicIdMeta = const VerificationMeta(
+    'clinicId',
+  );
+  @override
+  late final GeneratedColumn<String> clinicId = GeneratedColumn<String>(
+    'clinic_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _patientUuidMeta = const VerificationMeta(
+    'patientUuid',
+  );
+  @override
+  late final GeneratedColumn<String> patientUuid = GeneratedColumn<String>(
+    'patient_uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _patientAccountIdMeta = const VerificationMeta(
+    'patientAccountId',
+  );
+  @override
+  late final GeneratedColumn<String> patientAccountId = GeneratedColumn<String>(
+    'patient_account_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dentistMeta = const VerificationMeta(
+    'dentist',
+  );
+  @override
+  late final GeneratedColumn<String> dentist = GeneratedColumn<String>(
+    'dentist',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _procedureMeta = const VerificationMeta(
+    'procedure',
+  );
+  @override
+  late final GeneratedColumn<String> procedure = GeneratedColumn<String>(
+    'procedure',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _requestedSlotMeta = const VerificationMeta(
+    'requestedSlot',
+  );
+  @override
+  late final GeneratedColumn<DateTime> requestedSlot =
+      GeneratedColumn<DateTime>(
+        'requested_slot',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _durationMinMeta = const VerificationMeta(
+    'durationMin',
+  );
+  @override
+  late final GeneratedColumn<int> durationMin = GeneratedColumn<int>(
+    'duration_min',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(30),
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _modifiedByMeta = const VerificationMeta(
+    'modifiedBy',
+  );
+  @override
+  late final GeneratedColumn<String> modifiedBy = GeneratedColumn<String>(
+    'modified_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _acceptedByMeta = const VerificationMeta(
+    'acceptedBy',
+  );
+  @override
+  late final GeneratedColumn<String> acceptedBy = GeneratedColumn<String>(
+    'accepted_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _decidedAtMeta = const VerificationMeta(
+    'decidedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> decidedAt = GeneratedColumn<DateTime>(
+    'decided_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    uuid,
+    clinicId,
+    branchId,
+    patientUuid,
+    patientAccountId,
+    dentist,
+    procedure,
+    requestedSlot,
+    durationMin,
+    status,
+    modifiedBy,
+    acceptedBy,
+    decidedAt,
+    createdAt,
+    updatedAt,
+    isDeleted,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'booking_requests';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BookingRequestRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('clinic_id')) {
+      context.handle(
+        _clinicIdMeta,
+        clinicId.isAcceptableOrUnknown(data['clinic_id']!, _clinicIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
+    if (data.containsKey('patient_uuid')) {
+      context.handle(
+        _patientUuidMeta,
+        patientUuid.isAcceptableOrUnknown(
+          data['patient_uuid']!,
+          _patientUuidMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_patientUuidMeta);
+    }
+    if (data.containsKey('patient_account_id')) {
+      context.handle(
+        _patientAccountIdMeta,
+        patientAccountId.isAcceptableOrUnknown(
+          data['patient_account_id']!,
+          _patientAccountIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('dentist')) {
+      context.handle(
+        _dentistMeta,
+        dentist.isAcceptableOrUnknown(data['dentist']!, _dentistMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dentistMeta);
+    }
+    if (data.containsKey('procedure')) {
+      context.handle(
+        _procedureMeta,
+        procedure.isAcceptableOrUnknown(data['procedure']!, _procedureMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_procedureMeta);
+    }
+    if (data.containsKey('requested_slot')) {
+      context.handle(
+        _requestedSlotMeta,
+        requestedSlot.isAcceptableOrUnknown(
+          data['requested_slot']!,
+          _requestedSlotMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_requestedSlotMeta);
+    }
+    if (data.containsKey('duration_min')) {
+      context.handle(
+        _durationMinMeta,
+        durationMin.isAcceptableOrUnknown(
+          data['duration_min']!,
+          _durationMinMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('modified_by')) {
+      context.handle(
+        _modifiedByMeta,
+        modifiedBy.isAcceptableOrUnknown(data['modified_by']!, _modifiedByMeta),
+      );
+    }
+    if (data.containsKey('accepted_by')) {
+      context.handle(
+        _acceptedByMeta,
+        acceptedBy.isAcceptableOrUnknown(data['accepted_by']!, _acceptedByMeta),
+      );
+    }
+    if (data.containsKey('decided_at')) {
+      context.handle(
+        _decidedAtMeta,
+        decidedAt.isAcceptableOrUnknown(data['decided_at']!, _decidedAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BookingRequestRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BookingRequestRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      clinicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clinic_id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      ),
+      patientUuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}patient_uuid'],
+      )!,
+      patientAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}patient_account_id'],
+      ),
+      dentist: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dentist'],
+      )!,
+      procedure: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}procedure'],
+      )!,
+      requestedSlot: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}requested_slot'],
+      )!,
+      durationMin: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_min'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      modifiedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}modified_by'],
+      ),
+      acceptedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}accepted_by'],
+      ),
+      decidedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}decided_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+    );
+  }
+
+  @override
+  $BookingRequestsTable createAlias(String alias) {
+    return $BookingRequestsTable(attachedDatabase, alias);
+  }
+}
+
+class BookingRequestRow extends DataClass
+    implements Insertable<BookingRequestRow> {
+  final int id;
+  final String uuid;
+  final String clinicId;
+  final String? branchId;
+  final String patientUuid;
+  final String? patientAccountId;
+  final String dentist;
+  final String procedure;
+  final DateTime requestedSlot;
+  final int durationMin;
+  final String status;
+  final String? modifiedBy;
+  final String? acceptedBy;
+  final DateTime? decidedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool isDeleted;
+  const BookingRequestRow({
+    required this.id,
+    required this.uuid,
+    required this.clinicId,
+    this.branchId,
+    required this.patientUuid,
+    this.patientAccountId,
+    required this.dentist,
+    required this.procedure,
+    required this.requestedSlot,
+    required this.durationMin,
+    required this.status,
+    this.modifiedBy,
+    this.acceptedBy,
+    this.decidedAt,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.isDeleted,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['uuid'] = Variable<String>(uuid);
+    map['clinic_id'] = Variable<String>(clinicId);
+    if (!nullToAbsent || branchId != null) {
+      map['branch_id'] = Variable<String>(branchId);
+    }
+    map['patient_uuid'] = Variable<String>(patientUuid);
+    if (!nullToAbsent || patientAccountId != null) {
+      map['patient_account_id'] = Variable<String>(patientAccountId);
+    }
+    map['dentist'] = Variable<String>(dentist);
+    map['procedure'] = Variable<String>(procedure);
+    map['requested_slot'] = Variable<DateTime>(requestedSlot);
+    map['duration_min'] = Variable<int>(durationMin);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || modifiedBy != null) {
+      map['modified_by'] = Variable<String>(modifiedBy);
+    }
+    if (!nullToAbsent || acceptedBy != null) {
+      map['accepted_by'] = Variable<String>(acceptedBy);
+    }
+    if (!nullToAbsent || decidedAt != null) {
+      map['decided_at'] = Variable<DateTime>(decidedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    return map;
+  }
+
+  BookingRequestsCompanion toCompanion(bool nullToAbsent) {
+    return BookingRequestsCompanion(
+      id: Value(id),
+      uuid: Value(uuid),
+      clinicId: Value(clinicId),
+      branchId: branchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchId),
+      patientUuid: Value(patientUuid),
+      patientAccountId: patientAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(patientAccountId),
+      dentist: Value(dentist),
+      procedure: Value(procedure),
+      requestedSlot: Value(requestedSlot),
+      durationMin: Value(durationMin),
+      status: Value(status),
+      modifiedBy: modifiedBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(modifiedBy),
+      acceptedBy: acceptedBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(acceptedBy),
+      decidedAt: decidedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(decidedAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      isDeleted: Value(isDeleted),
+    );
+  }
+
+  factory BookingRequestRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BookingRequestRow(
+      id: serializer.fromJson<int>(json['id']),
+      uuid: serializer.fromJson<String>(json['uuid']),
+      clinicId: serializer.fromJson<String>(json['clinicId']),
+      branchId: serializer.fromJson<String?>(json['branchId']),
+      patientUuid: serializer.fromJson<String>(json['patientUuid']),
+      patientAccountId: serializer.fromJson<String?>(json['patientAccountId']),
+      dentist: serializer.fromJson<String>(json['dentist']),
+      procedure: serializer.fromJson<String>(json['procedure']),
+      requestedSlot: serializer.fromJson<DateTime>(json['requestedSlot']),
+      durationMin: serializer.fromJson<int>(json['durationMin']),
+      status: serializer.fromJson<String>(json['status']),
+      modifiedBy: serializer.fromJson<String?>(json['modifiedBy']),
+      acceptedBy: serializer.fromJson<String?>(json['acceptedBy']),
+      decidedAt: serializer.fromJson<DateTime?>(json['decidedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'uuid': serializer.toJson<String>(uuid),
+      'clinicId': serializer.toJson<String>(clinicId),
+      'branchId': serializer.toJson<String?>(branchId),
+      'patientUuid': serializer.toJson<String>(patientUuid),
+      'patientAccountId': serializer.toJson<String?>(patientAccountId),
+      'dentist': serializer.toJson<String>(dentist),
+      'procedure': serializer.toJson<String>(procedure),
+      'requestedSlot': serializer.toJson<DateTime>(requestedSlot),
+      'durationMin': serializer.toJson<int>(durationMin),
+      'status': serializer.toJson<String>(status),
+      'modifiedBy': serializer.toJson<String?>(modifiedBy),
+      'acceptedBy': serializer.toJson<String?>(acceptedBy),
+      'decidedAt': serializer.toJson<DateTime?>(decidedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+    };
+  }
+
+  BookingRequestRow copyWith({
+    int? id,
+    String? uuid,
+    String? clinicId,
+    Value<String?> branchId = const Value.absent(),
+    String? patientUuid,
+    Value<String?> patientAccountId = const Value.absent(),
+    String? dentist,
+    String? procedure,
+    DateTime? requestedSlot,
+    int? durationMin,
+    String? status,
+    Value<String?> modifiedBy = const Value.absent(),
+    Value<String?> acceptedBy = const Value.absent(),
+    Value<DateTime?> decidedAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isDeleted,
+  }) => BookingRequestRow(
+    id: id ?? this.id,
+    uuid: uuid ?? this.uuid,
+    clinicId: clinicId ?? this.clinicId,
+    branchId: branchId.present ? branchId.value : this.branchId,
+    patientUuid: patientUuid ?? this.patientUuid,
+    patientAccountId: patientAccountId.present
+        ? patientAccountId.value
+        : this.patientAccountId,
+    dentist: dentist ?? this.dentist,
+    procedure: procedure ?? this.procedure,
+    requestedSlot: requestedSlot ?? this.requestedSlot,
+    durationMin: durationMin ?? this.durationMin,
+    status: status ?? this.status,
+    modifiedBy: modifiedBy.present ? modifiedBy.value : this.modifiedBy,
+    acceptedBy: acceptedBy.present ? acceptedBy.value : this.acceptedBy,
+    decidedAt: decidedAt.present ? decidedAt.value : this.decidedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isDeleted: isDeleted ?? this.isDeleted,
+  );
+  BookingRequestRow copyWithCompanion(BookingRequestsCompanion data) {
+    return BookingRequestRow(
+      id: data.id.present ? data.id.value : this.id,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      patientUuid: data.patientUuid.present
+          ? data.patientUuid.value
+          : this.patientUuid,
+      patientAccountId: data.patientAccountId.present
+          ? data.patientAccountId.value
+          : this.patientAccountId,
+      dentist: data.dentist.present ? data.dentist.value : this.dentist,
+      procedure: data.procedure.present ? data.procedure.value : this.procedure,
+      requestedSlot: data.requestedSlot.present
+          ? data.requestedSlot.value
+          : this.requestedSlot,
+      durationMin: data.durationMin.present
+          ? data.durationMin.value
+          : this.durationMin,
+      status: data.status.present ? data.status.value : this.status,
+      modifiedBy: data.modifiedBy.present
+          ? data.modifiedBy.value
+          : this.modifiedBy,
+      acceptedBy: data.acceptedBy.present
+          ? data.acceptedBy.value
+          : this.acceptedBy,
+      decidedAt: data.decidedAt.present ? data.decidedAt.value : this.decidedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BookingRequestRow(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('branchId: $branchId, ')
+          ..write('patientUuid: $patientUuid, ')
+          ..write('patientAccountId: $patientAccountId, ')
+          ..write('dentist: $dentist, ')
+          ..write('procedure: $procedure, ')
+          ..write('requestedSlot: $requestedSlot, ')
+          ..write('durationMin: $durationMin, ')
+          ..write('status: $status, ')
+          ..write('modifiedBy: $modifiedBy, ')
+          ..write('acceptedBy: $acceptedBy, ')
+          ..write('decidedAt: $decidedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    uuid,
+    clinicId,
+    branchId,
+    patientUuid,
+    patientAccountId,
+    dentist,
+    procedure,
+    requestedSlot,
+    durationMin,
+    status,
+    modifiedBy,
+    acceptedBy,
+    decidedAt,
+    createdAt,
+    updatedAt,
+    isDeleted,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BookingRequestRow &&
+          other.id == this.id &&
+          other.uuid == this.uuid &&
+          other.clinicId == this.clinicId &&
+          other.branchId == this.branchId &&
+          other.patientUuid == this.patientUuid &&
+          other.patientAccountId == this.patientAccountId &&
+          other.dentist == this.dentist &&
+          other.procedure == this.procedure &&
+          other.requestedSlot == this.requestedSlot &&
+          other.durationMin == this.durationMin &&
+          other.status == this.status &&
+          other.modifiedBy == this.modifiedBy &&
+          other.acceptedBy == this.acceptedBy &&
+          other.decidedAt == this.decidedAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isDeleted == this.isDeleted);
+}
+
+class BookingRequestsCompanion extends UpdateCompanion<BookingRequestRow> {
+  final Value<int> id;
+  final Value<String> uuid;
+  final Value<String> clinicId;
+  final Value<String?> branchId;
+  final Value<String> patientUuid;
+  final Value<String?> patientAccountId;
+  final Value<String> dentist;
+  final Value<String> procedure;
+  final Value<DateTime> requestedSlot;
+  final Value<int> durationMin;
+  final Value<String> status;
+  final Value<String?> modifiedBy;
+  final Value<String?> acceptedBy;
+  final Value<DateTime?> decidedAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> isDeleted;
+  const BookingRequestsCompanion({
+    this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
+    this.clinicId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.patientUuid = const Value.absent(),
+    this.patientAccountId = const Value.absent(),
+    this.dentist = const Value.absent(),
+    this.procedure = const Value.absent(),
+    this.requestedSlot = const Value.absent(),
+    this.durationMin = const Value.absent(),
+    this.status = const Value.absent(),
+    this.modifiedBy = const Value.absent(),
+    this.acceptedBy = const Value.absent(),
+    this.decidedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+  });
+  BookingRequestsCompanion.insert({
+    this.id = const Value.absent(),
+    required String uuid,
+    required String clinicId,
+    this.branchId = const Value.absent(),
+    required String patientUuid,
+    this.patientAccountId = const Value.absent(),
+    required String dentist,
+    required String procedure,
+    required DateTime requestedSlot,
+    this.durationMin = const Value.absent(),
+    this.status = const Value.absent(),
+    this.modifiedBy = const Value.absent(),
+    this.acceptedBy = const Value.absent(),
+    this.decidedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+  }) : uuid = Value(uuid),
+       clinicId = Value(clinicId),
+       patientUuid = Value(patientUuid),
+       dentist = Value(dentist),
+       procedure = Value(procedure),
+       requestedSlot = Value(requestedSlot);
+  static Insertable<BookingRequestRow> custom({
+    Expression<int>? id,
+    Expression<String>? uuid,
+    Expression<String>? clinicId,
+    Expression<String>? branchId,
+    Expression<String>? patientUuid,
+    Expression<String>? patientAccountId,
+    Expression<String>? dentist,
+    Expression<String>? procedure,
+    Expression<DateTime>? requestedSlot,
+    Expression<int>? durationMin,
+    Expression<String>? status,
+    Expression<String>? modifiedBy,
+    Expression<String>? acceptedBy,
+    Expression<DateTime>? decidedAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isDeleted,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (uuid != null) 'uuid': uuid,
+      if (clinicId != null) 'clinic_id': clinicId,
+      if (branchId != null) 'branch_id': branchId,
+      if (patientUuid != null) 'patient_uuid': patientUuid,
+      if (patientAccountId != null) 'patient_account_id': patientAccountId,
+      if (dentist != null) 'dentist': dentist,
+      if (procedure != null) 'procedure': procedure,
+      if (requestedSlot != null) 'requested_slot': requestedSlot,
+      if (durationMin != null) 'duration_min': durationMin,
+      if (status != null) 'status': status,
+      if (modifiedBy != null) 'modified_by': modifiedBy,
+      if (acceptedBy != null) 'accepted_by': acceptedBy,
+      if (decidedAt != null) 'decided_at': decidedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+    });
+  }
+
+  BookingRequestsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? uuid,
+    Value<String>? clinicId,
+    Value<String?>? branchId,
+    Value<String>? patientUuid,
+    Value<String?>? patientAccountId,
+    Value<String>? dentist,
+    Value<String>? procedure,
+    Value<DateTime>? requestedSlot,
+    Value<int>? durationMin,
+    Value<String>? status,
+    Value<String?>? modifiedBy,
+    Value<String?>? acceptedBy,
+    Value<DateTime?>? decidedAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? isDeleted,
+  }) {
+    return BookingRequestsCompanion(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      clinicId: clinicId ?? this.clinicId,
+      branchId: branchId ?? this.branchId,
+      patientUuid: patientUuid ?? this.patientUuid,
+      patientAccountId: patientAccountId ?? this.patientAccountId,
+      dentist: dentist ?? this.dentist,
+      procedure: procedure ?? this.procedure,
+      requestedSlot: requestedSlot ?? this.requestedSlot,
+      durationMin: durationMin ?? this.durationMin,
+      status: status ?? this.status,
+      modifiedBy: modifiedBy ?? this.modifiedBy,
+      acceptedBy: acceptedBy ?? this.acceptedBy,
+      decidedAt: decidedAt ?? this.decidedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (clinicId.present) {
+      map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (patientUuid.present) {
+      map['patient_uuid'] = Variable<String>(patientUuid.value);
+    }
+    if (patientAccountId.present) {
+      map['patient_account_id'] = Variable<String>(patientAccountId.value);
+    }
+    if (dentist.present) {
+      map['dentist'] = Variable<String>(dentist.value);
+    }
+    if (procedure.present) {
+      map['procedure'] = Variable<String>(procedure.value);
+    }
+    if (requestedSlot.present) {
+      map['requested_slot'] = Variable<DateTime>(requestedSlot.value);
+    }
+    if (durationMin.present) {
+      map['duration_min'] = Variable<int>(durationMin.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (modifiedBy.present) {
+      map['modified_by'] = Variable<String>(modifiedBy.value);
+    }
+    if (acceptedBy.present) {
+      map['accepted_by'] = Variable<String>(acceptedBy.value);
+    }
+    if (decidedAt.present) {
+      map['decided_at'] = Variable<DateTime>(decidedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BookingRequestsCompanion(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('branchId: $branchId, ')
+          ..write('patientUuid: $patientUuid, ')
+          ..write('patientAccountId: $patientAccountId, ')
+          ..write('dentist: $dentist, ')
+          ..write('procedure: $procedure, ')
+          ..write('requestedSlot: $requestedSlot, ')
+          ..write('durationMin: $durationMin, ')
+          ..write('status: $status, ')
+          ..write('modifiedBy: $modifiedBy, ')
+          ..write('acceptedBy: $acceptedBy, ')
+          ..write('decidedAt: $decidedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7931,6 +8888,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $InventoryItemsTable inventoryItems = $InventoryItemsTable(this);
   late final $TreatmentsTable treatments = $TreatmentsTable(this);
   late final $BranchesTable branches = $BranchesTable(this);
+  late final $BookingRequestsTable bookingRequests = $BookingRequestsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7950,6 +8910,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     inventoryItems,
     treatments,
     branches,
+    bookingRequests,
   ];
 }
 
@@ -13196,6 +14157,446 @@ typedef $$BranchesTableProcessedTableManager =
       BranchRow,
       PrefetchHooks Function()
     >;
+typedef $$BookingRequestsTableCreateCompanionBuilder =
+    BookingRequestsCompanion Function({
+      Value<int> id,
+      required String uuid,
+      required String clinicId,
+      Value<String?> branchId,
+      required String patientUuid,
+      Value<String?> patientAccountId,
+      required String dentist,
+      required String procedure,
+      required DateTime requestedSlot,
+      Value<int> durationMin,
+      Value<String> status,
+      Value<String?> modifiedBy,
+      Value<String?> acceptedBy,
+      Value<DateTime?> decidedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> isDeleted,
+    });
+typedef $$BookingRequestsTableUpdateCompanionBuilder =
+    BookingRequestsCompanion Function({
+      Value<int> id,
+      Value<String> uuid,
+      Value<String> clinicId,
+      Value<String?> branchId,
+      Value<String> patientUuid,
+      Value<String?> patientAccountId,
+      Value<String> dentist,
+      Value<String> procedure,
+      Value<DateTime> requestedSlot,
+      Value<int> durationMin,
+      Value<String> status,
+      Value<String?> modifiedBy,
+      Value<String?> acceptedBy,
+      Value<DateTime?> decidedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> isDeleted,
+    });
+
+class $$BookingRequestsTableFilterComposer
+    extends Composer<_$AppDatabase, $BookingRequestsTable> {
+  $$BookingRequestsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get patientUuid => $composableBuilder(
+    column: $table.patientUuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get patientAccountId => $composableBuilder(
+    column: $table.patientAccountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dentist => $composableBuilder(
+    column: $table.dentist,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get procedure => $composableBuilder(
+    column: $table.procedure,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get requestedSlot => $composableBuilder(
+    column: $table.requestedSlot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationMin => $composableBuilder(
+    column: $table.durationMin,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get modifiedBy => $composableBuilder(
+    column: $table.modifiedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get acceptedBy => $composableBuilder(
+    column: $table.acceptedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get decidedAt => $composableBuilder(
+    column: $table.decidedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BookingRequestsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BookingRequestsTable> {
+  $$BookingRequestsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get patientUuid => $composableBuilder(
+    column: $table.patientUuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get patientAccountId => $composableBuilder(
+    column: $table.patientAccountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dentist => $composableBuilder(
+    column: $table.dentist,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get procedure => $composableBuilder(
+    column: $table.procedure,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get requestedSlot => $composableBuilder(
+    column: $table.requestedSlot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get durationMin => $composableBuilder(
+    column: $table.durationMin,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get modifiedBy => $composableBuilder(
+    column: $table.modifiedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get acceptedBy => $composableBuilder(
+    column: $table.acceptedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get decidedAt => $composableBuilder(
+    column: $table.decidedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BookingRequestsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BookingRequestsTable> {
+  $$BookingRequestsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get clinicId =>
+      $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get patientUuid => $composableBuilder(
+    column: $table.patientUuid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get patientAccountId => $composableBuilder(
+    column: $table.patientAccountId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get dentist =>
+      $composableBuilder(column: $table.dentist, builder: (column) => column);
+
+  GeneratedColumn<String> get procedure =>
+      $composableBuilder(column: $table.procedure, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get requestedSlot => $composableBuilder(
+    column: $table.requestedSlot,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get durationMin => $composableBuilder(
+    column: $table.durationMin,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get modifiedBy => $composableBuilder(
+    column: $table.modifiedBy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get acceptedBy => $composableBuilder(
+    column: $table.acceptedBy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get decidedAt =>
+      $composableBuilder(column: $table.decidedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+}
+
+class $$BookingRequestsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BookingRequestsTable,
+          BookingRequestRow,
+          $$BookingRequestsTableFilterComposer,
+          $$BookingRequestsTableOrderingComposer,
+          $$BookingRequestsTableAnnotationComposer,
+          $$BookingRequestsTableCreateCompanionBuilder,
+          $$BookingRequestsTableUpdateCompanionBuilder,
+          (
+            BookingRequestRow,
+            BaseReferences<
+              _$AppDatabase,
+              $BookingRequestsTable,
+              BookingRequestRow
+            >,
+          ),
+          BookingRequestRow,
+          PrefetchHooks Function()
+        > {
+  $$BookingRequestsTableTableManager(
+    _$AppDatabase db,
+    $BookingRequestsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BookingRequestsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BookingRequestsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BookingRequestsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
+                Value<String> clinicId = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
+                Value<String> patientUuid = const Value.absent(),
+                Value<String?> patientAccountId = const Value.absent(),
+                Value<String> dentist = const Value.absent(),
+                Value<String> procedure = const Value.absent(),
+                Value<DateTime> requestedSlot = const Value.absent(),
+                Value<int> durationMin = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> modifiedBy = const Value.absent(),
+                Value<String?> acceptedBy = const Value.absent(),
+                Value<DateTime?> decidedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+              }) => BookingRequestsCompanion(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                branchId: branchId,
+                patientUuid: patientUuid,
+                patientAccountId: patientAccountId,
+                dentist: dentist,
+                procedure: procedure,
+                requestedSlot: requestedSlot,
+                durationMin: durationMin,
+                status: status,
+                modifiedBy: modifiedBy,
+                acceptedBy: acceptedBy,
+                decidedAt: decidedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String uuid,
+                required String clinicId,
+                Value<String?> branchId = const Value.absent(),
+                required String patientUuid,
+                Value<String?> patientAccountId = const Value.absent(),
+                required String dentist,
+                required String procedure,
+                required DateTime requestedSlot,
+                Value<int> durationMin = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> modifiedBy = const Value.absent(),
+                Value<String?> acceptedBy = const Value.absent(),
+                Value<DateTime?> decidedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+              }) => BookingRequestsCompanion.insert(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                branchId: branchId,
+                patientUuid: patientUuid,
+                patientAccountId: patientAccountId,
+                dentist: dentist,
+                procedure: procedure,
+                requestedSlot: requestedSlot,
+                durationMin: durationMin,
+                status: status,
+                modifiedBy: modifiedBy,
+                acceptedBy: acceptedBy,
+                decidedAt: decidedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BookingRequestsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BookingRequestsTable,
+      BookingRequestRow,
+      $$BookingRequestsTableFilterComposer,
+      $$BookingRequestsTableOrderingComposer,
+      $$BookingRequestsTableAnnotationComposer,
+      $$BookingRequestsTableCreateCompanionBuilder,
+      $$BookingRequestsTableUpdateCompanionBuilder,
+      (
+        BookingRequestRow,
+        BaseReferences<_$AppDatabase, $BookingRequestsTable, BookingRequestRow>,
+      ),
+      BookingRequestRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -13228,4 +14629,6 @@ class $AppDatabaseManager {
       $$TreatmentsTableTableManager(_db, _db.treatments);
   $$BranchesTableTableManager get branches =>
       $$BranchesTableTableManager(_db, _db.branches);
+  $$BookingRequestsTableTableManager get bookingRequests =>
+      $$BookingRequestsTableTableManager(_db, _db.bookingRequests);
 }

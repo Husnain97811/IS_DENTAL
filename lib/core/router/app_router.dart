@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:is_dental/features/requests/presentation/requests_screen.dart';
 import '../constants/views.dart';
 import 'app_routes.dart';
 
@@ -56,6 +57,12 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.dashboard,
                 builder: (c, s) => const DashboardScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'requests',
+                    builder: (c, s) => const RequestsScreen(),
+                  ),
+                ],
               ),
             ],
           ),

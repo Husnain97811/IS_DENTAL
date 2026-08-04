@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:is_dental/features/branches/presentation/branch_controller.dart';
 import 'package:is_dental/features/branches/presentation/widgets/branch_switcher.dart';
+import 'package:is_dental/features/requests/presentation/widgets/booking_requests_card.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/db/app_database.dart';
@@ -279,6 +280,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               );
             },
           ),
+          const BookingRequestsCard(),
+
           SizedBox(height: 2.2.h),
 
           // schedule + revenue

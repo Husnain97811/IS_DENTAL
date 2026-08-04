@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/utils/uuids.dart';
+import 'package:is_dental/features/requests/data/booking_request_tables.dart';
 
 import '../constants/views.dart';
 import 'database_connection.dart';
@@ -58,6 +59,7 @@ class Users extends Table {
     InventoryItems,
     Treatments,
     Branches,
+    BookingRequests,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -65,9 +67,22 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
+
+  /// Deletes bookinng requests that were approved OR rejected more than
+  /// 30 days ago. The real appointment (for approved ones) is never touched —
+  /// it lives in the appointmentss table. Pending requests are never purged.
+  Future<int> purgeOldDecidedRequests() async {
+    final cutoff = DateTime.now().toUtc().subtract(const Duration(days: 30));
+    return (delete(bookingRequests)..where(
+          (t) =>
+              t.status.isIn(const ['approved', 'rejected']) &
+              t.decidedAt.isSmallerThanValue(cutoff),
+        ))
+        .go();
+  }
 
   /// One-time: assign a branch to all rows that have no branchId yet.
   /// Uses the first branch as the default home for legacy data.
@@ -250,6 +265,9 @@ class AppDatabase extends _$AppDatabase {
     },
 
     onUpgrade: (m, from, to) async {
+      if (from < 13) {
+        await m.createTable(bookingRequests);
+      }
       if (from < 12) {
         try {
           await m.addColumn(branches, branches.openMinutes);
