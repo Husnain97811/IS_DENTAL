@@ -1,23 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../db/app_database.dart';
 import '../router/nav_destinations.dart';
+import '../../features/requests/data/requests_realtime.dart';
 import 'widgets/app_sidebar.dart';
 import 'widgets/app_topbar.dart';
 import 'widgets/contextual_drawer.dart';
 import '../theme/dent_colors.dart';
 
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
   final StatefulNavigationShell navigationShell;
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> {
   bool _collapsed = false;
   void _toggleSidebar() => setState(() => _collapsed = !_collapsed);
+
+  @override
+  void initState() {
+    super.initState();
+    // Subscribe to booking-request realtime once the shell mounts
+    // (only reached when authed + inside the app).
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final clinicId = await ref.read(appDatabaseProvider).currentClinicId();
+      if (clinicId != null && clinicId.isNotEmpty) {
+        await ref.read(requestsRealtimeProvider).start(clinicId);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    ref.read(requestsRealtimeProvider).stop();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

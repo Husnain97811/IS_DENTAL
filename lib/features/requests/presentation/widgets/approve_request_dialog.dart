@@ -100,7 +100,7 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
     final staff = ref.read(authControllerProvider)?.username ?? 'unknown';
 
     try {
-      await repo.approve(
+      final ok = await repo.approve(
         requestId: req.id,
         patientId: patientId,
         dentist: req.dentist,
@@ -111,6 +111,13 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
         staffUsername: staff,
         wasModified: _modified,
       );
+      if (!ok) {
+        setState(() {
+          _busy = false;
+          _error = 'No internet connection. Connect and try again.';
+        });
+        return;
+      }
     } catch (e) {
       setState(() {
         _busy = false;

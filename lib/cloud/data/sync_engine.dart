@@ -343,7 +343,7 @@ class SyncEngine {
       await _sb.from('booking_requests').upsert([
         for (final r in changed)
           {
-            'uuid': r.uuid,
+            'id': r.id, // Supabase PK is `id` (uuid type), not `uuid`
             'clinic_id': clinicId,
             'branch_id': r.branchId,
             'patient_uuid': r.patientUuid,
@@ -369,16 +369,17 @@ class SyncEngine {
     final pullSince = await _cur('pull_booking_requests');
     for (final r in await _pull('booking_requests', clinicId, pullSince)) {
       final u = DateTime.parse(r['updated_at']);
+      final rid = r['id'];
       final existing = await (_db.select(
         _db.bookingRequests,
-      )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+      )..where((t) => t.uuid.equals(rid))).getSingleOrNull();
       if (existing != null && !u.isAfter(existing.updatedAt)) continue;
       await _db
           .into(_db.bookingRequests)
           .insertOnConflictUpdate(
             BookingRequestsCompanion(
               id: existing == null ? const Value.absent() : Value(existing.id),
-              uuid: Value(r['uuid']),
+              uuid: Value(rid),
               clinicId: Value(clinicId),
               branchId: Value(r['branch_id']),
               patientUuid: Value(r['patient_uuid'] ?? ''),

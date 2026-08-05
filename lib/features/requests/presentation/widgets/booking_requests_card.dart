@@ -53,13 +53,11 @@ class BookingRequestsCard extends ConsumerWidget {
       subtitle: all.isEmpty
           ? 'From the patient app'
           : '${all.length} pending · from the patient app',
-      trailing: all.isEmpty
-          ? null
-          : PanelLink(
-              'View all',
-              icon: Icons.chevron_right_rounded,
-              onTap: () => context.go(AppRoutes.requests),
-            ),
+      trailing: PanelLink(
+        'View all',
+        icon: Icons.chevron_right_rounded,
+        onTap: () => context.go(AppRoutes.requests),
+      ),
       child: async.isLoading
           ? const Padding(
               padding: EdgeInsets.all(28),

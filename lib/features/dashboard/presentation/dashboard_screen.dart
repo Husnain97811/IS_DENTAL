@@ -284,11 +284,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
           SizedBox(height: 2.2.h),
 
-          // schedule + revenue
+          // top procedures + clinic status
           LayoutBuilder(
             builder: (context, c) {
               final stack = c.maxWidth < 920;
-              final left = DentPanel(
+              // final a = DentPanel(
+              //   title: 'Top Procedures',
+              //   subtitle: 'This month by volume',
+              //   child: topRows.isEmpty
+              //       ? Padding(
+              //           padding: const EdgeInsets.all(36),
+              //           child: Center(
+              //             child: Text(
+              //               'No procedures yet.',
+              //               style: TextStyle(color: d.text4, fontSize: 9.sp),
+              //             ),
+              //           ),
+              //         )
+              //       : Column(
+              //           children: [
+              //             for (final e in topRows)
+              //               StatBarRow(
+              //                 label: e.procedure,
+              //                 fraction: e.count / maxC,
+              //                 trailing: '${e.count}',
+              //               ),
+              //           ],
+              //         ),
+              // );
+
+              final a = DentPanel(
                 title: "Today's Schedule",
                 subtitle: 'Live queue',
                 trailing: PanelLink(
@@ -312,100 +337,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             for (final a in today) AppointmentTile(appt: a),
                           ],
                         ),
-                      ),
-              );
-              final right = DentPanel(
-                title: 'Weekly Revenue',
-                subtitle: 'Mon – Sun · collected',
-                trailing: PanelLink(
-                  'Details',
-                  icon: Icons.chevron_right_rounded,
-                  onTap: () => context.go(AppRoutes.reports),
-                ),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: MiniBarChart(
-                        values: chartValues,
-                        labels: const [
-                          'Mon',
-                          'Tue',
-                          'Wed',
-                          'Thu',
-                          'Fri',
-                          'Sat',
-                          'Sun',
-                        ],
-                        peakIndex: peak,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-                      decoration: BoxDecoration(
-                        border: Border(top: BorderSide(color: d.line)),
-                      ),
-                      child: Row(
-                        children: [
-                          _legendStat(
-                            context,
-                            'Rs ${_money(weekTotal)}',
-                            'This week',
-                            d.ok,
-                          ),
-                          const SizedBox(width: 24),
-                          _legendStat(
-                            context,
-                            'Rs ${_money((weekTotal / 7).round())}',
-                            'Daily average',
-                            d.text3,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-              return stack
-                  ? Column(children: [left, const SizedBox(height: 18), right])
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(flex: 155, child: left),
-                        const SizedBox(width: 18),
-                        Expanded(flex: 100, child: right),
-                      ],
-                    );
-            },
-          ),
-          SizedBox(height: 2.2.h),
-
-          // top procedures + clinic status
-          LayoutBuilder(
-            builder: (context, c) {
-              final stack = c.maxWidth < 920;
-              final a = DentPanel(
-                title: 'Top Procedures',
-                subtitle: 'This month by volume',
-                child: topRows.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.all(36),
-                        child: Center(
-                          child: Text(
-                            'No procedures yet.',
-                            style: TextStyle(color: d.text4, fontSize: 9.sp),
-                          ),
-                        ),
-                      )
-                    : Column(
-                        children: [
-                          for (final e in topRows)
-                            StatBarRow(
-                              label: e.procedure,
-                              fraction: e.count / maxC,
-                              trailing: '${e.count}',
-                            ),
-                        ],
                       ),
               );
               final b = DentPanel(
@@ -459,6 +390,104 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     );
             },
           ),
+
+          SizedBox(height: 2.2.h),
+
+          // schedule + revenue
+          LayoutBuilder(
+            builder: (context, c) {
+              final stack = c.maxWidth < 920;
+              // final left = DentPanel(
+              //   title: "Today's Schedule",
+              //   subtitle: 'Live queue',
+              //   trailing: PanelLink(
+              //     'Open Calendar',
+              //     onTap: () => context.go(AppRoutes.appointments),
+              //   ),
+              //   child: today.isEmpty
+              //       ? Padding(
+              //           padding: const EdgeInsets.all(36),
+              //           child: Center(
+              //             child: Text(
+              //               'No appointments scheduled today.',
+              //               style: TextStyle(color: d.text4, fontSize: 9.sp),
+              //             ),
+              //           ),
+              //         )
+              //       : Padding(
+              //           padding: const EdgeInsets.all(8),
+              //           child: Column(
+              //             children: [
+              //               for (final a in today) AppointmentTile(appt: a),
+              //             ],
+              //           ),
+              //         ),
+              // );
+              final right = DentPanel(
+                title: 'Weekly Revenue',
+                subtitle: 'Mon – Sun · collected',
+                trailing: PanelLink(
+                  'Details',
+                  icon: Icons.chevron_right_rounded,
+                  onTap: () => context.go(AppRoutes.reports),
+                ),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: MiniBarChart(
+                        values: chartValues,
+                        labels: const [
+                          'Mon',
+                          'Tue',
+                          'Wed',
+                          'Thu',
+                          'Fri',
+                          'Sat',
+                          'Sun',
+                        ],
+                        peakIndex: peak,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                      decoration: BoxDecoration(
+                        border: Border(top: BorderSide(color: d.line)),
+                      ),
+                      child: Row(
+                        children: [
+                          _legendStat(
+                            context,
+                            'Rs ${_money(weekTotal)}',
+                            'This week',
+                            d.ok,
+                          ),
+                          const SizedBox(width: 24),
+                          _legendStat(
+                            context,
+                            'Rs ${_money((weekTotal / 7).round())}',
+                            'Daily average',
+                            d.text3,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+              return stack
+                  ? Column(children: [right])
+                  // ? Column(children: [left, const SizedBox(height: 18), right])
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Expanded(flex: 155, child: left),
+                        // const SizedBox(width: 18),
+                        Expanded(flex: 100, child: right),
+                      ],
+                    );
+            },
+          ),
         ],
       ),
     );
@@ -483,7 +512,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         big,
         style: TextStyle(
           fontFamily: AppFonts.display,
-          fontSize: 11.sp,
+          fontSize: 12.sp,
           fontWeight: FontWeight.w600,
           color: context.dent.text1,
         ),
@@ -491,7 +520,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       Text(
         sub,
         style: TextStyle(
-          fontSize: 8.sp,
+          fontSize: 10.sp,
           fontWeight: FontWeight.w600,
           color: subColor,
         ),

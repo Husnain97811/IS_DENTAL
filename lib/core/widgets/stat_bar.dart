@@ -33,7 +33,7 @@ class StatBarRow extends StatelessWidget {
               label,
               style: TextStyle(
                 color: d.text2,
-                fontSize: 9.sp,
+                fontSize: 11.sp,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -68,8 +68,8 @@ class StatBarRow extends StatelessWidget {
             trailing,
             style: TextStyle(
               fontFamily: 'JetBrains Mono',
-              fontSize: 8.5.sp,
-              fontWeight: FontWeight.w600,
+              fontSize: 10.5.sp,
+              fontWeight: FontWeight.bold,
               color: trailingColor ?? d.text1,
             ),
           ),

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/constants/views.dart';
-import '../domain/booking_request.dart';
 import 'requests_controller.dart';
 
 class RequestsScreen extends ConsumerStatefulWidget {
@@ -312,8 +311,17 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
     );
     if (ok != true) return;
     final staff = ref.read(authControllerProvider)?.username ?? 'unknown';
-    await ref
+    final done = await ref
         .read(bookingRequestRepositoryProvider)
         .reject(requestId: r.id, staffUsername: staff);
+    if (!done && context.mounted) {
+      await showDentDialog(
+        context,
+        kind: DentDialogKind.error,
+        title: 'No internet',
+        message: 'Check your internet connection and try again.',
+        confirmLabel: 'OK',
+      );
+    }
   }
 }
