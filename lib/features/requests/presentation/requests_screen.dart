@@ -132,6 +132,8 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
     padding: const EdgeInsets.all(48),
     child: Center(
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(Icons.inbox_rounded, size: 34, color: d.text4),
           const SizedBox(height: 10),
@@ -163,8 +165,8 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
           Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 18.sp,
+                height: 18.sp,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: d.ice.withValues(alpha: .13),
@@ -172,7 +174,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                 ),
                 child: Icon(
                   Icons.event_available_rounded,
-                  size: 19,
+                  size: 13.sp,
                   color: d.ice,
                 ),
               ),
@@ -186,12 +188,12 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                       style: TextStyle(
                         color: d.text1,
                         fontWeight: FontWeight.w700,
-                        fontSize: 10.sp,
+                        fontSize: 10.5.sp,
                       ),
                     ),
                     Text(
                       'Requested ${_ago(r.createdAt)}',
-                      style: TextStyle(color: d.text4, fontSize: 7.5.sp),
+                      style: TextStyle(color: d.text4, fontSize: 8.5.sp),
                     ),
                   ],
                 ),
@@ -225,34 +227,37 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
           // actions (pending only)
           if (r.isPending) ...[
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _reject(context, r),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: d.alert,
-                      side: BorderSide(color: d.alert.withValues(alpha: .4)),
-                      minimumSize: const Size.fromHeight(42),
+            Container(
+              width: 20.w,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _reject(context, r),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: d.alert,
+                        side: BorderSide(color: d.alert.withValues(alpha: .4)),
+                        minimumSize: const Size.fromHeight(42),
+                      ),
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                      label: const Text('Reject'),
                     ),
-                    icon: const Icon(Icons.close_rounded, size: 16),
-                    label: const Text('Reject'),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => showApproveRequestDialog(context, r),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: d.ice,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(42),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => showApproveRequestDialog(context, r),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: d.ice,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(42),
+                      ),
+                      icon: const Icon(Icons.check_rounded, size: 16),
+                      label: const Text('Approve'),
                     ),
-                    icon: const Icon(Icons.check_rounded, size: 16),
-                    label: const Text('Approve'),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ],
@@ -266,13 +271,13 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 14, color: d.text4),
+            Icon(icon, size: 16, color: d.text4),
             const SizedBox(width: 10),
             SizedBox(
-              width: 110,
+              width: 15.w,
               child: Text(
                 label,
-                style: TextStyle(color: d.text4, fontSize: 8.sp),
+                style: TextStyle(color: d.text4, fontSize: 9.sp),
               ),
             ),
             Expanded(

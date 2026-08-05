@@ -101,7 +101,7 @@ class BookingRequestsCard extends ConsumerWidget {
             'No pending requests',
             style: TextStyle(
               color: d.text3,
-              fontSize: 9.sp,
+              fontSize: 10.5.sp,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -154,26 +154,29 @@ class BookingRequestsCard extends ConsumerWidget {
                         style: TextStyle(
                           color: d.text1,
                           fontWeight: FontWeight.w600,
-                          fontSize: 9.sp,
+                          fontSize: 11.sp,
                         ),
                       ),
                     ),
                     const SizedBox(width: 6),
                     Text(
                       _ago(r.createdAt),
-                      style: TextStyle(color: d.text4, fontSize: 7.sp),
+                      style: TextStyle(color: d.text4, fontSize: 9.sp),
                     ),
+
+                    // const SizedBox(width: 6),
                   ],
                 ),
                 const SizedBox(height: 1),
                 Text(
                   '${r.procedure} · ${r.dentist}',
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: d.text3, fontSize: 8.sp),
+                  style: TextStyle(color: d.text3, fontSize: 10.5.sp),
                 ),
+
                 Text(
                   _slotLabel(r.slotPkt),
-                  style: AppTypography.mono(size: 7.5.sp, color: d.text2),
+                  style: AppTypography.mono(size: 9.5.sp, color: d.text2),
                 ),
               ],
             ),
@@ -211,9 +214,9 @@ class BookingRequestsCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(9),
         onTap: onTap,
         child: SizedBox(
-          width: 32,
-          height: 32,
-          child: Icon(icon, size: 16, color: color),
+          width: 17.sp,
+          height: 17.sp,
+          child: Icon(icon, size: 14.sp, color: color),
         ),
       ),
     );

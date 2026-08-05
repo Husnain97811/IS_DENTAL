@@ -52,6 +52,37 @@ class BookingRequestRepository {
     }, onConflict: 'id');
   }
 
+  /// Resolve a local patient id → their uuid (appointments push by patient_uuid).
+  Future<String?> _patientUuidOf(int patientId) async => (await (_db.select(
+    _db.patients,
+  )..where((t) => t.id.equals(patientId))).getSingleOrNull())?.uuid;
+
+  /// Push a single appointment to Supabase immediately (no full sync), so the
+  /// mobile app's available-slots sees it as busy right away.
+  Future<void> _pushOneAppointment(String appointmentUuid) async {
+    final a = await (_db.select(
+      _db.appointments,
+    )..where((t) => t.uuid.equals(appointmentUuid))).getSingleOrNull();
+    if (a == null) return;
+    final pu = await _patientUuidOf(a.patientId);
+    if (pu == null) return; // patient not resolvable; full sync will catch it
+    await _sb.from('appointments').upsert({
+      'uuid': a.uuid,
+      'clinic_id': a.clinicId,
+      'branch_id': a.branchId,
+      'patient_uuid': pu,
+      'dentist': a.dentist,
+      'chair': a.chair,
+      'procedure': a.procedure,
+      'starts_at': a.startsAt.toUtc().toIso8601String(),
+      'duration_min': a.durationMin,
+      'status': a.status,
+      'notes': a.notes,
+      'is_deleted': a.isDeleted,
+      'updated_at': a.updatedAt.toUtc().toIso8601String(),
+    }, onConflict: 'uuid');
+  }
+
   /// Live stream of requests for a status, branch-filtered, with patient names
   /// resolved via a join to patients (by uuid).
   Stream<List<BookingRequestView>> watch({
@@ -129,6 +160,8 @@ class BookingRequestRepository {
   }) async {
     if (!await _online()) return false;
 
+    final apptUuid = Uuids.v4(); // ← known uuid so we can push it after
+
     await _db.transaction(() async {
       final req = await (_db.select(
         _db.bookingRequests,
@@ -140,7 +173,7 @@ class BookingRequestRepository {
           .into(_db.appointments)
           .insert(
             AppointmentsCompanion.insert(
-              uuid: Uuids.v4(),
+              uuid: apptUuid,
               clinicId: clinicId,
               branchId: Value(req.branchId),
               patientId: patientId,
@@ -166,7 +199,8 @@ class BookingRequestRepository {
       );
     });
 
-    await _pushOne(requestId);
+    await _pushOne(requestId); // pushes the approved request
+    await _pushOneAppointment(apptUuid); // pushes the new appointment NOW
     return true;
   }
 

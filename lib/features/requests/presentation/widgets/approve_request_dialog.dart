@@ -88,14 +88,21 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
     }
 
     // Build the final PKT slot, convert back to UTC for storage (PKT = UTC+5).
-    final pktSlot = DateTime(
+    // final pktSlot = DateTime(
+    //   _date.year,
+    //   _date.month,
+    //   _date.day,
+    //   _time.hour,
+    //   _time.minute,
+    // );
+    // final utcSlot = pktSlot.subtract(const Duration(hours: 5));
+    final slot = DateTime(
       _date.year,
       _date.month,
       _date.day,
       _time.hour,
       _time.minute,
     );
-    final utcSlot = pktSlot.subtract(const Duration(hours: 5));
 
     final staff = ref.read(authControllerProvider)?.username ?? 'unknown';
 
@@ -106,7 +113,7 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
         dentist: req.dentist,
         chair: 1,
         procedure: req.procedure,
-        finalSlotUtc: utcSlot,
+        finalSlotUtc: slot,
         durationMin: _durationMin,
         staffUsername: staff,
         wasModified: _modified,
@@ -167,7 +174,10 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
                   Expanded(
                     child: Text(
                       'Approve Request',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontFamily: 'BlackOpsOne',
+                        fontSize: 13.sp,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -226,7 +236,7 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
                     'DURATION (MIN)',
                     style: TextStyle(
                       color: d.text4,
-                      fontSize: 7.sp,
+                      fontSize: 9.sp,
                       fontWeight: FontWeight.w700,
                       letterSpacing: .5,
                     ),
@@ -250,7 +260,7 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
                             value: m,
                             child: Text(
                               '$m min',
-                              style: TextStyle(fontSize: 9.sp, color: d.text1),
+                              style: TextStyle(fontSize: 11.sp, color: d.text1),
                             ),
                           ),
                       ],
@@ -333,7 +343,7 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
         label.toUpperCase(),
         style: TextStyle(
           color: d.text4,
-          fontSize: 7.sp,
+          fontSize: 9.5.sp,
           fontWeight: FontWeight.w700,
           letterSpacing: .5,
         ),
@@ -357,7 +367,7 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
               child: Text(
                 value,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 9.sp, color: d.text1),
+                style: TextStyle(fontSize: 11.sp, color: d.text1),
               ),
             ),
           ],
@@ -379,7 +389,7 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
         label.toUpperCase(),
         style: TextStyle(
           color: d.text4,
-          fontSize: 7.sp,
+          fontSize: 9.5.sp,
           fontWeight: FontWeight.w700,
           letterSpacing: .5,
         ),
@@ -402,7 +412,7 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
               const SizedBox(width: 8),
               Text(
                 value,
-                style: TextStyle(fontSize: 9.sp, color: d.text1),
+                style: TextStyle(fontSize: 11.sp, color: d.text1),
               ),
               const Spacer(),
               Icon(Icons.edit_rounded, size: 12, color: d.text4),

@@ -343,7 +343,7 @@ class SyncEngine {
       await _sb.from('booking_requests').upsert([
         for (final r in changed)
           {
-            'id': r.id, // Supabase PK is `id` (uuid type), not `uuid`
+            'id': r.uuid, // Supabase PK is `id` (uuid type), not `uuid`
             'clinic_id': clinicId,
             'branch_id': r.branchId,
             'patient_uuid': r.patientUuid,
@@ -358,7 +358,7 @@ class SyncEngine {
             'decided_at': _iso(r.decidedAt),
             'updated_at': _iso(r.updatedAt),
           },
-      ], onConflict: 'uuid');
+      ], onConflict: 'id');
       await _setCur(
         'push_booking_requests',
         _max(changed.map((e) => e.updatedAt)),
@@ -692,9 +692,19 @@ class SyncEngine {
     final pullSince = await _cur('pull_users');
     for (final r in await _pull('users', clinicId, pullSince)) {
       final u = DateTime.parse(r['updated_at']);
-      final existing = await (_db.select(
+      // final existing = await (_db.select(
+      //   _db.users,
+      // )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+
+      var existing = await (_db.select(
         _db.users,
       )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+      // Fall back to username match so we don't insert a duplicate
+      // (same user created locally + in cloud under different ids).
+      existing ??=
+          await (_db.select(_db.users)
+                ..where((t) => t.username.equals(r['username'] ?? '')))
+              .getSingleOrNull();
       if (existing != null && !u.isAfter(existing.updatedAt)) continue;
       await _db
           .into(_db.users)
