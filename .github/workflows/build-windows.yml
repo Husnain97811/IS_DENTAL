@@ -1,0 +1,137 @@
+name: Build Windows Executable
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      # ─────────────────────────────────────────────
+      # Checkout Repository
+      # ─────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # ─────────────────────────────────────────────
+      # Git LFS  (the .glb tooth model is large — keep if you use LFS)
+      # ─────────────────────────────────────────────
+      - name: Install Git LFS
+        run: git lfs install --force
+
+      - name: Pull LFS files
+        run: git lfs pull --include "assets/*"
+
+      # ─────────────────────────────────────────────
+      # Setup Flutter
+      # ─────────────────────────────────────────────
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.1'
+          cache: false
+
+      # ─────────────────────────────────────────────
+      # Clean old lock file
+      # ─────────────────────────────────────────────
+      - name: Delete lock file
+        shell: pwsh
+        run: |
+          Remove-Item pubspec.lock -ErrorAction SilentlyContinue
+
+      # ─────────────────────────────────────────────
+      # Install Dependencies
+      # ─────────────────────────────────────────────
+      - name: Install dependencies
+        run: flutter pub get
+
+      # ─────────────────────────────────────────────
+      # Generate code (Drift + freezed) — REQUIRED for DentOS
+      # ─────────────────────────────────────────────
+      - name: Run build_runner
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      # ─────────────────────────────────────────────
+      # Build Windows EXE
+      # ─────────────────────────────────────────────
+      - name: Build Windows EXE
+        shell: pwsh
+        run: |
+          Write-Host "Building DentOS Windows executable..."
+          flutter build windows --release
+          Write-Host "Build completed!"
+
+      # ─────────────────────────────────────────────
+      # Create ZIP using native Windows compression
+      # ─────────────────────────────────────────────
+      - name: Create ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path build/windows/x64/runner/Release/* `
+            -DestinationPath DentOS.zip `
+            -Force
+
+          Write-Host "ZIP created successfully"
+
+      # ─────────────────────────────────────────────
+      # Setup Node.js
+      # ─────────────────────────────────────────────
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ─────────────────────────────────────────────
+      # Install Vercel Blob SDK
+      # ─────────────────────────────────────────────
+      - name: Install Vercel Blob SDK
+        run: npm install @vercel/blob
+
+      # ─────────────────────────────────────────────
+      # Upload ZIP to Vercel Blob
+      # ─────────────────────────────────────────────
+      - name: Upload ZIP to Vercel Blob
+        env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.VERCEL_BLOB_TOKEN }}
+        run: |
+          node -e "
+          const { put } = require('@vercel/blob');
+          const fs = require('fs');
+
+          async function uploadZip() {
+            const zipBuffer = fs.readFileSync('DentOS.zip');
+
+            const blob = await put('DentOS.zip', zipBuffer, {
+              access: 'public',
+              addRandomSuffix: false,
+              allowOverwrite: true,
+            });
+
+            console.log('Uploaded ZIP to: ' + blob.url);
+          }
+
+          uploadZip().catch(err => {
+            console.error('Upload failed:', err);
+            process.exit(1);
+          });
+          "
+
+      # ─────────────────────────────────────────────
+      # Upload Build Artifact to GitHub
+      # ─────────────────────────────────────────────
+      - name: Upload Executable Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DentOS
+          path: build/windows/x64/runner/Release/
+          if-no-files-found: error
+          retention-days: 7
