@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/patients/domain/treatment_plan.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../../core/theme/app_palette.dart';
@@ -46,6 +47,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
   String _status = 'pending';
   bool _busy = false;
   String? _error;
+  int? _selectedPlanId; // which plan is shown in the bill
 
   @override
   void initState() {
@@ -243,6 +245,22 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
     final patients =
         ref.watch(patientsStreamProvider).value ?? const <Patient>[];
 
+    final plans = _patientId == null
+        ? const <TreatmentPlan>[]
+        : (ref.watch(plansProvider(_patientId!)).value ??
+              const <TreatmentPlan>[]);
+    // auto-select first active plan
+    if (_selectedPlanId == null && plans.isNotEmpty) {
+      final active = plans.firstWhere(
+        (p) => p.isActive,
+        orElse: () => plans.first,
+      );
+      _selectedPlanId = active.id;
+    }
+    final selectedPlan = plans
+        .where((p) => p.id == _selectedPlanId)
+        .firstOrNull;
+
     return Dialog(
       backgroundColor: d.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -262,7 +280,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                   Expanded(
                     child: Text(
                       'New Invoice',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
                   IconButton(
@@ -302,7 +320,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                               child: Text(
                                 p.fullName,
                                 style: TextStyle(
-                                  fontSize: 9.sp,
+                                  fontSize: 10.sp,
                                   color: d.text1,
                                 ),
                               ),
@@ -311,6 +329,51 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                         onChanged: (v) => setState(() => _patientId = v),
                       ),
                     ),
+
+                    // ── Treatment Plan (if any) ──
+                    if (plans.isNotEmpty) ...[
+                      _label(d, 'Treatment Plan'),
+                      if (plans.length > 1)
+                        _box(
+                          d,
+                          DropdownButton<int>(
+                            isExpanded: true,
+                            underline: const SizedBox(),
+                            value: _selectedPlanId,
+                            items: [
+                              for (final p in plans)
+                                DropdownMenuItem(
+                                  value: p.id,
+                                  child: Text(
+                                    '${p.title}${p.isActive ? '' : ' (done)'}',
+                                    style: TextStyle(
+                                      fontSize: 9.sp,
+                                      color: d.text1,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                            onChanged: (v) =>
+                                setState(() => _selectedPlanId = v),
+                          ),
+                        ),
+                      if (selectedPlan != null)
+                        Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: d.surface2,
+                            borderRadius: BorderRadius.circular(11),
+                            border: Border.all(color: d.line),
+                          ),
+                          child: Column(
+                            children: [
+                              for (final s in selectedPlan.steps)
+                                _billStep(d, s),
+                            ],
+                          ),
+                        ),
+                    ],
 
                     // ── Invoice No + Status ──
                     Row(
@@ -543,12 +606,122 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
       t.toUpperCase(),
       style: TextStyle(
         color: d.text4,
-        fontSize: 7.sp,
-        fontWeight: FontWeight.w700,
+        fontSize: 10.sp,
+        fontWeight: FontWeight.bold,
         letterSpacing: .5,
       ),
     ),
   );
+
+  Widget _billStep(DentColors d, TreatmentStep s) {
+    final isDone = s.status == StepStatus.done;
+    final isCurrent = s.status == StepStatus.current;
+    final color = isDone ? d.teal : (isCurrent ? d.ice : d.text4);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  s.label,
+                  style: TextStyle(
+                    color: d.text1,
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (s.completedAt != null)
+                  Text(
+                    '✓ ${_fmtBillDate(s.completedAt!)}',
+                    style: TextStyle(color: d.teal, fontSize: 9.sp),
+                  ),
+              ],
+            ),
+          ),
+          if (isDone)
+            Text(
+              'DONE',
+              style: TextStyle(
+                color: d.teal,
+                fontSize: 9.5.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            )
+          else ...[
+            // add procedure to the invoice
+            TextButton(
+              onPressed: () => _addStepToInvoice(s),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 28),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              child: Text(
+                '+ Bill',
+                style: TextStyle(fontSize: 9.5.sp, color: d.text3),
+              ),
+            ),
+            // mark done
+            TextButton(
+              onPressed: () async {
+                await ref
+                    .read(patientRepositoryProvider)
+                    .setStepStatus(s.id, StepStatus.done);
+              },
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 28),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                backgroundColor: d.ice.withValues(alpha: .12),
+              ),
+              child: Text(
+                'Mark done',
+                style: TextStyle(
+                  fontSize: 9.5.sp,
+                  color: d.ice,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _addStepToInvoice(TreatmentStep s) {
+    final prices = ref.read(procedurePriceProvider);
+    // match a catalog price by step label if possible
+    int? price;
+    for (final e in prices.entries) {
+      if (s.label.toLowerCase().contains(e.key.toLowerCase()) ||
+          e.key.toLowerCase().contains(s.label.toLowerCase())) {
+        price = e.value;
+        break;
+      }
+    }
+    setState(() {
+      final target = _lines.firstWhere(
+        (l) => l.desc.text.trim().isEmpty,
+        orElse: () {
+          final line = _Line();
+          _lines.add(line);
+          return line;
+        },
+      );
+      target.desc.text = s.label;
+      if (price != null) target.amt.text = '$price';
+    });
+  }
+
+  String _fmtBillDate(DateTime dt) => '${dt.day}/${dt.month}/${dt.year}';
 
   Widget _box(DentColors d, Widget child) => Container(
     height: 42,

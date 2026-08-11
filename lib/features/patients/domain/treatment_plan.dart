@@ -11,6 +11,7 @@ abstract class TreatmentStep with _$TreatmentStep {
     required String label,
     @Default('') String detail,
     required StepStatus status,
+    DateTime? completedAt, // ← NEW: stamped when marked done
   }) = _TreatmentStep;
 }
 
@@ -21,4 +22,17 @@ abstract class TreatmentPlan with _$TreatmentPlan {
     required String title,
     required List<TreatmentStep> steps,
   }) = _TreatmentPlan;
+
+  const TreatmentPlan._();
+
+  /// A plan is "active" while it still has a step that isn't done.
+  bool get isActive => steps.any((s) => s.status != StepStatus.done);
+
+  /// The next step to work on (first non-done), or null if complete.
+  TreatmentStep? get nextStep {
+    for (final s in steps) {
+      if (s.status != StepStatus.done) return s;
+    }
+    return null;
+  }
 }

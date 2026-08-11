@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$TreatmentStep {
 
- int get id; int get order; String get label; String get detail; StepStatus get status;
+ int get id; int get order; String get label; String get detail; StepStatus get status; DateTime? get completedAt;
 /// Create a copy of TreatmentStep
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $TreatmentStepCopyWith<TreatmentStep> get copyWith => _$TreatmentStepCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TreatmentStep&&(identical(other.id, id) || other.id == id)&&(identical(other.order, order) || other.order == order)&&(identical(other.label, label) || other.label == label)&&(identical(other.detail, detail) || other.detail == detail)&&(identical(other.status, status) || other.status == status));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TreatmentStep&&(identical(other.id, id) || other.id == id)&&(identical(other.order, order) || other.order == order)&&(identical(other.label, label) || other.label == label)&&(identical(other.detail, detail) || other.detail == detail)&&(identical(other.status, status) || other.status == status)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,order,label,detail,status);
+int get hashCode => Object.hash(runtimeType,id,order,label,detail,status,completedAt);
 
 @override
 String toString() {
-  return 'TreatmentStep(id: $id, order: $order, label: $label, detail: $detail, status: $status)';
+  return 'TreatmentStep(id: $id, order: $order, label: $label, detail: $detail, status: $status, completedAt: $completedAt)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $TreatmentStepCopyWith<$Res>  {
   factory $TreatmentStepCopyWith(TreatmentStep value, $Res Function(TreatmentStep) _then) = _$TreatmentStepCopyWithImpl;
 @useResult
 $Res call({
- int id, int order, String label, String detail, StepStatus status
+ int id, int order, String label, String detail, StepStatus status, DateTime? completedAt
 });
 
 
@@ -62,14 +62,15 @@ class _$TreatmentStepCopyWithImpl<$Res>
 
 /// Create a copy of TreatmentStep
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? order = null,Object? label = null,Object? detail = null,Object? status = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? order = null,Object? label = null,Object? detail = null,Object? status = null,Object? completedAt = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,order: null == order ? _self.order : order // ignore: cast_nullable_to_non_nullable
 as int,label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
 as String,detail: null == detail ? _self.detail : detail // ignore: cast_nullable_to_non_nullable
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as StepStatus,
+as StepStatus,completedAt: freezed == completedAt ? _self.completedAt : completedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 
@@ -154,10 +155,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  int order,  String label,  String detail,  StepStatus status)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  int order,  String label,  String detail,  StepStatus status,  DateTime? completedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TreatmentStep() when $default != null:
-return $default(_that.id,_that.order,_that.label,_that.detail,_that.status);case _:
+return $default(_that.id,_that.order,_that.label,_that.detail,_that.status,_that.completedAt);case _:
   return orElse();
 
 }
@@ -175,10 +176,10 @@ return $default(_that.id,_that.order,_that.label,_that.detail,_that.status);case
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  int order,  String label,  String detail,  StepStatus status)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  int order,  String label,  String detail,  StepStatus status,  DateTime? completedAt)  $default,) {final _that = this;
 switch (_that) {
 case _TreatmentStep():
-return $default(_that.id,_that.order,_that.label,_that.detail,_that.status);case _:
+return $default(_that.id,_that.order,_that.label,_that.detail,_that.status,_that.completedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -195,10 +196,10 @@ return $default(_that.id,_that.order,_that.label,_that.detail,_that.status);case
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  int order,  String label,  String detail,  StepStatus status)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  int order,  String label,  String detail,  StepStatus status,  DateTime? completedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _TreatmentStep() when $default != null:
-return $default(_that.id,_that.order,_that.label,_that.detail,_that.status);case _:
+return $default(_that.id,_that.order,_that.label,_that.detail,_that.status,_that.completedAt);case _:
   return null;
 
 }
@@ -210,7 +211,7 @@ return $default(_that.id,_that.order,_that.label,_that.detail,_that.status);case
 
 
 class _TreatmentStep implements TreatmentStep {
-  const _TreatmentStep({required this.id, required this.order, required this.label, this.detail = '', required this.status});
+  const _TreatmentStep({required this.id, required this.order, required this.label, this.detail = '', required this.status, this.completedAt});
   
 
 @override final  int id;
@@ -218,6 +219,7 @@ class _TreatmentStep implements TreatmentStep {
 @override final  String label;
 @override@JsonKey() final  String detail;
 @override final  StepStatus status;
+@override final  DateTime? completedAt;
 
 /// Create a copy of TreatmentStep
 /// with the given fields replaced by the non-null parameter values.
@@ -229,16 +231,16 @@ _$TreatmentStepCopyWith<_TreatmentStep> get copyWith => __$TreatmentStepCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TreatmentStep&&(identical(other.id, id) || other.id == id)&&(identical(other.order, order) || other.order == order)&&(identical(other.label, label) || other.label == label)&&(identical(other.detail, detail) || other.detail == detail)&&(identical(other.status, status) || other.status == status));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TreatmentStep&&(identical(other.id, id) || other.id == id)&&(identical(other.order, order) || other.order == order)&&(identical(other.label, label) || other.label == label)&&(identical(other.detail, detail) || other.detail == detail)&&(identical(other.status, status) || other.status == status)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,order,label,detail,status);
+int get hashCode => Object.hash(runtimeType,id,order,label,detail,status,completedAt);
 
 @override
 String toString() {
-  return 'TreatmentStep(id: $id, order: $order, label: $label, detail: $detail, status: $status)';
+  return 'TreatmentStep(id: $id, order: $order, label: $label, detail: $detail, status: $status, completedAt: $completedAt)';
 }
 
 
@@ -249,7 +251,7 @@ abstract mixin class _$TreatmentStepCopyWith<$Res> implements $TreatmentStepCopy
   factory _$TreatmentStepCopyWith(_TreatmentStep value, $Res Function(_TreatmentStep) _then) = __$TreatmentStepCopyWithImpl;
 @override @useResult
 $Res call({
- int id, int order, String label, String detail, StepStatus status
+ int id, int order, String label, String detail, StepStatus status, DateTime? completedAt
 });
 
 
@@ -266,14 +268,15 @@ class __$TreatmentStepCopyWithImpl<$Res>
 
 /// Create a copy of TreatmentStep
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? order = null,Object? label = null,Object? detail = null,Object? status = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? order = null,Object? label = null,Object? detail = null,Object? status = null,Object? completedAt = freezed,}) {
   return _then(_TreatmentStep(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,order: null == order ? _self.order : order // ignore: cast_nullable_to_non_nullable
 as int,label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
 as String,detail: null == detail ? _self.detail : detail // ignore: cast_nullable_to_non_nullable
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as StepStatus,
+as StepStatus,completedAt: freezed == completedAt ? _self.completedAt : completedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 
@@ -476,8 +479,8 @@ return $default(_that.id,_that.title,_that.steps);case _:
 /// @nodoc
 
 
-class _TreatmentPlan implements TreatmentPlan {
-  const _TreatmentPlan({required this.id, required this.title, required final  List<TreatmentStep> steps}): _steps = steps;
+class _TreatmentPlan extends TreatmentPlan {
+  const _TreatmentPlan({required this.id, required this.title, required final  List<TreatmentStep> steps}): _steps = steps,super._();
   
 
 @override final  int id;

@@ -67,7 +67,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -265,47 +265,53 @@ class AppDatabase extends _$AppDatabase {
     },
 
     onUpgrade: (m, from, to) async {
-      if (from < 13) {
-        await m.createTable(bookingRequests);
-      }
-      if (from < 12) {
+      if (from < 14) {
         try {
-          await m.addColumn(branches, branches.openMinutes);
-        } catch (_) {}
-        try {
-          await m.addColumn(branches, branches.closeMinutes);
-        } catch (_) {}
-        try {
-          await m.addColumn(branches, branches.slotMinutes);
-        } catch (_) {}
-        try {
-          await m.addColumn(branches, branches.closedDays);
-        } catch (_) {}
-      }
-      if (from < 11) {
-        // Guarded: DBs created fresh while cnic was already in the table
-        // class already have the column — plain addColumn would throw.
-        try {
-          await m.addColumn(patients, patients.cnic);
+          await m.addColumn(treatmentSteps, treatmentSteps.completedAt);
         } catch (_) {
-          /* column already exists */
+          if (from < 13) {
+            await m.createTable(bookingRequests);
+          }
+          if (from < 12) {
+            try {
+              await m.addColumn(branches, branches.openMinutes);
+            } catch (_) {}
+            try {
+              await m.addColumn(branches, branches.closeMinutes);
+            } catch (_) {}
+            try {
+              await m.addColumn(branches, branches.slotMinutes);
+            } catch (_) {}
+            try {
+              await m.addColumn(branches, branches.closedDays);
+            } catch (_) {}
+          }
+          if (from < 11) {
+            // Guarded: DBs created fresh while cnic was already in the table
+            // class already have the column — plain addColumn would throw.
+            try {
+              await m.addColumn(patients, patients.cnic);
+            } catch (_) {
+              /* column already exists */
+            }
+          }
+          if (from < 10) {
+            await m.addColumn(treatments, treatments.branchId);
+          }
+          if (from < 9) {
+            await m.addColumn(users, users.email);
+            await m.addColumn(users, users.phone);
+          }
+          if (from < 8) {
+            await m.addColumn(appointments, appointments.billed);
+          }
+          if (from < 7) {
+            await m.addColumn(users, users.branchId);
+          }
+          if (from < 6) {
+            await m.createTable(branches);
+          }
         }
-      }
-      if (from < 10) {
-        await m.addColumn(treatments, treatments.branchId);
-      }
-      if (from < 9) {
-        await m.addColumn(users, users.email);
-        await m.addColumn(users, users.phone);
-      }
-      if (from < 8) {
-        await m.addColumn(appointments, appointments.billed);
-      }
-      if (from < 7) {
-        await m.addColumn(users, users.branchId);
-      }
-      if (from < 6) {
-        await m.createTable(branches);
       }
     },
   );

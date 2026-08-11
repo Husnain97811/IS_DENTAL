@@ -54,3 +54,9 @@ final activePlanProvider = StreamProvider.autoDispose
       (ref, patientId) =>
           ref.watch(patientRepositoryProvider).watchActivePlan(patientId),
     );
+
+final plansProvider = StreamProvider.autoDispose
+    .family<List<TreatmentPlan>, int>(
+      (ref, patientId) =>
+          ref.watch(patientRepositoryProvider).watchPlans(patientId),
+    );

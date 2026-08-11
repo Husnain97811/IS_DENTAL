@@ -98,7 +98,7 @@ class PanelLink extends StatelessWidget {
             label,
             style: TextStyle(
               color: d.ice,
-              fontSize: 8.5.sp,
+              fontSize: 9.5.sp,
               fontWeight: FontWeight.w600,
             ),
           ),

@@ -51,6 +51,7 @@ class TreatmentSteps extends Table {
   TextColumn get label => text()();
   TextColumn get detail => text().withDefault(const Constant(''))();
   TextColumn get status => text().withDefault(const Constant('todo'))();
+  DateTimeColumn get completedAt => dateTime().nullable()();
 }
 
 @DataClassName('AuditLogRow')

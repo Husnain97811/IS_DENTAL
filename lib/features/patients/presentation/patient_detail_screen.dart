@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:is_dental/features/patients/presentation/widgets/plan_editor.dart';
 import 'package:sizer/sizer.dart';
 import 'package:is_dental/core/theme/app_typography.dart';
 import 'package:is_dental/core/theme/dent_colors.dart';
@@ -57,6 +58,8 @@ class PatientDetailScreen extends ConsumerWidget {
       for (final e in toothRecords.entries) e.key: e.value.state,
     };
     final plan = ref.watch(activePlanProvider(patientId)).value;
+    final plans =
+        ref.watch(plansProvider(patientId)).value ?? const <TreatmentPlan>[];
     final appts =
         ref.watch(appointmentsForPatientProvider(patientId)).value ??
         const <Appointment>[];
@@ -106,9 +109,10 @@ class PatientDetailScreen extends ConsumerWidget {
                   // _chartCard(context, ref, d, toothStates, toothRecords),
 
                   // const SizedBox(height: 18),
-                  _planCard(context, d, plan),
-                  const SizedBox(height: 18),
                   _detailsCard(context, d, patient),
+                  // _planCard(context, d, plan),
+                  const SizedBox(height: 18),
+                  _plansCard(context, ref, d, plans),
                 ],
               );
               if (stack) {
@@ -464,26 +468,208 @@ class PatientDetailScreen extends ConsumerWidget {
   // );
 
   // ---- treatment plan ----
-  Widget _planCard(BuildContext context, DentColors d, TreatmentPlan? plan) =>
-      DentPanel(
-        title: 'Treatment Plan',
-        subtitle: plan?.title ?? 'None active',
-        child: plan == null || plan.steps.isEmpty
-            ? Padding(
-                padding: const EdgeInsets.all(28),
-                child: Text(
-                  'No active treatment plan.',
-                  style: TextStyle(color: d.text4, fontSize: 9.sp),
+  // ---- treatment plans (multiple) ----
+  Widget _plansCard(
+    BuildContext context,
+    WidgetRef ref,
+    DentColors d,
+    List<TreatmentPlan> plans,
+  ) => DentPanel(
+    title: 'Treatment Plans',
+    subtitle: plans.isEmpty
+        ? 'None yet'
+        : '${plans.where((p) => p.isActive).length} active · ${plans.length} total',
+    trailing: PanelLink(
+      'Add Plan ',
+      onTap: () => showPlanEditor(context, patientId: patientId),
+    ),
+    child: plans.isEmpty
+        ? Padding(
+            padding: const EdgeInsets.all(28),
+            child: Text(
+              'No treatment plans yet. Tap "Add Plan" to create one.',
+              style: TextStyle(color: d.text4, fontSize: 9.sp),
+            ),
+          )
+        : Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [for (final p in plans) _planTile(context, ref, d, p)],
+            ),
+          ),
+  );
+
+  Widget _planTile(
+    BuildContext context,
+    WidgetRef ref,
+    DentColors d,
+    TreatmentPlan p,
+  ) {
+    final done = p.steps.where((s) => s.status == StepStatus.done).length;
+    final total = p.steps.length;
+    final faded = !p.isActive;
+    return Opacity(
+      opacity: faded ? 0.6 : 1,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: d.surface2,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: d.line),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        p.title,
+                        style: TextStyle(
+                          color: d.text1,
+                          fontSize: 10.5.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        faded ? 'Completed' : '$done of $total done',
+                        style: TextStyle(color: d.text4, fontSize: 9.5.sp),
+                      ),
+                    ],
+                  ),
                 ),
-              )
-            : Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [for (final s in plan.steps) _step(d, s)],
+                IconButton(
+                  icon: Icon(Icons.edit_rounded, size: 11.sp, color: d.text3),
+                  onPressed: () => showPlanEditor(
+                    context,
+                    patientId: patientId,
+                    existing: p,
+                  ),
+                  tooltip: 'Edit',
                 ),
+                IconButton(
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 11.sp,
+                    color: d.text4,
+                  ),
+                  onPressed: () async {
+                    final ok = await showDialog<bool>(
+                      context: context,
+                      builder: (c) => AlertDialog(
+                        backgroundColor: d.surface,
+                        title: const Text('Delete plan?'),
+                        content: Text(
+                          'Remove "${p.title}"? This cannot be undone.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(c, false),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: d.alert,
+                            ),
+                            onPressed: () => Navigator.pop(c, true),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (ok == true) {
+                      await ref
+                          .read(patientRepositoryProvider)
+                          .deletePlan(p.id);
+                    }
+                  },
+                  tooltip: 'Delete',
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            for (final s in p.steps) _progressStep(context, ref, d, s),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // tappable step: tap the dot/pill to cycle todo → current → done
+  Widget _progressStep(
+    BuildContext context,
+    WidgetRef ref,
+    DentColors d,
+    TreatmentStep s,
+  ) {
+    final name = s.status.name;
+    final color = name == 'done'
+        ? d.teal
+        : (name == 'current' ? d.ice : d.text4);
+    StepStatus nextStatus() => switch (s.status) {
+      StepStatus.todo => StepStatus.current,
+      StepStatus.current => StepStatus.done,
+      StepStatus.done => StepStatus.todo,
+    };
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () =>
+          ref.read(patientRepositoryProvider).setStepStatus(s.id, nextStatus()),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 9.sp,
+              height: 9.sp,
+              margin: const EdgeInsets.only(top: 3),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    s.label,
+                    style: TextStyle(
+                      color: d.text1,
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (s.detail.isNotEmpty)
+                    Text(
+                      s.detail,
+                      style: TextStyle(color: d.text4, fontSize: 9.sp),
+                    ),
+                  if (s.completedAt != null)
+                    Text(
+                      '✓ ${_fmtDate(s.completedAt!)}',
+                      style: TextStyle(color: d.teal, fontSize: 9.sp),
+                    ),
+                ],
               ),
-      );
+            ),
+            Text(
+              name.toUpperCase(),
+              style: TextStyle(
+                color: color,
+                fontSize: 8.5.sp,
+                fontWeight: FontWeight.w700,
+                letterSpacing: .5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _step(DentColors d, TreatmentStep s) {
     final name = s.status.name;

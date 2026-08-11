@@ -3166,6 +3166,17 @@ class $TreatmentStepsTable extends TreatmentSteps
     requiredDuringInsert: false,
     defaultValue: const Constant('todo'),
   );
+  static const VerificationMeta _completedAtMeta = const VerificationMeta(
+    'completedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> completedAt = GeneratedColumn<DateTime>(
+    'completed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3174,6 +3185,7 @@ class $TreatmentStepsTable extends TreatmentSteps
     label,
     detail,
     status,
+    completedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3226,6 +3238,15 @@ class $TreatmentStepsTable extends TreatmentSteps
         status.isAcceptableOrUnknown(data['status']!, _statusMeta),
       );
     }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+        _completedAtMeta,
+        completedAt.isAcceptableOrUnknown(
+          data['completed_at']!,
+          _completedAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3259,6 +3280,10 @@ class $TreatmentStepsTable extends TreatmentSteps
         DriftSqlType.string,
         data['${effectivePrefix}status'],
       )!,
+      completedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}completed_at'],
+      ),
     );
   }
 
@@ -3276,6 +3301,7 @@ class TreatmentStepRow extends DataClass
   final String label;
   final String detail;
   final String status;
+  final DateTime? completedAt;
   const TreatmentStepRow({
     required this.id,
     required this.planId,
@@ -3283,6 +3309,7 @@ class TreatmentStepRow extends DataClass
     required this.label,
     required this.detail,
     required this.status,
+    this.completedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3293,6 +3320,9 @@ class TreatmentStepRow extends DataClass
     map['label'] = Variable<String>(label);
     map['detail'] = Variable<String>(detail);
     map['status'] = Variable<String>(status);
+    if (!nullToAbsent || completedAt != null) {
+      map['completed_at'] = Variable<DateTime>(completedAt);
+    }
     return map;
   }
 
@@ -3304,6 +3334,9 @@ class TreatmentStepRow extends DataClass
       label: Value(label),
       detail: Value(detail),
       status: Value(status),
+      completedAt: completedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedAt),
     );
   }
 
@@ -3319,6 +3352,7 @@ class TreatmentStepRow extends DataClass
       label: serializer.fromJson<String>(json['label']),
       detail: serializer.fromJson<String>(json['detail']),
       status: serializer.fromJson<String>(json['status']),
+      completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
     );
   }
   @override
@@ -3331,6 +3365,7 @@ class TreatmentStepRow extends DataClass
       'label': serializer.toJson<String>(label),
       'detail': serializer.toJson<String>(detail),
       'status': serializer.toJson<String>(status),
+      'completedAt': serializer.toJson<DateTime?>(completedAt),
     };
   }
 
@@ -3341,6 +3376,7 @@ class TreatmentStepRow extends DataClass
     String? label,
     String? detail,
     String? status,
+    Value<DateTime?> completedAt = const Value.absent(),
   }) => TreatmentStepRow(
     id: id ?? this.id,
     planId: planId ?? this.planId,
@@ -3348,6 +3384,7 @@ class TreatmentStepRow extends DataClass
     label: label ?? this.label,
     detail: detail ?? this.detail,
     status: status ?? this.status,
+    completedAt: completedAt.present ? completedAt.value : this.completedAt,
   );
   TreatmentStepRow copyWithCompanion(TreatmentStepsCompanion data) {
     return TreatmentStepRow(
@@ -3357,6 +3394,9 @@ class TreatmentStepRow extends DataClass
       label: data.label.present ? data.label.value : this.label,
       detail: data.detail.present ? data.detail.value : this.detail,
       status: data.status.present ? data.status.value : this.status,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
     );
   }
 
@@ -3368,13 +3408,15 @@ class TreatmentStepRow extends DataClass
           ..write('position: $position, ')
           ..write('label: $label, ')
           ..write('detail: $detail, ')
-          ..write('status: $status')
+          ..write('status: $status, ')
+          ..write('completedAt: $completedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, planId, position, label, detail, status);
+  int get hashCode =>
+      Object.hash(id, planId, position, label, detail, status, completedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3384,7 +3426,8 @@ class TreatmentStepRow extends DataClass
           other.position == this.position &&
           other.label == this.label &&
           other.detail == this.detail &&
-          other.status == this.status);
+          other.status == this.status &&
+          other.completedAt == this.completedAt);
 }
 
 class TreatmentStepsCompanion extends UpdateCompanion<TreatmentStepRow> {
@@ -3394,6 +3437,7 @@ class TreatmentStepsCompanion extends UpdateCompanion<TreatmentStepRow> {
   final Value<String> label;
   final Value<String> detail;
   final Value<String> status;
+  final Value<DateTime?> completedAt;
   const TreatmentStepsCompanion({
     this.id = const Value.absent(),
     this.planId = const Value.absent(),
@@ -3401,6 +3445,7 @@ class TreatmentStepsCompanion extends UpdateCompanion<TreatmentStepRow> {
     this.label = const Value.absent(),
     this.detail = const Value.absent(),
     this.status = const Value.absent(),
+    this.completedAt = const Value.absent(),
   });
   TreatmentStepsCompanion.insert({
     this.id = const Value.absent(),
@@ -3409,6 +3454,7 @@ class TreatmentStepsCompanion extends UpdateCompanion<TreatmentStepRow> {
     required String label,
     this.detail = const Value.absent(),
     this.status = const Value.absent(),
+    this.completedAt = const Value.absent(),
   }) : planId = Value(planId),
        position = Value(position),
        label = Value(label);
@@ -3419,6 +3465,7 @@ class TreatmentStepsCompanion extends UpdateCompanion<TreatmentStepRow> {
     Expression<String>? label,
     Expression<String>? detail,
     Expression<String>? status,
+    Expression<DateTime>? completedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3427,6 +3474,7 @@ class TreatmentStepsCompanion extends UpdateCompanion<TreatmentStepRow> {
       if (label != null) 'label': label,
       if (detail != null) 'detail': detail,
       if (status != null) 'status': status,
+      if (completedAt != null) 'completed_at': completedAt,
     });
   }
 
@@ -3437,6 +3485,7 @@ class TreatmentStepsCompanion extends UpdateCompanion<TreatmentStepRow> {
     Value<String>? label,
     Value<String>? detail,
     Value<String>? status,
+    Value<DateTime?>? completedAt,
   }) {
     return TreatmentStepsCompanion(
       id: id ?? this.id,
@@ -3445,6 +3494,7 @@ class TreatmentStepsCompanion extends UpdateCompanion<TreatmentStepRow> {
       label: label ?? this.label,
       detail: detail ?? this.detail,
       status: status ?? this.status,
+      completedAt: completedAt ?? this.completedAt,
     );
   }
 
@@ -3469,6 +3519,9 @@ class TreatmentStepsCompanion extends UpdateCompanion<TreatmentStepRow> {
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<DateTime>(completedAt.value);
+    }
     return map;
   }
 
@@ -3480,7 +3533,8 @@ class TreatmentStepsCompanion extends UpdateCompanion<TreatmentStepRow> {
           ..write('position: $position, ')
           ..write('label: $label, ')
           ..write('detail: $detail, ')
-          ..write('status: $status')
+          ..write('status: $status, ')
+          ..write('completedAt: $completedAt')
           ..write(')'))
         .toString();
   }
@@ -11227,6 +11281,7 @@ typedef $$TreatmentStepsTableCreateCompanionBuilder =
       required String label,
       Value<String> detail,
       Value<String> status,
+      Value<DateTime?> completedAt,
     });
 typedef $$TreatmentStepsTableUpdateCompanionBuilder =
     TreatmentStepsCompanion Function({
@@ -11236,6 +11291,7 @@ typedef $$TreatmentStepsTableUpdateCompanionBuilder =
       Value<String> label,
       Value<String> detail,
       Value<String> status,
+      Value<DateTime?> completedAt,
     });
 
 final class $$TreatmentStepsTableReferences
@@ -11301,6 +11357,11 @@ class $$TreatmentStepsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$TreatmentPlansTableFilterComposer get planId {
     final $$TreatmentPlansTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -11359,6 +11420,11 @@ class $$TreatmentStepsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$TreatmentPlansTableOrderingComposer get planId {
     final $$TreatmentPlansTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -11406,6 +11472,11 @@ class $$TreatmentStepsTableAnnotationComposer
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => column,
+  );
 
   $$TreatmentPlansTableAnnotationComposer get planId {
     final $$TreatmentPlansTableAnnotationComposer composer = $composerBuilder(
@@ -11467,6 +11538,7 @@ class $$TreatmentStepsTableTableManager
                 Value<String> label = const Value.absent(),
                 Value<String> detail = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<DateTime?> completedAt = const Value.absent(),
               }) => TreatmentStepsCompanion(
                 id: id,
                 planId: planId,
@@ -11474,6 +11546,7 @@ class $$TreatmentStepsTableTableManager
                 label: label,
                 detail: detail,
                 status: status,
+                completedAt: completedAt,
               ),
           createCompanionCallback:
               ({
@@ -11483,6 +11556,7 @@ class $$TreatmentStepsTableTableManager
                 required String label,
                 Value<String> detail = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<DateTime?> completedAt = const Value.absent(),
               }) => TreatmentStepsCompanion.insert(
                 id: id,
                 planId: planId,
@@ -11490,6 +11564,7 @@ class $$TreatmentStepsTableTableManager
                 label: label,
                 detail: detail,
                 status: status,
+                completedAt: completedAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(

@@ -192,6 +192,7 @@ class SyncEngine {
               'label': s.label,
               'detail': s.detail,
               'status': s.status,
+              'completed_at': _iso(s.completedAt), // ← NEW
             },
         ],
       });
@@ -260,6 +261,12 @@ class SyncEngine {
                 label: s['label'] ?? '',
                 detail: Value(s['detail'] ?? ''),
                 status: Value(s['status'] ?? 'todo'),
+                completedAt: Value(
+                  // ← NEW
+                  s['completed_at'] == null
+                      ? null
+                      : DateTime.parse(s['completed_at']),
+                ),
               ),
             );
       }

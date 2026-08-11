@@ -148,6 +148,172 @@ class PatientRepositoryImpl implements PatientRepository {
     });
   }
 
+  // ═══════════════ MULTIPLE TREATMENT PLANS ═══════════════
+
+  /// All non-deleted plans for a patient, each with its steps ordered.
+  @override
+  Stream<List<TreatmentPlan>> watchPlans(int patientId) {
+    final q =
+        _db.select(_db.treatmentSteps).join([
+            innerJoin(
+              _db.treatmentPlans,
+              _db.treatmentPlans.id.equalsExp(_db.treatmentSteps.planId),
+            ),
+          ])
+          ..where(
+            _db.treatmentPlans.patientId.equals(patientId) &
+                _db.treatmentPlans.isDeleted.equals(false),
+          )
+          ..orderBy([
+            OrderingTerm.asc(_db.treatmentSteps.planId),
+            OrderingTerm.asc(_db.treatmentSteps.position),
+          ]);
+    return q.watch().map((rows) {
+      // group steps by plan
+      final byPlan =
+          <int, ({TreatmentPlanRow plan, List<TreatmentStep> steps})>{};
+      for (final r in rows) {
+        final plan = r.readTable(_db.treatmentPlans);
+        final s = r.readTable(_db.treatmentSteps);
+        byPlan.putIfAbsent(plan.id, () => (plan: plan, steps: []));
+        byPlan[plan.id]!.steps.add(
+          TreatmentStep(
+            id: s.id,
+            order: s.position,
+            label: s.label,
+            detail: s.detail,
+            status: StepStatus.values.byName(s.status),
+            completedAt: s.completedAt,
+          ),
+        );
+      }
+      final plans = byPlan.values
+          .map(
+            (e) => TreatmentPlan(
+              id: e.plan.id,
+              title: e.plan.title,
+              steps: e.steps,
+            ),
+          )
+          .toList();
+      // active plans first, completed ones sink to the bottom
+      plans.sort((a, b) {
+        if (a.isActive == b.isActive) return a.id.compareTo(b.id);
+        return a.isActive ? -1 : 1;
+      });
+      return plans;
+    });
+  }
+
+  /// Create a new plan with its steps. Does NOT replace existing plans.
+  @override
+  Future<void> createPlan(
+    int patientId,
+    String title,
+    List<TreatmentStep> steps,
+  ) async {
+    final planId = await _db
+        .into(_db.treatmentPlans)
+        .insert(
+          TreatmentPlansCompanion.insert(patientId: patientId, title: title),
+        );
+    for (var i = 0; i < steps.length; i++) {
+      final s = steps[i];
+      await _db
+          .into(_db.treatmentSteps)
+          .insert(
+            TreatmentStepsCompanion.insert(
+              planId: planId,
+              position: i,
+              label: s.label,
+              detail: Value(s.detail),
+              status: Value(s.status.name),
+              completedAt: Value(s.completedAt),
+            ),
+          );
+    }
+  }
+
+  /// Update a plan's title and replace its steps wholesale (simple + safe).
+  @override
+  Future<void> updatePlan(
+    int planId,
+    String title,
+    List<TreatmentStep> steps,
+  ) async {
+    await (_db.update(_db.treatmentPlans)..where((t) => t.id.equals(planId)))
+        .write(TreatmentPlansCompanion(title: Value(title)));
+    // replace steps
+    await (_db.delete(
+      _db.treatmentSteps,
+    )..where((s) => s.planId.equals(planId))).go();
+    for (var i = 0; i < steps.length; i++) {
+      final s = steps[i];
+      await _db
+          .into(_db.treatmentSteps)
+          .insert(
+            TreatmentStepsCompanion.insert(
+              planId: planId,
+              position: i,
+              label: s.label,
+              detail: Value(s.detail),
+              status: Value(s.status.name),
+              completedAt: Value(s.completedAt),
+            ),
+          );
+    }
+  }
+
+  @override
+  Future<void> deletePlan(int planId) async {
+    await (_db.update(_db.treatmentPlans)..where((t) => t.id.equals(planId)))
+        .write(TreatmentPlansCompanion(isDeleted: const Value(true)));
+  }
+
+  /// Set a step's status. When set to `done`, stamps completedAt = now and
+  /// advances the next `todo` step in the SAME plan to `current`.
+  @override
+  Future<void> setStepStatus(int stepId, StepStatus status) async {
+    final step = await (_db.select(
+      _db.treatmentSteps,
+    )..where((s) => s.id.equals(stepId))).getSingleOrNull();
+    if (step == null) return;
+
+    await (_db.update(
+      _db.treatmentSteps,
+    )..where((s) => s.id.equals(stepId))).write(
+      TreatmentStepsCompanion(
+        status: Value(status.name),
+        completedAt: status == StepStatus.done
+            ? Value(DateTime.now())
+            : const Value(null),
+        // updatedAt: Value(DateTime.now()),
+      ),
+    );
+
+    // when marking done, promote the next todo in the same plan to current
+    if (status == StepStatus.done) {
+      final next =
+          await (_db.select(_db.treatmentSteps)
+                ..where(
+                  (s) => s.planId.equals(step.planId) & s.status.equals('todo'),
+                )
+                ..orderBy([(s) => OrderingTerm.asc(s.position)])
+                ..limit(1))
+              .getSingleOrNull();
+      if (next != null) {
+        await (_db.update(
+          _db.treatmentSteps,
+        )..where((s) => s.id.equals(next.id))).write(
+          TreatmentStepsCompanion(
+            status: const Value('current'),
+            // updatedAt: Value(DateTime.now()),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _audit(
     String clinicId,
     String action,
