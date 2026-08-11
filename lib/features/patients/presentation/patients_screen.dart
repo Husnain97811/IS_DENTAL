@@ -23,6 +23,19 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   final _search = TextEditingController();
   String _q = '';
 
+  // Single source of truth for column widths. Header and rows both read from
+  // this, so the columns can never drift out of alignment again.
+  static const _colFlex = (patient: 4, phone: 3, cnic: 3, status: 2);
+
+  // TEMP: set to false to hide the column boundary lines.
+  static const _debugColLines = false;
+
+  // A full-height divider between columns (only when _debugColLines is on).
+  // Rows must be wrapped in IntrinsicHeight for it to stretch to full height.
+  Widget get _vline => _debugColLines
+      ? const VerticalDivider(width: 1, thickness: 1, color: Color(0x66FF3B30))
+      : const SizedBox.shrink();
+
   @override
   void initState() {
     super.initState();
@@ -73,7 +86,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
           const SizedBox(height: 4),
           Text(
             'Active records · click arrow to preview.',
-            style: TextStyle(color: d.text3, fontSize: 10.sp),
+            style: TextStyle(color: d.text3, fontSize: 11.sp),
           ),
           SizedBox(height: 2.h),
           _toolbar(d),
@@ -157,7 +170,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
           style: TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.w600,
-            fontSize: 9.sp,
+            fontSize: 9.9.sp,
             letterSpacing: 0.4,
           ),
         ),
@@ -172,11 +185,11 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
         child: TextField(
           controller: _search,
           onChanged: (v) => setState(() => _q = v),
-          style: TextStyle(fontSize: 9.sp, color: d.text1),
+          style: TextStyle(fontSize: 9.9.sp, color: d.text1),
           decoration: InputDecoration(
             hintText: 'Search by name, phone, or ID…',
             isDense: true,
-            hintStyle: TextStyle(color: d.text4, fontSize: 9.sp),
+            hintStyle: TextStyle(color: d.text4, fontSize: 9.9.sp),
             prefixIcon: Icon(Icons.search_rounded, color: d.text4, size: 11.sp),
             filled: true,
             fillColor: d.surface,
@@ -207,25 +220,40 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   Widget _headerRow(DentColors d) {
     TextStyle h() => TextStyle(
       color: d.text4,
-      fontSize: 7.sp,
+      fontSize: 9.sp,
       fontWeight: FontWeight.w700,
       letterSpacing: .7,
     );
+    // Same horizontal padding as _row so labels sit directly above cell content.
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: d.line)),
       ),
-      child: Row(
-        children: [
-          Expanded(flex: 3, child: Text('PATIENT', style: h())),
-          Expanded(flex: 2, child: Text('PHONE', style: h())),
-          Expanded(flex: 2, child: Text('CNIC', style: h())), // ← add
-          // Expanded(flex: 2, child: Text('LAST VISIT', style: h())),
-          Expanded(flex: 2, child: Text('TREATMENT', style: h())),
-          // Expanded(flex: 1, child: Text('BALANCE', style: h())),
-          Expanded(flex: 2, child: Text('STATUS', style: h())),
-        ],
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Expanded(
+              flex: _colFlex.patient,
+              child: Text('PATIENT', style: h()),
+            ),
+            _vline,
+            Expanded(
+              flex: _colFlex.phone,
+              child: Text('PHONE', style: h()),
+            ),
+            _vline,
+            Expanded(
+              flex: _colFlex.cnic,
+              child: Text('CNIC', style: h()),
+            ),
+            _vline,
+            Expanded(
+              flex: _colFlex.status,
+              child: Text('STATUS', style: h()),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -244,96 +272,76 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
           color: selected ? d.surface2 : null,
           border: Border(bottom: BorderSide(color: d.line)),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: Row(
-                children: [
-                  DentAvatar(
-                    p.initials,
-                    bg: tone.$2,
-                    fg: tone.$1,
-                    size: 19.sp,
-                    radius: 10,
-                  ),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          p.fullName.split(' ').take(2).join(' '),
-                          style: TextStyle(
-                            color: d.text1,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 11.5.sp,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-
-                        Text(
-                          '#${p.code}',
-                          style: AppTypography.mono(
-                            size: 9.5.sp,
-                            color: d.text4,
-                          ),
-                        ),
-                      ],
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              Expanded(
+                flex: _colFlex.patient,
+                child: Row(
+                  children: [
+                    DentAvatar(
+                      p.initials,
+                      bg: tone.$2,
+                      fg: tone.$1,
+                      size: 19.sp,
+                      radius: 10,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                p.phone,
-                style: AppTypography.mono(size: 8.sp, color: d.text2),
-              ),
-            ),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            p.fullName.split(' ').take(2).join(' '),
+                            style: TextStyle(
+                              color: d.text1,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12.65.sp,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
 
-            Expanded(
-              flex: 2,
-              child: Text(
-                p.cnic.isEmpty ? '—' : p.cnic,
-                style: AppTypography.mono(size: 8.sp, color: d.text2),
+                          Text(
+                            '#${p.code}',
+                            style: AppTypography.mono(
+                              size: 10.45.sp,
+                              color: d.text4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              _vline,
+              Expanded(
+                flex: _colFlex.phone,
+                child: Text(
+                  p.phone,
+                  style: AppTypography.mono(size: 8.8.sp, color: d.text2),
+                ),
+              ),
 
-            // Expanded(
-            //   flex: 2,
-            //   child: Text(
-            //     p.lastVisit == null ? '—' : _fmt(p.lastVisit!),
-            //     style: TextStyle(color: d.text2, fontSize: 8.5.sp),
-            //   ),
-            // ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                p.treatmentSummary,
-                style: TextStyle(color: d.text2, fontSize: 8.5.sp),
-                overflow: TextOverflow.ellipsis,
+              _vline,
+              Expanded(
+                flex: _colFlex.cnic,
+                child: Text(
+                  p.cnic.isEmpty ? '—' : p.cnic,
+                  style: AppTypography.mono(size: 8.8.sp, color: d.text2),
+                ),
               ),
-            ),
-            // Expanded(
-            //   flex: 1,
-            //   child: Text(
-            //     p.balance == 0 ? 'Rs 0' : 'Rs ${_grp(p.balance)}',
-            //     style: AppTypography.mono(
-            //       size: 8.5.sp,
-            //       color: p.balance > 0 ? d.alert : d.text1,
-            //     ),
-            //   ),
-            // ),
-            Expanded(
-              flex: 2,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: StatusChip(label, kind: chip),
+
+              _vline,
+              Expanded(
+                flex: _colFlex.status,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: StatusChip(label, kind: chip),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

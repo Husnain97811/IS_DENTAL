@@ -37,6 +37,7 @@ class MiniCalendar extends ConsumerWidget {
         const <int>{};
     final daysInMonth = DateTime(vm.year, vm.month + 1, 0).day;
     final lead = DateTime(vm.year, vm.month, 1).weekday % 7; // Sunday-start
+    final width = MediaQuery.sizeOf(context).width;
 
     void go(int delta) {
       final m = DateTime(vm.year, vm.month + delta);
@@ -91,9 +92,9 @@ class MiniCalendar extends ConsumerWidget {
                   child: Text(
                     w,
                     style: TextStyle(
-                      color: d.text4,
-                      fontSize: 7.sp,
-                      fontWeight: FontWeight.w700,
+                      color: d.text1,
+                      fontSize: width < 1540 ? 11.sp : 8.sp,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
@@ -116,6 +117,7 @@ class MiniCalendar extends ConsumerWidget {
     DateTime selected,
     bool marked,
   ) {
+    final width = MediaQuery.sizeOf(ref.context).width;
     final date = DateTime(month.year, month.month, day);
     final isToday =
         date.year == now.year && date.month == now.month && date.day == now.day;
@@ -137,7 +139,7 @@ class MiniCalendar extends ConsumerWidget {
             Text(
               '$day',
               style: AppTypography.mono(
-                size: 7.5.sp,
+                size: width < 1540 ? 10.sp : 9.sp,
                 color: isSel ? AppPalette.onAccent : d.text2,
               ),
             ),
@@ -145,8 +147,8 @@ class MiniCalendar extends ConsumerWidget {
               Positioned(
                 bottom: 3,
                 child: Container(
-                  width: 4,
-                  height: 4,
+                  width: 7,
+                  height: 7,
                   decoration: BoxDecoration(
                     color: d.teal,
                     shape: BoxShape.circle,

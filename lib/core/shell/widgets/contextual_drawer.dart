@@ -12,7 +12,14 @@ class ContextualDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (kind == DrawerKind.patient) return const PatientSnapshotDrawer();
-    if (kind == DrawerKind.booking) return const QuickBookDrawer();
+    // if (kind == DrawerKind.booking ) return const QuickBookDrawer();
+    if (kind == DrawerKind.booking) {
+      final width = MediaQuery.sizeOf(context).width;
+      // Hide on normal laptop widths and below (tweak breakpoint as needed)
+      if (width < 1540) return const SizedBox.shrink();
+      return const QuickBookDrawer();
+    }
+
     if (kind == DrawerKind.invoice) return const InvoiceDrawer();
     return const SizedBox.shrink();
   }

@@ -10,7 +10,6 @@ import '../../../patients/domain/patient.dart';
 import '../../../patients/presentation/patients_controller.dart';
 import '../../../treatments/presentation/treatments_controller.dart';
 import '../billing_controller.dart';
-import '../../../../core/constants/app_flags.dart';
 
 Future<bool?> showInvoiceEditor(
   BuildContext context, {

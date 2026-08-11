@@ -53,6 +53,8 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+        
+
       # ─────────────────────────────────────────────
       # Generate code (Drift + freezed) — REQUIRED for DentOS
       # ─────────────────────────────────────────────

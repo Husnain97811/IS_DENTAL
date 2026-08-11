@@ -2,11 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/constants/app_flags.dart';
-import 'package:is_dental/features/billing/presentation/widgets/invoice_editor.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/constants/views.dart';
-import '../domain/appointment.dart';
 import 'widgets/appointment_tile.dart';
 import 'widgets/mini_calendar.dart';
 
@@ -129,11 +127,11 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                 subtitle: 'Grouped by time',
                 child: apptsAsync.when(
                   loading: () => const Padding(
-                    padding: EdgeInsets.all(40),
+                    padding: EdgeInsets.all(10),
                     child: Center(child: CircularProgressIndicator()),
                   ),
                   error: (e, _) => Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(10),
                     child: Text('$e', style: TextStyle(color: d.alert)),
                   ),
                   data: (list) {
@@ -182,18 +180,26 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                   _countsPanel(d, apptsAsync.value ?? const []),
                 ],
               );
-              if (c.maxWidth < 920)
-                return Column(
-                  children: [agenda, const SizedBox(height: 18), side],
-                );
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: agenda),
-                  const SizedBox(width: 18),
-                  SizedBox(width: 320, child: side),
+                  Expanded(flex: 2, child: agenda),
+                  SizedBox(width: 8.sp),
+                  Expanded(flex: 1, child: side),
                 ],
               );
+              // if (c.maxWidth < 920)
+              //   return Column(
+              //     children: [agenda, const SizedBox(height: 18), side],
+              //   );
+              // return Row(
+              //   crossAxisAlignment: CrossAxisAlignment.start,
+              //   children: [
+              //     Expanded(child: agenda),
+              //     const SizedBox(width: 18),
+              //     SizedBox(width: 320, child: side),
+              //   ],
+              // );
             },
           ),
         ],

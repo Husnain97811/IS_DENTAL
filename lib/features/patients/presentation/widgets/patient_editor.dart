@@ -6,11 +6,7 @@ import 'package:is_dental/core/shell/widgets/formatters.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../../core/constants/views.dart';
-import '../../../../core/theme/app_palette.dart';
-import '../../../../core/theme/dent_colors.dart';
 import '../../../../core/widgets/dent_field.dart';
-import '../../domain/patient.dart';
-import '../patients_controller.dart';
 
 Future<void> showPatientEditor(BuildContext context, {Patient? existing}) =>
     showDialog(
@@ -220,13 +216,13 @@ class _S extends ConsumerState<PatientEditorDialog> {
                 ],
               ),
               const SizedBox(height: 12),
-              _dd<PatientStatus>(
-                'Status',
-                _status,
-                PatientStatus.values,
-                (v) => setState(() => _status = v),
-                (s) => s.name,
-              ),
+              // _dd<PatientStatus>(
+              //   'Status',
+              //   _status,
+              //   PatientStatus.values,
+              //   (v) => setState(() => _status = v),
+              //   (s) => s.name,
+              // ),
               const SizedBox(height: 12),
               DentField(label: 'Allergies (optional)', controller: _allergies),
               const SizedBox(height: 12),
