@@ -47,7 +47,7 @@ class AppSidebar extends ConsumerWidget {
               ],
             ),
           ),
-          _docCard(context),
+          // _docCard(context),
         ],
       ),
     );
@@ -216,75 +216,75 @@ class AppSidebar extends ConsumerWidget {
     );
   }
 
-  Widget _docCard(BuildContext context) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      border: Border(top: BorderSide(color: context.dent.sideLine)),
-    ),
-    child: Container(
-      padding: const EdgeInsets.all(9),
-      decoration: BoxDecoration(
-        color: const Color(0x0AFFFFFF),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: collapsed
-            ? MainAxisAlignment.center
-            : MainAxisAlignment.start,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(50),
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1F3A5F), Color(0xFF0D2640)],
-              ),
-              border: Border.all(color: const Color(0x4D7DD3FC)),
-            ),
-            child: Text(
-              'AK',
-              style: TextStyle(
-                color: const Color(0xFFBFE3FF),
-                fontSize: 8.sp,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          if (!collapsed) ...[
-            SizedBox(width: 2.6.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Dr. Ayesha Khan',
-                    style: TextStyle(
-                      color: const Color(0xFFE9F2FF),
-                      fontSize: 8.5.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    'Lead Orthodontist',
-                    style: TextStyle(
-                      color: const Color(0xFF6F7F99),
-                      fontSize: 7.sp,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: Color(0xFF6F7F99),
-              size: 18,
-            ),
-          ],
-        ],
-      ),
-    ),
-  );
+  // Widget _docCard(BuildContext context) => Container(
+  //   padding: const EdgeInsets.all(12),
+  //   decoration: BoxDecoration(
+  //     border: Border(top: BorderSide(color: context.dent.sideLine)),
+  //   ),
+  //   child: Container(
+  //     padding: const EdgeInsets.all(9),
+  //     decoration: BoxDecoration(
+  //       color: const Color(0x0AFFFFFF),
+  //       borderRadius: BorderRadius.circular(12),
+  //     ),
+  //     child: Row(
+  //       mainAxisAlignment: collapsed
+  //           ? MainAxisAlignment.center
+  //           : MainAxisAlignment.start,
+  //       children: [
+  //         Container(
+  //           width: 34,
+  //           height: 34,
+  //           alignment: Alignment.center,
+  //           decoration: BoxDecoration(
+  //             borderRadius: BorderRadius.circular(50),
+  //             gradient: const LinearGradient(
+  //               colors: [Color(0xFF1F3A5F), Color(0xFF0D2640)],
+  //             ),
+  //             border: Border.all(color: const Color(0x4D7DD3FC)),
+  //           ),
+  //           child: Text(
+  //             'AK',
+  //             style: TextStyle(
+  //               color: const Color(0xFFBFE3FF),
+  //               fontSize: 8.sp,
+  //               fontWeight: FontWeight.w700,
+  //             ),
+  //           ),
+  //         ),
+  //         // if (!collapsed) ...[
+  //         //   SizedBox(width: 2.6.w),
+  //         //   Expanded(
+  //         //     child: Column(
+  //         //       crossAxisAlignment: CrossAxisAlignment.start,
+  //         //       mainAxisSize: MainAxisSize.min,
+  //         //       children: [
+  //         //         Text(
+  //         //           'Dr. Ayesha Khan',
+  //         //           style: TextStyle(
+  //         //             color: const Color(0xFFE9F2FF),
+  //         //             fontSize: 8.5.sp,
+  //         //             fontWeight: FontWeight.w600,
+  //         //           ),
+  //         //         ),
+  //         //         Text(
+  //         //           'Lead Orthodontist',
+  //         //           style: TextStyle(
+  //         //             color: const Color(0xFF6F7F99),
+  //         //             fontSize: 7.sp,
+  //         //           ),
+  //         //         ),
+  //         //       ],
+  //         //     ),
+  //         //   ),
+  //         //   const Icon(
+  //         //     Icons.keyboard_arrow_down_rounded,
+  //         //     color: Color(0xFF6F7F99),
+  //         //     size: 18,
+  //         //   ),
+  //         // ],
+  //       ],
+  //     ),
+  //   ),
+  // );
 }

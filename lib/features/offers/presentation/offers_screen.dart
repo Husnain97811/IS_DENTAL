@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/constants/views.dart';
 import '../domain/offer.dart';
 import 'offers_controller.dart';
 import 'widgets/offer_composer.dart';
+
+/// ── FONT SCALE ──────────────────────────────────────────────
+/// One number controls the offer-card fonts on this screen.
+/// (The page heading and the "New Offer" button are intentionally
+/// left at their normal theme sizes and are NOT affected by this.)
+/// 1.00 = original, 1.10 = 10% bigger (current), 1.15 = 15%, etc.
+const double _fontScale = 1.10;
+double _sp(double base) => base * _fontScale;
+// ─────────────────────────────────────────────────────────────
 
 class OffersScreen extends ConsumerWidget {
   const OffersScreen({super.key});
@@ -38,6 +48,7 @@ class OffersScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // ── Heading + New Offer button (NOT scaled — normal theme sizes) ──
           Row(
             children: [
               Expanded(
@@ -83,14 +94,14 @@ class OffersScreen extends ConsumerWidget {
                       'No offers sent yet',
                       style: TextStyle(
                         color: d.text3,
-                        fontSize: 10.sp,
+                        fontSize: _sp(10.5).sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Tap "New Offer" to send your first promotion.',
-                      style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+                      style: TextStyle(color: d.text4, fontSize: _sp(9.5).sp),
                     ),
                   ],
                 ),
@@ -141,14 +152,14 @@ class OffersScreen extends ConsumerWidget {
                       o.title,
                       style: TextStyle(
                         color: d.text1,
-                        fontSize: 10.sp,
+                        fontSize: _sp(10).sp,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     Text(
                       'Sent ${_fmt(o.createdAt)} · ${o.sentCount} recipient${o.sentCount == 1 ? '' : 's'}'
                       '${o.branchId == null ? ' · all branches' : ''}',
-                      style: TextStyle(color: d.text4, fontSize: 7.5.sp),
+                      style: TextStyle(color: d.text4, fontSize: _sp(8.5).sp),
                     ),
                   ],
                 ),
@@ -166,7 +177,7 @@ class OffersScreen extends ConsumerWidget {
                   child: Text(
                     'EXPIRED',
                     style: TextStyle(
-                      fontSize: 6.5.sp,
+                      fontSize: _sp(6.5).sp,
                       color: d.text3,
                       fontWeight: FontWeight.w700,
                     ),
@@ -197,13 +208,13 @@ class OffersScreen extends ConsumerWidget {
           const SizedBox(height: 10),
           Text(
             o.body,
-            style: TextStyle(color: d.text2, fontSize: 8.5.sp),
+            style: TextStyle(color: d.text2, fontSize: _sp(8.5).sp),
           ),
           if (o.expiresAt != null) ...[
             const SizedBox(height: 8),
             Text(
               'Valid until ${_fmt(o.expiresAt!)}',
-              style: TextStyle(color: d.text3, fontSize: 7.5.sp),
+              style: TextStyle(color: d.text3, fontSize: _sp(7.5).sp),
             ),
           ],
         ],

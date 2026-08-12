@@ -53,7 +53,7 @@ const kNavDestinations = <NavDestination>[
     label: 'Patients',
     group: NavGroup.clinical,
     title: 'Patient Records',
-    subtitle: '1,284 active patients',
+    subtitle: '',
     primaryAction: 'Add Patient',
     drawer: DrawerKind.patient,
   ),

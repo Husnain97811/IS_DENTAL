@@ -7,6 +7,16 @@ import '../../../../core/constants/views.dart';
 import '../../../branches/presentation/branch_controller.dart';
 import '../offers_controller.dart';
 
+/// ── FONT SCALE ──────────────────────────────────────────────
+/// One number controls every font size in this screen.
+/// 1.00 = original, 1.10 = 10% bigger (current), 1.15 = 15%, etc. and this is for my personal reference only.
+/// Change ONLY this to rescale the whole screen's text.
+const double _fontScale = 1.50;
+
+/// Applies the scale to any base .sp size.
+double _sp(double base) => base * _fontScale;
+// ─────────────────────────────────────────────────────────────
+
 Future<void> showOfferComposer(BuildContext context) => showDialog(
   context: context,
   builder: (_) => const Dialog(
@@ -50,11 +60,12 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
     final n = await ref
         .read(offerRepositoryProvider)
         .recipientCount(branchId: branchId);
-    if (mounted)
+    if (mounted) {
       setState(() {
         _recipients = n;
         _countLoading = false;
       });
+    }
   }
 
   @override
@@ -140,8 +151,11 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
         titleLeft >= 0 &&
         bodyLeft >= 0;
 
+    // Responsive: wider dialog on small screens, capped on large.
+    final maxW = 100.w < 560 ? 92.w : 58.w;
+
     return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: 58.w, maxHeight: 88.h),
+      constraints: BoxConstraints(maxWidth: maxW, maxHeight: 88.h),
       child: Container(
         decoration: BoxDecoration(
           color: d.surface,
@@ -176,11 +190,15 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
                       children: [
                         Text(
                           'New Offer',
-                          style: Theme.of(context).textTheme.titleMedium,
+                          style: TextStyle(
+                            fontSize: _sp(11),
+                            color: d.text1,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         Text(
                           'Broadcast to patients with the app',
-                          style: TextStyle(fontSize: 7.5.sp, color: d.text3),
+                          style: TextStyle(fontSize: _sp(7.5), color: d.text3),
                         ),
                       ],
                     ),
@@ -188,7 +206,7 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
                   IconButton(
                     icon: Icon(
                       Icons.close_rounded,
-                      size: 12.sp,
+                      size: _sp(12),
                       color: d.text3,
                     ),
                     onPressed: () => Navigator.pop(context),
@@ -215,12 +233,15 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
                         inputFormatters: [
                           LengthLimitingTextInputFormatter(_kTitleMax),
                         ],
-                        style: TextStyle(fontSize: 9.sp, color: d.text1),
+                        style: TextStyle(fontSize: _sp(9), color: d.text1),
                         decoration: InputDecoration(
                           border: InputBorder.none,
                           isDense: true,
                           hintText: 'e.g. Eid Special — 20% off Scaling',
-                          hintStyle: TextStyle(color: d.text4, fontSize: 9.sp),
+                          hintStyle: TextStyle(
+                            color: d.text4,
+                            fontSize: _sp(9),
+                          ),
                         ),
                       ),
                     ),
@@ -234,13 +255,16 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
                         inputFormatters: [
                           LengthLimitingTextInputFormatter(_kBodyMax),
                         ],
-                        style: TextStyle(fontSize: 9.sp, color: d.text1),
+                        style: TextStyle(fontSize: _sp(9), color: d.text1),
                         decoration: InputDecoration(
                           border: InputBorder.none,
                           isDense: true,
                           hintText:
                               'Valid till 14 Aug. Book now to claim your discount.',
-                          hintStyle: TextStyle(color: d.text4, fontSize: 9.sp),
+                          hintStyle: TextStyle(
+                            color: d.text4,
+                            fontSize: _sp(9),
+                          ),
                         ),
                       ),
                       tall: true,
@@ -251,12 +275,15 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
                       d,
                       TextField(
                         controller: _imageUrl,
-                        style: TextStyle(fontSize: 9.sp, color: d.text1),
+                        style: TextStyle(fontSize: _sp(9), color: d.text1),
                         decoration: InputDecoration(
                           border: InputBorder.none,
                           isDense: true,
                           hintText: 'https://…',
-                          hintStyle: TextStyle(color: d.text4, fontSize: 9.sp),
+                          hintStyle: TextStyle(
+                            color: d.text4,
+                            fontSize: _sp(9),
+                          ),
                         ),
                       ),
                     ),
@@ -287,7 +314,7 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
                                             ? 'No expiry'
                                             : '${_expires!.day}/${_expires!.month}/${_expires!.year}',
                                         style: TextStyle(
-                                          fontSize: 9.sp,
+                                          fontSize: _sp(9),
                                           color: d.text1,
                                         ),
                                       ),
@@ -337,7 +364,7 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
                                 Text(
                                   'Send to all branches',
                                   style: TextStyle(
-                                    fontSize: 8.5.sp,
+                                    fontSize: _sp(8.5),
                                     color: d.text1,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -347,7 +374,7 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
                                       ? 'Every patient of this clinic'
                                       : 'Only this branch\'s patients',
                                   style: TextStyle(
-                                    fontSize: 7.sp,
+                                    fontSize: _sp(7),
                                     color: d.text4,
                                   ),
                                 ),
@@ -385,22 +412,24 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
                             color: d.ice,
                           ),
                           const SizedBox(width: 8),
-                          _countLoading
-                              ? Text(
-                                  'Counting recipients…',
-                                  style: TextStyle(
-                                    fontSize: 8.sp,
-                                    color: d.text3,
+                          Expanded(
+                            child: _countLoading
+                                ? Text(
+                                    'Counting recipients…',
+                                    style: TextStyle(
+                                      fontSize: _sp(8),
+                                      color: d.text3,
+                                    ),
+                                  )
+                                : Text(
+                                    '$_recipients patient${_recipients == 1 ? '' : 's'} will receive this',
+                                    style: TextStyle(
+                                      fontSize: _sp(8.5),
+                                      color: d.text2,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                )
-                              : Text(
-                                  '$_recipients patient${_recipients == 1 ? '' : 's'} will receive this',
-                                  style: TextStyle(
-                                    fontSize: 8.5.sp,
-                                    color: d.text2,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                          ),
                         ],
                       ),
                     ),
@@ -418,6 +447,10 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
                   backgroundColor: canSend ? d.ice : d.line,
                   foregroundColor: AppPalette.onAccent,
                   minimumSize: const Size.fromHeight(48),
+                  textStyle: TextStyle(
+                    fontSize: _sp(9),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 onPressed: (_busy || !canSend) ? null : _send,
                 icon: _busy
@@ -462,7 +495,7 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
           Text(
             'PREVIEW · how it looks on the patient\'s phone',
             style: TextStyle(
-              fontSize: 6.5.sp,
+              fontSize: _sp(6.5),
               color: d.text4,
               fontWeight: FontWeight.w700,
               letterSpacing: .5,
@@ -508,7 +541,7 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 8.5.sp,
+                          fontSize: _sp(8.5),
                           color: d.text1,
                           fontWeight: FontWeight.w700,
                         ),
@@ -518,7 +551,7 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
                         body,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 8.sp, color: d.text2),
+                        style: TextStyle(fontSize: _sp(8), color: d.text2),
                       ),
                     ],
                   ),
@@ -537,7 +570,7 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
       t.toUpperCase(),
       style: TextStyle(
         color: d.text4,
-        fontSize: 7.sp,
+        fontSize: _sp(7),
         fontWeight: FontWeight.w700,
         letterSpacing: .5,
       ),
@@ -553,7 +586,7 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
           t.toUpperCase(),
           style: TextStyle(
             color: d.text4,
-            fontSize: 7.sp,
+            fontSize: _sp(7),
             fontWeight: FontWeight.w700,
             letterSpacing: .5,
           ),
@@ -562,7 +595,7 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
           counter,
           style: TextStyle(
             color: int.parse(counter) < 0 ? d.alert : d.text4,
-            fontSize: 7.sp,
+            fontSize: _sp(7),
           ),
         ),
       ],

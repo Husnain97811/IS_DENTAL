@@ -86,9 +86,10 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                 children: [
                   OutlinedButton.icon(
                     onPressed: () => context.go(AppRoutes.offers),
-                    icon: const Icon(Icons.campaign_rounded, size: 16),
+                    icon: Icon(Icons.campaign_rounded, size: 12.sp),
                     label: const Text('Offers'),
                   ),
+                  SizedBox(width: 0.5.w),
                   toothChartButton(d),
                 ],
               ),

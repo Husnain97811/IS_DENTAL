@@ -71,26 +71,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.patients,
-                builder: (c, s) => const PatientsScreen(),
-                routes: [
-                  GoRoute(
-                    path: 'offers',
-                    builder: (c, s) => const OffersScreen(),
-                  ),
-                  GoRoute(
-                    path: ':id',
-                    builder: (c, s) => PatientDetailScreen(
-                      patientId: int.parse(s.pathParameters['id']!),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
                 path: AppRoutes.appointments,
                 builder: (c, s) => const AppointmentsScreen(),
               ),
@@ -102,6 +82,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: AppRoutes.patients,
                 builder: (c, s) => const PatientsScreen(),
                 routes: [
+                  GoRoute(
+                    path: 'offers',
+                    builder: (c, s) => const OffersScreen(),
+                  ),
                   GoRoute(
                     path: ':id',
                     builder: (c, s) => PatientDetailScreen(
