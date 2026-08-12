@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:is_dental/features/offers/presentation/offers_screen.dart';
 import 'package:is_dental/features/requests/presentation/requests_screen.dart';
 import '../constants/views.dart';
 import 'app_routes.dart';
@@ -61,6 +62,27 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'requests',
                     builder: (c, s) => const RequestsScreen(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.patients,
+                builder: (c, s) => const PatientsScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'offers',
+                    builder: (c, s) => const OffersScreen(),
+                  ),
+                  GoRoute(
+                    path: ':id',
+                    builder: (c, s) => PatientDetailScreen(
+                      patientId: int.parse(s.pathParameters['id']!),
+                    ),
                   ),
                 ],
               ),

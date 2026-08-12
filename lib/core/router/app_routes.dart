@@ -9,4 +9,5 @@ class AppRoutes {
   static const reports = '/reports';
   static const settings = '/settings';
   static const requests = '/dashboard/requests';
+  static const offers = '/patients/offers';
 }

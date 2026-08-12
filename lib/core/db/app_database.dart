@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/utils/uuids.dart';
+import 'package:is_dental/features/offers/data/offer_tables.dart';
 import 'package:is_dental/features/requests/data/booking_request_tables.dart';
 
 import '../constants/views.dart';
@@ -60,6 +61,7 @@ class Users extends Table {
     Treatments,
     Branches,
     BookingRequests,
+    Offers,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -67,7 +69,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -265,6 +267,9 @@ class AppDatabase extends _$AppDatabase {
     },
 
     onUpgrade: (m, from, to) async {
+      if (from < 15) {
+        await m.createTable(offers);
+      }
       if (from < 14) {
         try {
           await m.addColumn(treatmentSteps, treatmentSteps.completedAt);

@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:is_dental/core/constants/app_flags.dart';
+import 'package:is_dental/core/router/app_routes.dart';
 import 'package:is_dental/features/patients/presentation/widgets/tooth_chart_screen.dart';
 import 'package:sizer/sizer.dart';
 
@@ -80,7 +82,16 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Patients', style: Theme.of(context).textTheme.displayLarge),
-              toothChartButton(d),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => context.go(AppRoutes.offers),
+                    icon: const Icon(Icons.campaign_rounded, size: 16),
+                    label: const Text('Offers'),
+                  ),
+                  toothChartButton(d),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -204,6 +215,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
           ),
         ),
       ),
+
       // const Spacer(),
       // FilledButton.icon(
       //   style: FilledButton.styleFrom(
