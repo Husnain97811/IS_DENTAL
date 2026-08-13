@@ -112,6 +112,37 @@ class OfferRepository {
     }
   }
 
+  /// Re-sends an existing offer to all current clinic patients with the app.
+  /// Does NOT create a new offer row — reuses the existing one, refreshing
+  /// its sent_count. Returns how many pushes went out.
+  Future<({bool ok, int sent, String? error})> resend(int localId) async {
+    final row = await (_db.select(
+      _db.offers,
+    )..where((t) => t.id.equals(localId))).getSingleOrNull();
+    if (row == null) return (ok: false, sent: 0, error: 'Offer not found.');
+    if (!_online())
+      return (ok: false, sent: 0, error: 'No internet connection.');
+
+    try {
+      final res = await _sb.functions.invoke(
+        'send-offer',
+        body: {'offerId': row.uuid, 'branchId': row.branchId},
+      );
+      final data = res.data as Map<String, dynamic>?;
+      final sent = (data?['sent'] as num?)?.toInt() ?? 0;
+      // refresh sent_count + bump updatedAt locally
+      await (_db.update(_db.offers)..where((t) => t.id.equals(localId))).write(
+        OffersCompanion(
+          sentCount: Value(sent),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+      return (ok: true, sent: sent, error: null);
+    } catch (e) {
+      return (ok: false, sent: 0, error: 'Could not resend: $e');
+    }
+  }
+
   /// How many patients would receive this (have the app / a token).
   /// Calls a lightweight count via the Edge Function or a direct query.
   Future<int> recipientCount({String? branchId}) async {

@@ -183,6 +183,12 @@ class OffersScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
+
+              IconButton(
+                icon: Icon(Icons.send_rounded, size: 15, color: d.ice),
+                tooltip: 'Resend to all',
+                onPressed: () => _resend(context, ref, o),
+              ),
               IconButton(
                 icon: Icon(
                   Icons.delete_outline_rounded,
@@ -219,6 +225,66 @@ class OffersScreen extends ConsumerWidget {
           ],
         ],
       ),
+    );
+  }
+
+  Future<void> _resend(BuildContext context, WidgetRef ref, Offer o) async {
+    // confirm
+    final ok = await showDentDialog(
+      context,
+      kind: DentDialogKind.warning,
+      title: 'Resend this offer?',
+      message:
+          'Send "${o.title}" again to all patients who currently have '
+          'the app${o.branchId == null ? '' : ' in this branch'}. '
+          'Patients will get another notification.',
+      confirmLabel: 'Resend',
+      cancelLabel: 'Cancel',
+    );
+    if (ok != true) return;
+    if (!context.mounted) return;
+
+    // progress spinner — capture ITS OWN context so we pop exactly this dialog
+    BuildContext? spinnerCtx;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dctx) {
+        spinnerCtx = dctx;
+        return Center(
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: context.dent.surface,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+          ),
+        );
+      },
+    );
+
+    final res = await ref.read(offerRepositoryProvider).resend(o.id);
+
+    // close ONLY the spinner dialog, using its own context
+    if (spinnerCtx != null && spinnerCtx!.mounted) {
+      Navigator.of(spinnerCtx!).pop();
+    }
+
+    if (!context.mounted) return;
+    await showDentDialog(
+      context,
+      kind: res.ok ? DentDialogKind.success : DentDialogKind.error,
+      title: res.ok ? 'Offer Resent' : 'Resend Failed',
+      message: res.ok
+          ? 'Sent again to ${res.sent} patient${res.sent == 1 ? '' : 's'}.'
+                '${res.sent == 0 ? ' (No patients currently have the app.)' : ''}'
+          : (res.error ?? 'Something went wrong.'),
+      confirmLabel: 'Done',
     );
   }
 }
