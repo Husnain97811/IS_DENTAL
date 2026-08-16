@@ -91,6 +91,22 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
     if (widget.destination.route != route) context.go(route);
   }
 
+  Future<void> _refresh(BuildContext context) async {
+    // pull latest from cloud, then rebuild the current screen's data
+    final msg = await syncNow(ref);
+    // invalidate the streams the screens watch so they re-read fresh
+    ref.invalidate(patientsStreamProvider);
+    ref.invalidate(invoicesStreamProvider);
+    ref.invalidate(inventoryStreamProvider);
+    ref.invalidate(treatmentsStreamProvider);
+    ref.invalidate(appointmentsForDayProvider);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg == 'Synced' ? 'Refreshed' : msg)),
+      );
+    }
+  }
+
   String _hintFor(String route, String monthName) => switch (route) {
     AppRoutes.appointments => 'Search appointments ($monthName)…',
     AppRoutes.treatments => 'Search treatments…',
@@ -309,6 +325,9 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
               //remove switcher so no all screns need switcher
               // const BranchSwitcher(),
               // SizedBox(width: 2.w),
+              _RefreshButton(destination: widget.destination),
+
+              const SizedBox(width: 10),
               _iconBtn(
                 context,
                 isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
@@ -919,6 +938,90 @@ class _DbStatusButton extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _RefreshButton extends ConsumerStatefulWidget {
+  const _RefreshButton({required this.destination});
+  final NavDestination destination;
+  @override
+  ConsumerState<_RefreshButton> createState() => _RefreshButtonState();
+}
+
+class _RefreshButtonState extends ConsumerState<_RefreshButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _spin = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 700),
+  );
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _spin.dispose();
+    super.dispose();
+  }
+
+  /// Invalidate the providers the current screen depends on, so it re-reads
+  /// fresh local data. Also fires a cloud sync so the newest data is pulled.
+  Future<void> _refresh() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    _spin.repeat();
+
+    // 1. sync (pull latest from cloud) — non-fatal if offline
+    try {
+      await syncNow(ref);
+    } catch (_) {}
+
+    // 2. invalidate providers so every screen re-reads fresh local data
+    ref.invalidate(patientsStreamProvider);
+    ref.invalidate(invoicesStreamProvider);
+    ref.invalidate(inventoryStreamProvider);
+    ref.invalidate(treatmentsStreamProvider);
+    ref.invalidate(appointmentsForDayProvider);
+    // month appts for the currently viewed month
+    final vm = ref.read(viewedMonthProvider);
+    ref.invalidate(
+      appointmentsForMonthProvider((year: vm.year, month: vm.month)),
+    );
+
+    _spin.stop();
+    _spin.reset();
+    if (mounted) {
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Refreshed ${widget.destination.title.toLowerCase()}'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = context.dent;
+    return Material(
+      color: d.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: _refresh,
+        child: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: d.line),
+          ),
+          child: RotationTransition(
+            turns: _spin,
+            child: Icon(Icons.refresh_rounded, size: 11.sp, color: d.text3),
+          ),
+        ),
+      ),
     );
   }
 }

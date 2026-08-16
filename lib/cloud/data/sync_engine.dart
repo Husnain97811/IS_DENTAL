@@ -48,6 +48,292 @@ class SyncEngine {
     await step('purge_requests', () => _db.purgeOldDecidedRequests());
   }
 
+  /// DESTRUCTIVE: wipes ALL local data and re-downloads everything fresh from
+  /// the cloud. Forces cloud to win — ignores the LWW timestamp guard.
+  /// Any local changes not yet pushed are LOST. Use only to recover from a
+  /// bad local state by restoring the last cloud version.
+  Future<void> restoreFromCloud(String clinicId) async {
+    // 1. wipe local tables (children before parents to respect FKs)
+    await _db.transaction(() async {
+      await _db.delete(_db.invoiceItems).go();
+      await _db.delete(_db.treatmentSteps).go();
+      await _db.delete(_db.treatmentPlans).go();
+      await _db.delete(_db.toothRecords).go();
+      await _db.delete(_db.invoices).go();
+      await _db.delete(_db.appointments).go();
+      await _db.delete(_db.bookingRequests).go();
+      await _db.delete(_db.inventoryItems).go();
+      await _db.delete(_db.treatments).go();
+      await _db.delete(_db.users).go();
+      await _db.delete(_db.branches).go();
+      await _db.delete(_db.patients).go();
+    });
+
+    // 2. reset all sync cursors so pulls fetch EVERYTHING from the start
+    final cursorKeys = [
+      'pull_patients',
+      'push_patients',
+      'pull_appointments',
+      'push_appointments',
+      'pull_invoices',
+      'push_invoices',
+      'pull_inventory',
+      'push_inventory',
+      'pull_treatments',
+      'push_treatments',
+      'pull_branches',
+      'push_branches',
+      'pull_users',
+      'push_users',
+      'pull_booking_requests',
+      'push_booking_requests',
+    ];
+    for (final k in cursorKeys) {
+      await _db.setSetting('sync_$k', '');
+    }
+
+    // 3. pull everything fresh from cloud (parents before children)
+    await _restoreBranches(clinicId);
+    await _restoreUsers(clinicId);
+    await _restorePatients(clinicId); // brings tooth records + plans
+    await _restoreTreatments(clinicId);
+    await _restoreInventory(clinicId);
+    await _restoreAppointments(clinicId);
+    await _restoreBookingRequests(clinicId);
+    await _restoreInvoices(clinicId); // brings invoice items
+  }
+
+  Future<List<Map<String, dynamic>>> _pullAll(
+    String t,
+    String clinicId,
+  ) async => ((await _sb.from(t).select().eq('clinic_id', clinicId)) as List)
+      .cast<Map<String, dynamic>>();
+
+  Future<void> _restoreBranches(String clinicId) async {
+    for (final r in await _pullAll('branches', clinicId)) {
+      await _db
+          .into(_db.branches)
+          .insert(
+            BranchesCompanion(
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              name: Value(r['name'] ?? ''),
+              location: Value(r['location'] ?? ''),
+              isPrimary: Value(r['is_primary'] ?? false),
+              openMinutes: Value(r['open_minutes'] ?? 600),
+              closeMinutes: Value(r['close_minutes'] ?? 1020),
+              slotMinutes: Value(r['slot_minutes'] ?? 20),
+              closedDays: Value(r['closed_days'] ?? ''),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+    }
+  }
+
+  Future<void> _restoreUsers(String clinicId) async {
+    for (final r in await _pullAll('users', clinicId)) {
+      await _db
+          .into(_db.users)
+          .insert(
+            UsersCompanion(
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              branchId: Value(r['branch_id']),
+              fullName: Value(r['full_name'] ?? ''),
+              username: Value(r['username'] ?? ''),
+              passwordHash: Value(r['password_hash'] ?? ''),
+              role: Value(r['role'] ?? 'receptionist'),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+    }
+  }
+
+  Future<void> _restorePatients(String clinicId) async {
+    for (final r in await _pullAll('patients', clinicId)) {
+      final localId = await _db
+          .into(_db.patients)
+          .insert(
+            PatientsCompanion(
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              branchId: Value(r['branch_id']),
+              code: Value(r['code'] ?? ''),
+              fullName: Value(r['full_name'] ?? ''),
+              gender: Value(r['gender'] ?? 'female'),
+              age: Value(r['age'] ?? 0),
+              phone: Value(r['phone'] ?? ''),
+              cnic: Value(r['cnic'] ?? ''),
+              allergies: Value(r['allergies']),
+              insurance: Value(r['insurance']),
+              lastVisit: Value(
+                r['last_visit'] == null
+                    ? null
+                    : DateTime.parse(r['last_visit']),
+              ),
+              visitCount: Value(r['visit_count'] ?? 0),
+              balance: Value(r['balance'] ?? 0),
+              status: Value(r['status'] ?? 'active'),
+              treatmentSummary: Value(r['treatment_summary'] ?? ''),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+      await _pullPatientChildren(r['uuid'], localId, clinicId);
+    }
+  }
+
+  Future<void> _restoreTreatments(String clinicId) async {
+    for (final r in await _pullAll('treatments', clinicId)) {
+      await _db
+          .into(_db.treatments)
+          .insert(
+            TreatmentsCompanion(
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              name: Value(r['name'] ?? ''),
+              category: Value(r['category'] ?? ''),
+              price: Value(r['price'] ?? 0),
+              duration: Value(r['duration'] ?? ''),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+    }
+  }
+
+  Future<void> _restoreInventory(String clinicId) async {
+    for (final r in await _pullAll('inventory_items', clinicId)) {
+      await _db
+          .into(_db.inventoryItems)
+          .insert(
+            InventoryItemsCompanion(
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              branchId: Value(r['branch_id']),
+              name: Value(r['name'] ?? ''),
+              category: Value(r['category'] ?? ''),
+              inStock: Value(r['in_stock'] ?? 0),
+              parLevel: Value(r['par_level'] ?? 0),
+              reorderAt: Value(r['reorder_at'] ?? 0),
+              unit: Value(r['unit'] ?? 'units'),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+    }
+  }
+
+  Future<void> _restoreAppointments(String clinicId) async {
+    for (final r in await _pullAll('appointments', clinicId)) {
+      final localPid = await _patientId(r['patient_uuid']);
+      if (localPid == null) continue;
+      await _db
+          .into(_db.appointments)
+          .insert(
+            AppointmentsCompanion(
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              branchId: Value(r['branch_id']),
+              patientId: Value(localPid),
+              dentist: Value(r['dentist'] ?? ''),
+              chair: Value(r['chair'] ?? 1),
+              procedure: Value(r['procedure'] ?? ''),
+              startsAt: Value(DateTime.parse(r['starts_at'])),
+              durationMin: Value(r['duration_min'] ?? 30),
+              status: Value(r['status'] ?? 'upcoming'),
+              notes: Value(r['notes']),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+    }
+  }
+
+  Future<void> _restoreBookingRequests(String clinicId) async {
+    for (final r in await _pullAll('booking_requests', clinicId)) {
+      await _db
+          .into(_db.bookingRequests)
+          .insert(
+            BookingRequestsCompanion(
+              uuid: Value(r['id']),
+              clinicId: Value(clinicId),
+              branchId: Value(r['branch_id']),
+              patientUuid: Value(r['patient_uuid'] ?? ''),
+              patientAccountId: Value(r['patient_account_id']),
+              dentist: Value(r['dentist'] ?? ''),
+              procedure: Value(r['procedure'] ?? ''),
+              requestedSlot: Value(DateTime.parse(r['requested_slot'])),
+              durationMin: Value(r['duration_min'] ?? 30),
+              status: Value(r['status'] ?? 'pending'),
+              modifiedBy: Value(r['modified_by']),
+              acceptedBy: Value(r['accepted_by']),
+              decidedAt: Value(
+                r['decided_at'] == null
+                    ? null
+                    : DateTime.parse(r['decided_at']),
+              ),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+    }
+  }
+
+  Future<void> _restoreInvoices(String clinicId) async {
+    for (final r in await _pullAll('invoices', clinicId)) {
+      final localPid = await _patientId(r['patient_uuid']);
+      if (localPid == null) continue;
+      final invId = await _db
+          .into(_db.invoices)
+          .insert(
+            InvoicesCompanion(
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              branchId: Value(r['branch_id']),
+              patientId: Value(localPid),
+              invoiceNo: Value(r['invoice_no'] ?? ''),
+              issuedAt: Value(DateTime.parse(r['issued_at'])),
+              status: Value(r['status'] ?? 'pending'),
+              summary: Value(r['summary'] ?? ''),
+              subtotal: Value(r['subtotal'] ?? 0),
+              adjustment: Value(r['adjustment'] ?? 0),
+              total: Value(r['total'] ?? 0),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+      final items =
+          (await _sb
+                  .from('invoice_items')
+                  .select()
+                  .eq('invoice_uuid', r['uuid'])
+                  .order('position'))
+              as List;
+      for (final it in items) {
+        await _db
+            .into(_db.invoiceItems)
+            .insert(
+              InvoiceItemsCompanion.insert(
+                invoiceId: invId,
+                description: it['description'] ?? '',
+                amount: it['amount'] ?? 0,
+                qty: Value(it['qty'] ?? 1),
+              ),
+            );
+      }
+    }
+  }
+
   // ---- cursor + helpers ----
   Future<DateTime> _cur(String k) async =>
       DateTime.tryParse(await _db.getSetting('sync_$k') ?? '') ??

@@ -159,7 +159,7 @@ class _DentDialogState extends State<DentDialog> {
               Text(
                 widget.message,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: d.text3, fontSize: 8.5.sp),
+                style: TextStyle(color: d.text3, fontSize: 10.5.sp),
               ),
 
               // ── Copyable rows ──

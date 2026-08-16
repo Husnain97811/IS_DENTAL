@@ -7,16 +7,13 @@ import 'package:is_dental/core/utils/qr_payload.dart';
 import 'package:is_dental/features/settings/data/clinic_qr_pdf.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:sizer/sizer.dart';
-import '../../appointments/presentation/appointments_controller.dart'; // clinicScheduleProvider not needed, but branches util
 import '../../branches/domain/branch.dart';
 import '../../../core/constants/views.dart';
 import '../../../licensing/presentation/license_providers.dart';
-import '../../branches/domain/branch.dart';
 import '../../branches/presentation/branch_controller.dart';
 import '../../branches/presentation/widgets/branch_editor.dart';
 import 'settings_controller.dart';
 import 'widgets/staff_editor.dart';
-import 'dart:typed_data';
 import 'package:printing/printing.dart';
 import 'package:is_dental/core/utils/pdf_output.dart';
 import 'package:is_dental/features/reports/data/reports_pdf.dart';
@@ -47,25 +44,25 @@ class _S extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final db = ref.read(appDatabaseProvider);
-      await db.customStatement(
-        "DELETE FROM appointments WHERE branch_id IS NULL OR branch_id = ''",
-      );
-      await db.customStatement(
-        "DELETE FROM patients WHERE branch_id IS NULL OR branch_id = ''",
-      );
-      await db.customStatement(
-        "DELETE FROM invoices WHERE branch_id IS NULL OR branch_id = ''",
-      );
-      await db.customStatement(
-        "DELETE FROM inventory_items WHERE branch_id IS NULL OR branch_id = ''",
-      );
-      await db.customStatement(
-        "DELETE FROM treatments WHERE branch_id IS NULL OR branch_id = ''",
-      );
-      debugPrint('Deleted null-branch rows');
-    });
+    // WidgetsBinding.instance.addPostFrameCallback((_) async {
+    //   final db = ref.read(appDatabaseProvider);
+    //   await db.customStatement(
+    //     "DELETE FROM appointments WHERE branch_id IS NULL OR branch_id = ''",
+    //   );
+    //   await db.customStatement(
+    //     "DELETE FROM patients WHERE branch_id IS NULL OR branch_id = ''",
+    //   );
+    //   await db.customStatement(
+    //     "DELETE FROM invoices WHERE branch_id IS NULL OR branch_id = ''",
+    //   );
+    //   await db.customStatement(
+    //     "DELETE FROM inventory_items WHERE branch_id IS NULL OR branch_id = ''",
+    //   );
+    //   await db.customStatement(
+    //     "DELETE FROM treatments WHERE branch_id IS NULL OR branch_id = ''",
+    //   );
+    //   debugPrint('Deleted null-branch rows');
+    // });
     //   WidgetsBinding.instance.addPostFrameCallback((_) async {
     //     final db = ref.read(appDatabaseProvider);
     //     await db.backfillUserUuids(); // stamp any missing uuids (clinician)
@@ -195,6 +192,110 @@ class _S extends ConsumerState<SettingsScreen> {
       debugPrint('SYNC: FAILED $e');
       return 'Sync failed: $e';
     }
+  }
+
+  Future<void> _confirmRestore(DentColors d) async {
+    // First warning
+    final ok1 = await showDentDialog(
+      context,
+      kind: DentDialogKind.error,
+      title: 'Restore from Cloud?',
+      message:
+          'This will DELETE all data on this device and replace it with the '
+          'last version saved to the cloud.\n\n'
+          'Any changes made on this device that were NOT synced will be '
+          'permanently lost. This cannot be undone.',
+      confirmLabel: 'Continue',
+      cancelLabel: 'Cancel',
+    );
+    if (ok1 != true || !mounted) return;
+
+    // Second confirmation
+    final ok2 = await showDentDialog(
+      context,
+      kind: DentDialogKind.error,
+      title: 'Are you absolutely sure?',
+      message:
+          'Local data will be wiped and re-downloaded from the cloud. '
+          'Make sure the cloud has the data you want before continuing.',
+      confirmLabel: 'Yes, restore from cloud',
+      cancelLabel: 'Cancel',
+    );
+    if (ok2 != true || !mounted) return;
+
+    // Capture a stable reference to the root navigator BEFORE the async work,
+    // and a dedicated dialog context we can pop safely.
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Show a blocking progress dialog using the ROOT navigator.
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      builder: (_) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: d.surface,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                'Restoring from cloud…',
+                style: TextStyle(color: d.text1, fontSize: 10.sp),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Do not close the app',
+                style: TextStyle(color: d.text4, fontSize: 8.sp),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    String result;
+    var dialogClosed = false;
+    try {
+      await ref.read(cloudServiceProvider).ensureSignedIn();
+      final clinicId = await ref.read(appDatabaseProvider).currentClinicId();
+      if (clinicId == null || clinicId.isEmpty) {
+        result = 'No clinic linked — cannot restore.';
+      } else {
+        await ref.read(syncEngineProvider).restoreFromCloud(clinicId);
+        await ref.read(appDatabaseProvider).recordSyncNow();
+        result = 'Restore complete. Local data now matches the cloud.';
+      }
+    } catch (e) {
+      result = 'Restore failed: $e';
+    }
+
+    // Close the progress dialog via the ROOT navigator we captured earlier.
+    // canPop() guards against the "last page" crash.
+    if (rootNavigator.canPop()) {
+      rootNavigator.pop();
+      dialogClosed = true;
+    }
+
+    // Refresh providers so the UI shows restored data.
+    ref.invalidate(patientsStreamProvider);
+    ref.invalidate(invoicesStreamProvider);
+    ref.invalidate(inventoryStreamProvider);
+    ref.invalidate(treatmentsStreamProvider);
+    ref.invalidate(branchesStreamProvider);
+
+    // Show the result. Use messenger (survives context changes) instead of a dialog.
+    messenger.showSnackBar(
+      SnackBar(content: Text(result), duration: const Duration(seconds: 4)),
+    );
+    // avoid "unused" lint
+    if (!dialogClosed) debugPrint('Restore progress dialog was already gone.');
   }
 
   Future<void> _save() async {
@@ -1191,6 +1292,45 @@ class _S extends ConsumerState<SettingsScreen> {
                   side: BorderSide(color: d.line),
                 ),
                 child: const Text('Manage'),
+              ),
+            ],
+          ),
+        ),
+        // ── Restore from Cloud (DESTRUCTIVE) ──
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: d.line)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Restore from Cloud',
+                      style: TextStyle(
+                        color: d.alert,
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Overwrites ALL local data with the cloud version',
+                      style: TextStyle(color: d.text3, fontSize: 8.sp),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: d.alert,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => _confirmRestore(d),
+                icon: const Icon(Icons.cloud_download_rounded, size: 16),
+                label: const Text('Restore'),
               ),
             ],
           ),
