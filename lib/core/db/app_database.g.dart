@@ -7421,6 +7421,77 @@ class $BranchesTable extends Branches
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _waEnabledMeta = const VerificationMeta(
+    'waEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> waEnabled = GeneratedColumn<bool>(
+    'wa_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("wa_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _waMethodMeta = const VerificationMeta(
+    'waMethod',
+  );
+  @override
+  late final GeneratedColumn<String> waMethod = GeneratedColumn<String>(
+    'wa_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('official'),
+  );
+  static const VerificationMeta _waPhoneMeta = const VerificationMeta(
+    'waPhone',
+  );
+  @override
+  late final GeneratedColumn<String> waPhone = GeneratedColumn<String>(
+    'wa_phone',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _waApiTokenMeta = const VerificationMeta(
+    'waApiToken',
+  );
+  @override
+  late final GeneratedColumn<String> waApiToken = GeneratedColumn<String>(
+    'wa_api_token',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _waPhoneIdMeta = const VerificationMeta(
+    'waPhoneId',
+  );
+  @override
+  late final GeneratedColumn<String> waPhoneId = GeneratedColumn<String>(
+    'wa_phone_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _waSessionStatusMeta = const VerificationMeta(
+    'waSessionStatus',
+  );
+  @override
+  late final GeneratedColumn<String> waSessionStatus = GeneratedColumn<String>(
+    'wa_session_status',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -7435,6 +7506,12 @@ class $BranchesTable extends Branches
     closedDays,
     isDeleted,
     updatedAt,
+    waEnabled,
+    waMethod,
+    waPhone,
+    waApiToken,
+    waPhoneId,
+    waSessionStatus,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -7532,6 +7609,48 @@ class $BranchesTable extends Branches
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('wa_enabled')) {
+      context.handle(
+        _waEnabledMeta,
+        waEnabled.isAcceptableOrUnknown(data['wa_enabled']!, _waEnabledMeta),
+      );
+    }
+    if (data.containsKey('wa_method')) {
+      context.handle(
+        _waMethodMeta,
+        waMethod.isAcceptableOrUnknown(data['wa_method']!, _waMethodMeta),
+      );
+    }
+    if (data.containsKey('wa_phone')) {
+      context.handle(
+        _waPhoneMeta,
+        waPhone.isAcceptableOrUnknown(data['wa_phone']!, _waPhoneMeta),
+      );
+    }
+    if (data.containsKey('wa_api_token')) {
+      context.handle(
+        _waApiTokenMeta,
+        waApiToken.isAcceptableOrUnknown(
+          data['wa_api_token']!,
+          _waApiTokenMeta,
+        ),
+      );
+    }
+    if (data.containsKey('wa_phone_id')) {
+      context.handle(
+        _waPhoneIdMeta,
+        waPhoneId.isAcceptableOrUnknown(data['wa_phone_id']!, _waPhoneIdMeta),
+      );
+    }
+    if (data.containsKey('wa_session_status')) {
+      context.handle(
+        _waSessionStatusMeta,
+        waSessionStatus.isAcceptableOrUnknown(
+          data['wa_session_status']!,
+          _waSessionStatusMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7589,6 +7708,30 @@ class $BranchesTable extends Branches
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      waEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}wa_enabled'],
+      )!,
+      waMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wa_method'],
+      )!,
+      waPhone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wa_phone'],
+      ),
+      waApiToken: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wa_api_token'],
+      ),
+      waPhoneId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wa_phone_id'],
+      ),
+      waSessionStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wa_session_status'],
+      ),
     );
   }
 
@@ -7611,6 +7754,12 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
   final String closedDays;
   final bool isDeleted;
   final DateTime updatedAt;
+  final bool waEnabled;
+  final String waMethod;
+  final String? waPhone;
+  final String? waApiToken;
+  final String? waPhoneId;
+  final String? waSessionStatus;
   const BranchRow({
     required this.id,
     required this.uuid,
@@ -7624,6 +7773,12 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     required this.closedDays,
     required this.isDeleted,
     required this.updatedAt,
+    required this.waEnabled,
+    required this.waMethod,
+    this.waPhone,
+    this.waApiToken,
+    this.waPhoneId,
+    this.waSessionStatus,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7640,6 +7795,20 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     map['closed_days'] = Variable<String>(closedDays);
     map['is_deleted'] = Variable<bool>(isDeleted);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['wa_enabled'] = Variable<bool>(waEnabled);
+    map['wa_method'] = Variable<String>(waMethod);
+    if (!nullToAbsent || waPhone != null) {
+      map['wa_phone'] = Variable<String>(waPhone);
+    }
+    if (!nullToAbsent || waApiToken != null) {
+      map['wa_api_token'] = Variable<String>(waApiToken);
+    }
+    if (!nullToAbsent || waPhoneId != null) {
+      map['wa_phone_id'] = Variable<String>(waPhoneId);
+    }
+    if (!nullToAbsent || waSessionStatus != null) {
+      map['wa_session_status'] = Variable<String>(waSessionStatus);
+    }
     return map;
   }
 
@@ -7657,6 +7826,20 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       closedDays: Value(closedDays),
       isDeleted: Value(isDeleted),
       updatedAt: Value(updatedAt),
+      waEnabled: Value(waEnabled),
+      waMethod: Value(waMethod),
+      waPhone: waPhone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(waPhone),
+      waApiToken: waApiToken == null && nullToAbsent
+          ? const Value.absent()
+          : Value(waApiToken),
+      waPhoneId: waPhoneId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(waPhoneId),
+      waSessionStatus: waSessionStatus == null && nullToAbsent
+          ? const Value.absent()
+          : Value(waSessionStatus),
     );
   }
 
@@ -7678,6 +7861,12 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       closedDays: serializer.fromJson<String>(json['closedDays']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      waEnabled: serializer.fromJson<bool>(json['waEnabled']),
+      waMethod: serializer.fromJson<String>(json['waMethod']),
+      waPhone: serializer.fromJson<String?>(json['waPhone']),
+      waApiToken: serializer.fromJson<String?>(json['waApiToken']),
+      waPhoneId: serializer.fromJson<String?>(json['waPhoneId']),
+      waSessionStatus: serializer.fromJson<String?>(json['waSessionStatus']),
     );
   }
   @override
@@ -7696,6 +7885,12 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       'closedDays': serializer.toJson<String>(closedDays),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'waEnabled': serializer.toJson<bool>(waEnabled),
+      'waMethod': serializer.toJson<String>(waMethod),
+      'waPhone': serializer.toJson<String?>(waPhone),
+      'waApiToken': serializer.toJson<String?>(waApiToken),
+      'waPhoneId': serializer.toJson<String?>(waPhoneId),
+      'waSessionStatus': serializer.toJson<String?>(waSessionStatus),
     };
   }
 
@@ -7712,6 +7907,12 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     String? closedDays,
     bool? isDeleted,
     DateTime? updatedAt,
+    bool? waEnabled,
+    String? waMethod,
+    Value<String?> waPhone = const Value.absent(),
+    Value<String?> waApiToken = const Value.absent(),
+    Value<String?> waPhoneId = const Value.absent(),
+    Value<String?> waSessionStatus = const Value.absent(),
   }) => BranchRow(
     id: id ?? this.id,
     uuid: uuid ?? this.uuid,
@@ -7725,6 +7926,14 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     closedDays: closedDays ?? this.closedDays,
     isDeleted: isDeleted ?? this.isDeleted,
     updatedAt: updatedAt ?? this.updatedAt,
+    waEnabled: waEnabled ?? this.waEnabled,
+    waMethod: waMethod ?? this.waMethod,
+    waPhone: waPhone.present ? waPhone.value : this.waPhone,
+    waApiToken: waApiToken.present ? waApiToken.value : this.waApiToken,
+    waPhoneId: waPhoneId.present ? waPhoneId.value : this.waPhoneId,
+    waSessionStatus: waSessionStatus.present
+        ? waSessionStatus.value
+        : this.waSessionStatus,
   );
   BranchRow copyWithCompanion(BranchesCompanion data) {
     return BranchRow(
@@ -7748,6 +7957,16 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
           : this.closedDays,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      waEnabled: data.waEnabled.present ? data.waEnabled.value : this.waEnabled,
+      waMethod: data.waMethod.present ? data.waMethod.value : this.waMethod,
+      waPhone: data.waPhone.present ? data.waPhone.value : this.waPhone,
+      waApiToken: data.waApiToken.present
+          ? data.waApiToken.value
+          : this.waApiToken,
+      waPhoneId: data.waPhoneId.present ? data.waPhoneId.value : this.waPhoneId,
+      waSessionStatus: data.waSessionStatus.present
+          ? data.waSessionStatus.value
+          : this.waSessionStatus,
     );
   }
 
@@ -7765,7 +7984,13 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
           ..write('slotMinutes: $slotMinutes, ')
           ..write('closedDays: $closedDays, ')
           ..write('isDeleted: $isDeleted, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('waEnabled: $waEnabled, ')
+          ..write('waMethod: $waMethod, ')
+          ..write('waPhone: $waPhone, ')
+          ..write('waApiToken: $waApiToken, ')
+          ..write('waPhoneId: $waPhoneId, ')
+          ..write('waSessionStatus: $waSessionStatus')
           ..write(')'))
         .toString();
   }
@@ -7784,6 +8009,12 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     closedDays,
     isDeleted,
     updatedAt,
+    waEnabled,
+    waMethod,
+    waPhone,
+    waApiToken,
+    waPhoneId,
+    waSessionStatus,
   );
   @override
   bool operator ==(Object other) =>
@@ -7800,7 +8031,13 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
           other.slotMinutes == this.slotMinutes &&
           other.closedDays == this.closedDays &&
           other.isDeleted == this.isDeleted &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.waEnabled == this.waEnabled &&
+          other.waMethod == this.waMethod &&
+          other.waPhone == this.waPhone &&
+          other.waApiToken == this.waApiToken &&
+          other.waPhoneId == this.waPhoneId &&
+          other.waSessionStatus == this.waSessionStatus);
 }
 
 class BranchesCompanion extends UpdateCompanion<BranchRow> {
@@ -7816,6 +8053,12 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
   final Value<String> closedDays;
   final Value<bool> isDeleted;
   final Value<DateTime> updatedAt;
+  final Value<bool> waEnabled;
+  final Value<String> waMethod;
+  final Value<String?> waPhone;
+  final Value<String?> waApiToken;
+  final Value<String?> waPhoneId;
+  final Value<String?> waSessionStatus;
   const BranchesCompanion({
     this.id = const Value.absent(),
     this.uuid = const Value.absent(),
@@ -7829,6 +8072,12 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     this.closedDays = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.waEnabled = const Value.absent(),
+    this.waMethod = const Value.absent(),
+    this.waPhone = const Value.absent(),
+    this.waApiToken = const Value.absent(),
+    this.waPhoneId = const Value.absent(),
+    this.waSessionStatus = const Value.absent(),
   });
   BranchesCompanion.insert({
     this.id = const Value.absent(),
@@ -7843,6 +8092,12 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     this.closedDays = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.waEnabled = const Value.absent(),
+    this.waMethod = const Value.absent(),
+    this.waPhone = const Value.absent(),
+    this.waApiToken = const Value.absent(),
+    this.waPhoneId = const Value.absent(),
+    this.waSessionStatus = const Value.absent(),
   }) : uuid = Value(uuid),
        clinicId = Value(clinicId),
        name = Value(name);
@@ -7859,6 +8114,12 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     Expression<String>? closedDays,
     Expression<bool>? isDeleted,
     Expression<DateTime>? updatedAt,
+    Expression<bool>? waEnabled,
+    Expression<String>? waMethod,
+    Expression<String>? waPhone,
+    Expression<String>? waApiToken,
+    Expression<String>? waPhoneId,
+    Expression<String>? waSessionStatus,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -7873,6 +8134,12 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
       if (closedDays != null) 'closed_days': closedDays,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (waEnabled != null) 'wa_enabled': waEnabled,
+      if (waMethod != null) 'wa_method': waMethod,
+      if (waPhone != null) 'wa_phone': waPhone,
+      if (waApiToken != null) 'wa_api_token': waApiToken,
+      if (waPhoneId != null) 'wa_phone_id': waPhoneId,
+      if (waSessionStatus != null) 'wa_session_status': waSessionStatus,
     });
   }
 
@@ -7889,6 +8156,12 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     Value<String>? closedDays,
     Value<bool>? isDeleted,
     Value<DateTime>? updatedAt,
+    Value<bool>? waEnabled,
+    Value<String>? waMethod,
+    Value<String?>? waPhone,
+    Value<String?>? waApiToken,
+    Value<String?>? waPhoneId,
+    Value<String?>? waSessionStatus,
   }) {
     return BranchesCompanion(
       id: id ?? this.id,
@@ -7903,6 +8176,12 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
       closedDays: closedDays ?? this.closedDays,
       isDeleted: isDeleted ?? this.isDeleted,
       updatedAt: updatedAt ?? this.updatedAt,
+      waEnabled: waEnabled ?? this.waEnabled,
+      waMethod: waMethod ?? this.waMethod,
+      waPhone: waPhone ?? this.waPhone,
+      waApiToken: waApiToken ?? this.waApiToken,
+      waPhoneId: waPhoneId ?? this.waPhoneId,
+      waSessionStatus: waSessionStatus ?? this.waSessionStatus,
     );
   }
 
@@ -7945,6 +8224,24 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (waEnabled.present) {
+      map['wa_enabled'] = Variable<bool>(waEnabled.value);
+    }
+    if (waMethod.present) {
+      map['wa_method'] = Variable<String>(waMethod.value);
+    }
+    if (waPhone.present) {
+      map['wa_phone'] = Variable<String>(waPhone.value);
+    }
+    if (waApiToken.present) {
+      map['wa_api_token'] = Variable<String>(waApiToken.value);
+    }
+    if (waPhoneId.present) {
+      map['wa_phone_id'] = Variable<String>(waPhoneId.value);
+    }
+    if (waSessionStatus.present) {
+      map['wa_session_status'] = Variable<String>(waSessionStatus.value);
+    }
     return map;
   }
 
@@ -7962,7 +8259,13 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
           ..write('slotMinutes: $slotMinutes, ')
           ..write('closedDays: $closedDays, ')
           ..write('isDeleted: $isDeleted, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('waEnabled: $waEnabled, ')
+          ..write('waMethod: $waMethod, ')
+          ..write('waPhone: $waPhone, ')
+          ..write('waApiToken: $waApiToken, ')
+          ..write('waPhoneId: $waPhoneId, ')
+          ..write('waSessionStatus: $waSessionStatus')
           ..write(')'))
         .toString();
   }
@@ -14703,6 +15006,12 @@ typedef $$BranchesTableCreateCompanionBuilder =
       Value<String> closedDays,
       Value<bool> isDeleted,
       Value<DateTime> updatedAt,
+      Value<bool> waEnabled,
+      Value<String> waMethod,
+      Value<String?> waPhone,
+      Value<String?> waApiToken,
+      Value<String?> waPhoneId,
+      Value<String?> waSessionStatus,
     });
 typedef $$BranchesTableUpdateCompanionBuilder =
     BranchesCompanion Function({
@@ -14718,6 +15027,12 @@ typedef $$BranchesTableUpdateCompanionBuilder =
       Value<String> closedDays,
       Value<bool> isDeleted,
       Value<DateTime> updatedAt,
+      Value<bool> waEnabled,
+      Value<String> waMethod,
+      Value<String?> waPhone,
+      Value<String?> waApiToken,
+      Value<String?> waPhoneId,
+      Value<String?> waSessionStatus,
     });
 
 class $$BranchesTableFilterComposer
@@ -14786,6 +15101,36 @@ class $$BranchesTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get waEnabled => $composableBuilder(
+    column: $table.waEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get waMethod => $composableBuilder(
+    column: $table.waMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get waPhone => $composableBuilder(
+    column: $table.waPhone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get waApiToken => $composableBuilder(
+    column: $table.waApiToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get waPhoneId => $composableBuilder(
+    column: $table.waPhoneId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get waSessionStatus => $composableBuilder(
+    column: $table.waSessionStatus,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -14858,6 +15203,36 @@ class $$BranchesTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get waEnabled => $composableBuilder(
+    column: $table.waEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get waMethod => $composableBuilder(
+    column: $table.waMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get waPhone => $composableBuilder(
+    column: $table.waPhone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get waApiToken => $composableBuilder(
+    column: $table.waApiToken,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get waPhoneId => $composableBuilder(
+    column: $table.waPhoneId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get waSessionStatus => $composableBuilder(
+    column: $table.waSessionStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$BranchesTableAnnotationComposer
@@ -14912,6 +15287,28 @@ class $$BranchesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get waEnabled =>
+      $composableBuilder(column: $table.waEnabled, builder: (column) => column);
+
+  GeneratedColumn<String> get waMethod =>
+      $composableBuilder(column: $table.waMethod, builder: (column) => column);
+
+  GeneratedColumn<String> get waPhone =>
+      $composableBuilder(column: $table.waPhone, builder: (column) => column);
+
+  GeneratedColumn<String> get waApiToken => $composableBuilder(
+    column: $table.waApiToken,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get waPhoneId =>
+      $composableBuilder(column: $table.waPhoneId, builder: (column) => column);
+
+  GeneratedColumn<String> get waSessionStatus => $composableBuilder(
+    column: $table.waSessionStatus,
+    builder: (column) => column,
+  );
 }
 
 class $$BranchesTableTableManager
@@ -14954,6 +15351,12 @@ class $$BranchesTableTableManager
                 Value<String> closedDays = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> waEnabled = const Value.absent(),
+                Value<String> waMethod = const Value.absent(),
+                Value<String?> waPhone = const Value.absent(),
+                Value<String?> waApiToken = const Value.absent(),
+                Value<String?> waPhoneId = const Value.absent(),
+                Value<String?> waSessionStatus = const Value.absent(),
               }) => BranchesCompanion(
                 id: id,
                 uuid: uuid,
@@ -14967,6 +15370,12 @@ class $$BranchesTableTableManager
                 closedDays: closedDays,
                 isDeleted: isDeleted,
                 updatedAt: updatedAt,
+                waEnabled: waEnabled,
+                waMethod: waMethod,
+                waPhone: waPhone,
+                waApiToken: waApiToken,
+                waPhoneId: waPhoneId,
+                waSessionStatus: waSessionStatus,
               ),
           createCompanionCallback:
               ({
@@ -14982,6 +15391,12 @@ class $$BranchesTableTableManager
                 Value<String> closedDays = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> waEnabled = const Value.absent(),
+                Value<String> waMethod = const Value.absent(),
+                Value<String?> waPhone = const Value.absent(),
+                Value<String?> waApiToken = const Value.absent(),
+                Value<String?> waPhoneId = const Value.absent(),
+                Value<String?> waSessionStatus = const Value.absent(),
               }) => BranchesCompanion.insert(
                 id: id,
                 uuid: uuid,
@@ -14995,6 +15410,12 @@ class $$BranchesTableTableManager
                 closedDays: closedDays,
                 isDeleted: isDeleted,
                 updatedAt: updatedAt,
+                waEnabled: waEnabled,
+                waMethod: waMethod,
+                waPhone: waPhone,
+                waApiToken: waApiToken,
+                waPhoneId: waPhoneId,
+                waSessionStatus: waSessionStatus,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

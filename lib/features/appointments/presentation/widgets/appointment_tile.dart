@@ -71,8 +71,8 @@ class AppointmentTile extends StatelessWidget {
               child: Text(
                 '${two(appt.startsAt.hour)}:${two(appt.startsAt.minute)}',
                 style: AppTypography.mono(
-                  size: 8.sp,
-                  color: d.text3,
+                  size: 9.sp,
+                  color: d.text1,
                   weight: FontWeight.w500,
                 ),
               ),
@@ -104,7 +104,7 @@ class AppointmentTile extends StatelessWidget {
                         child: Text(
                           appt.patientName,
                           style: TextStyle(
-                            fontSize: 9.5.sp,
+                            fontSize: 10.5.sp,
                             fontWeight: FontWeight.w600,
                             color: d.text1,
                           ),
@@ -133,14 +133,14 @@ class AppointmentTile extends StatelessWidget {
                   appt.dentist,
                   style: TextStyle(
                     color: d.text2,
-                    fontSize: 8.5.sp,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
-                  'Chair ${two(appt.chair)}',
-                  style: TextStyle(color: d.text4, fontSize: 8.sp),
-                ),
+                // Text(
+                //   'Chair ${two(appt.chair)}',
+                //   style: TextStyle(color: d.text4, fontSize: 8.sp),
+                // ),
               ],
             ),
           ],

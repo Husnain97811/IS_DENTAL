@@ -13,6 +13,7 @@ class DentField extends StatelessWidget {
     this.maxLines = 1,
     this.onChanged,
     this.inputFormatters,
+    this.readonly = false,
   });
   final String label;
   final TextEditingController controller;
@@ -21,6 +22,7 @@ class DentField extends StatelessWidget {
   final int maxLines;
   final ValueChanged<String>? onChanged;
   final List<TextInputFormatter>? inputFormatters; // ← add
+  final bool readonly; // ← add
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +46,7 @@ class DentField extends StatelessWidget {
           maxLines: maxLines,
           onChanged: onChanged,
           inputFormatters: inputFormatters, // ← add
+          readOnly: readonly, // ← add
 
           style: TextStyle(fontSize: 9.5.sp, color: d.text1),
           decoration: InputDecoration(

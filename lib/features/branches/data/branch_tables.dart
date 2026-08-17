@@ -17,4 +17,15 @@ class Branches extends Table {
       text().withDefault(const Constant(''))(); // CSV 1..7 (Mon..Sun)
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  // ── WhatsApp (per branch) ──
+  BoolColumn get waEnabled => boolean().withDefault(const Constant(false))();
+  TextColumn get waMethod =>
+      text().withDefault(const Constant('official'))(); // 'qr' | 'official'
+  TextColumn get waPhone => text().nullable()(); // the branch's WhatsApp number
+  TextColumn get waApiToken =>
+      text().nullable()(); // official: their Meta token
+  TextColumn get waPhoneId =>
+      text().nullable()(); // official: their phone number ID
+  TextColumn get waSessionStatus =>
+      text().nullable()(); // qr: 'connected' | 'disconnected'
 }

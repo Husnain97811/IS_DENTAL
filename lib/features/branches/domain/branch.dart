@@ -13,5 +13,12 @@ abstract class Branch with _$Branch {
     @Default(1020) int closeMinutes,
     @Default(20) int slotMinutes,
     @Default('') String closedDays,
+    // ── WhatsApp ──
+    @Default(false) bool waEnabled,
+    @Default('official') String waMethod, // 'qr' | 'official'
+    String? waPhone,
+    String? waApiToken,
+    String? waPhoneId,
+    String? waSessionStatus,
   }) = _Branch;
 }

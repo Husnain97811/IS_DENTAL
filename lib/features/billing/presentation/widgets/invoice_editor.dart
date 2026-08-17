@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/core/db/app_database.dart';
 import 'package:is_dental/features/patients/domain/treatment_plan.dart';
 import 'package:sizer/sizer.dart';
 
@@ -75,6 +76,11 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
       if (price != null) line.amt.text = '$price';
       _lines.add(line);
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final no = await ref.read(appDatabaseProvider).nextInvoiceNo();
+      if (mounted) setState(() => _no.text = no);
+    });
   }
 
   /// Fallback if no consultation entry exists in the Treatments catalog.
@@ -215,12 +221,20 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
       _error = null;
     });
 
+    // Ensure the invoice number is still unique (regenerate if taken).
+    final db = ref.read(appDatabaseProvider);
+    var invNo = _no.text.trim();
+    if (invNo.isEmpty || invNo == '…' || await db.invoiceNoExists(invNo)) {
+      invNo = await db.nextInvoiceNo();
+      _no.text = invNo;
+    }
+
     try {
       await ref
           .read(billingRepositoryProvider)
           .createInvoice(
             patientId: _patientId!,
-            invoiceNo: _no.text.trim(),
+            invoiceNo: invNo, // ← use the verified number
             issuedAt: DateTime.now(),
             status: _status,
             summary: items.first.description,
@@ -386,6 +400,8 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                               _box(
                                 d,
                                 TextField(
+                                  readOnly: true,
+
                                   controller: _no,
                                   style: TextStyle(
                                     fontSize: 9.sp,

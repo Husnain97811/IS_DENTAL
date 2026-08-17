@@ -69,7 +69,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -267,56 +267,60 @@ class AppDatabase extends _$AppDatabase {
     },
 
     onUpgrade: (m, from, to) async {
-      if (from < 15) {
-        await m.createTable(offers);
+      if (from < 6) await m.createTable(branches);
+      if (from < 7) await m.addColumn(users, users.branchId);
+      if (from < 8) await m.addColumn(appointments, appointments.billed);
+      if (from < 9) {
+        await m.addColumn(users, users.email);
+        await m.addColumn(users, users.phone);
       }
+      if (from < 10) await m.addColumn(treatments, treatments.branchId);
+      if (from < 11) {
+        try {
+          await m.addColumn(patients, patients.cnic);
+        } catch (_) {}
+      }
+      if (from < 12) {
+        try {
+          await m.addColumn(branches, branches.openMinutes);
+        } catch (_) {}
+        try {
+          await m.addColumn(branches, branches.closeMinutes);
+        } catch (_) {}
+        try {
+          await m.addColumn(branches, branches.slotMinutes);
+        } catch (_) {}
+        try {
+          await m.addColumn(branches, branches.closedDays);
+        } catch (_) {}
+      }
+      if (from < 13) await m.createTable(bookingRequests);
       if (from < 14) {
         try {
           await m.addColumn(treatmentSteps, treatmentSteps.completedAt);
-        } catch (_) {
-          if (from < 13) {
-            await m.createTable(bookingRequests);
-          }
-          if (from < 12) {
-            try {
-              await m.addColumn(branches, branches.openMinutes);
-            } catch (_) {}
-            try {
-              await m.addColumn(branches, branches.closeMinutes);
-            } catch (_) {}
-            try {
-              await m.addColumn(branches, branches.slotMinutes);
-            } catch (_) {}
-            try {
-              await m.addColumn(branches, branches.closedDays);
-            } catch (_) {}
-          }
-          if (from < 11) {
-            // Guarded: DBs created fresh while cnic was already in the table
-            // class already have the column — plain addColumn would throw.
-            try {
-              await m.addColumn(patients, patients.cnic);
-            } catch (_) {
-              /* column already exists */
-            }
-          }
-          if (from < 10) {
-            await m.addColumn(treatments, treatments.branchId);
-          }
-          if (from < 9) {
-            await m.addColumn(users, users.email);
-            await m.addColumn(users, users.phone);
-          }
-          if (from < 8) {
-            await m.addColumn(appointments, appointments.billed);
-          }
-          if (from < 7) {
-            await m.addColumn(users, users.branchId);
-          }
-          if (from < 6) {
-            await m.createTable(branches);
-          }
-        }
+        } catch (_) {}
+      }
+      if (from < 15) await m.createTable(offers);
+      // v16 additions below
+      if (from < 16) {
+        try {
+          await m.addColumn(branches, branches.waEnabled);
+        } catch (_) {}
+        try {
+          await m.addColumn(branches, branches.waMethod);
+        } catch (_) {}
+        try {
+          await m.addColumn(branches, branches.waPhone);
+        } catch (_) {}
+        try {
+          await m.addColumn(branches, branches.waApiToken);
+        } catch (_) {}
+        try {
+          await m.addColumn(branches, branches.waPhoneId);
+        } catch (_) {}
+        try {
+          await m.addColumn(branches, branches.waSessionStatus);
+        } catch (_) {}
       }
     },
   );
@@ -337,6 +341,80 @@ class AppDatabase extends _$AppDatabase {
   Future<String?> currentBranchId() async {
     final v = await getSetting('active_branch');
     return (v == null || v.isEmpty) ? null : v;
+  }
+
+  Future<void> updateBranchWhatsApp({
+    required int id,
+    required bool waEnabled,
+    required String waMethod,
+    String? waPhone,
+    String? waApiToken,
+    String? waPhoneId,
+  }) => (update(branches)..where((t) => t.id.equals(id))).write(
+    BranchesCompanion(
+      waEnabled: Value(waEnabled),
+      waMethod: Value(waMethod),
+      waPhone: Value(waPhone),
+      waApiToken: Value(waApiToken),
+      waPhoneId: Value(waPhoneId),
+      updatedAt: Value(DateTime.now()),
+    ),
+  );
+
+  /// Next invoice number as a 7-digit string ('0000001', '0000002', …).
+  /// Scans existing invoice numbers, takes the max numeric value, adds 1.
+  /// Next invoice number as a 7-digit string ('0000001', '0000002', …).
+  Future<String> nextInvoiceNo() async {
+    final clinicId = await currentClinicId() ?? '';
+    final rows = await (select(
+      invoices,
+    )..where((t) => t.clinicId.equals(clinicId))).get();
+    var maxN = 0;
+    for (final r in rows) {
+      final digits = r.invoiceNo.replaceAll(RegExp(r'[^0-9]'), '');
+      final n = int.tryParse(digits) ?? 0;
+      if (n > maxN) maxN = n;
+    }
+    return (maxN + 1).toString().padLeft(7, '0');
+  }
+
+  /// True if this exact invoice number already exists (active clinic).
+  Future<bool> invoiceNoExists(String no) async {
+    final clinicId = await currentClinicId() ?? '';
+    final row =
+        await (select(invoices)
+              ..where(
+                (t) => t.invoiceNo.equals(no) & t.clinicId.equals(clinicId),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return row != null;
+  }
+
+  /// Next patient code as 'PT-0000001' style (7-digit, sequential).
+  Future<String> nextPatientCode() async {
+    final clinicId = await currentClinicId() ?? '';
+    final rows = await (select(
+      patients,
+    )..where((t) => t.clinicId.equals(clinicId))).get();
+    var maxN = 0;
+    for (final r in rows) {
+      final digits = r.code.replaceAll(RegExp(r'[^0-9]'), '');
+      final n = int.tryParse(digits) ?? 0;
+      if (n > maxN) maxN = n;
+    }
+    return 'PT-${(maxN + 1).toString().padLeft(7, '0')}';
+  }
+
+  /// True if this patient code already exists (active clinic).
+  Future<bool> patientCodeExists(String code) async {
+    final clinicId = await currentClinicId() ?? '';
+    final row =
+        await (select(patients)
+              ..where((t) => t.code.equals(code) & t.clinicId.equals(clinicId))
+              ..limit(1))
+            .getSingleOrNull();
+    return row != null;
   }
 
   Future<void> updateBranchHours({
@@ -450,6 +528,14 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> _indexes() async {
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_invoice_no_clinic '
+      'ON invoices(clinic_id, invoice_no) WHERE is_deleted = 0;',
+    );
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_patient_code_clinic '
+      'ON patients(clinic_id, code) WHERE is_deleted = 0;',
+    );
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_pat_name ON patients(full_name);',
     );

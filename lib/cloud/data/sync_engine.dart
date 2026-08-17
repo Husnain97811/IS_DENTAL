@@ -126,6 +126,12 @@ class SyncEngine {
               closedDays: Value(r['closed_days'] ?? ''),
               isDeleted: Value(r['is_deleted'] ?? false),
               updatedAt: Value(DateTime.parse(r['updated_at'])),
+              waEnabled: Value(r['wa_enabled'] ?? false),
+              waMethod: Value(r['wa_method'] ?? 'official'),
+              waPhone: Value(r['wa_phone']),
+              waApiToken: Value(r['wa_api_token']),
+              waPhoneId: Value(r['wa_phone_id']),
+              waSessionStatus: Value(r['wa_session_status']),
             ),
             mode: InsertMode.insertOrReplace,
           );
@@ -923,6 +929,12 @@ class SyncEngine {
             'closed_days': b.closedDays,
             'is_deleted': b.isDeleted,
             'updated_at': _iso(b.updatedAt),
+            'wa_enabled': b.waEnabled,
+            'wa_method': b.waMethod,
+            'wa_phone': b.waPhone,
+            'wa_api_token': b.waApiToken,
+            'wa_phone_id': b.waPhoneId,
+            'wa_session_status': b.waSessionStatus,
           },
       ], onConflict: 'uuid');
       await _setCur('push_branches', _max(changed.map((e) => e.updatedAt)));

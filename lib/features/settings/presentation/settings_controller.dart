@@ -2,6 +2,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/features/branches/presentation/branch_controller.dart';
 import '../../../core/constants/views.dart';
 
+enum ClinicTier { standard, premium }
+
+final clinicTierProvider = Provider.autoDispose<ClinicTier>((ref) {
+  final profile = ref.watch(clinicProfileProvider).value;
+  final raw = (profile?.tier ?? 'standard').toLowerCase().trim();
+  return raw == 'premium' ? ClinicTier.premium : ClinicTier.standard;
+});
+
+final isPremiumTierProvider = Provider.autoDispose<bool>(
+  (ref) => ref.watch(clinicTierProvider) == ClinicTier.premium,
+);
+
+final canUseOffersProvider = Provider.autoDispose<bool>(
+  (ref) => ref.watch(clinicTierProvider) == ClinicTier.premium,
+);
+
 final clinicProfileProvider = FutureProvider.autoDispose((ref) async {
   final db = ref.watch(appDatabaseProvider);
   return db.select(db.clinicProfile).getSingleOrNull();

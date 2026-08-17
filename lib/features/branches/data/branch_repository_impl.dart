@@ -30,6 +30,12 @@ class BranchRepositoryImpl implements BranchRepository {
                     closeMinutes: r.closeMinutes,
                     slotMinutes: r.slotMinutes,
                     closedDays: r.closedDays,
+                    waEnabled: r.waEnabled, // ← add
+                    waMethod: r.waMethod, // ← add
+                    waPhone: r.waPhone, // ← add
+                    waApiToken: r.waApiToken, // ← add
+                    waPhoneId: r.waPhoneId, // ← add
+                    waSessionStatus: r.waSessionStatus, // ← add
                   ),
                 )
                 .toList(),

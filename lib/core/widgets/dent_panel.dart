@@ -56,7 +56,7 @@ class DentPanel extends StatelessWidget {
                               subtitle!,
                               style: TextStyle(
                                 color: d.text4,
-                                fontSize: 8.5.sp,
+                                fontSize: 9.5.sp,
                               ),
                             ),
                           ),

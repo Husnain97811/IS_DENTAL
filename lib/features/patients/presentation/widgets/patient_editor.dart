@@ -39,9 +39,7 @@ class _S extends ConsumerState<PatientEditorDialog> {
     super.initState();
     final e = widget.existing;
     _name = TextEditingController(text: e?.fullName ?? '');
-    _code = TextEditingController(
-      text: e?.code ?? 'PT-${10000 + Random().nextInt(89999)}',
-    );
+    _code = TextEditingController(text: e?.code ?? '…'); // filled below for new
     _phone = TextEditingController(text: e?.phone ?? '');
     _cnic = TextEditingController(text: formatCnicDashed(e?.cnic ?? ''));
     _age = TextEditingController(text: e == null ? '' : '${e.age}');
@@ -49,6 +47,14 @@ class _S extends ConsumerState<PatientEditorDialog> {
     _insurance = TextEditingController(text: e?.insurance ?? '');
     _gender = e?.gender ?? Gender.female;
     _status = e?.status ?? PatientStatus.active;
+
+    // New patient → generate the next sequential code from the DB.
+    if (e == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final code = await ref.read(appDatabaseProvider).nextPatientCode();
+        if (mounted) setState(() => _code.text = code);
+      });
+    }
   }
 
   @override
@@ -60,6 +66,17 @@ class _S extends ConsumerState<PatientEditorDialog> {
 
   Future<void> _save() async {
     if (_name.text.trim().isEmpty) return;
+
+    // For NEW patients, ensure the code is still unique (re-generate if taken).
+    if (widget.existing == null) {
+      var code = _code.text.trim();
+      final db = ref.read(appDatabaseProvider);
+      if (code.isEmpty || code == '…' || await db.patientCodeExists(code)) {
+        code = await db.nextPatientCode();
+        _code.text = code;
+      }
+    }
+
     final cnicDigits = _cnic.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (cnicDigits.length != 13) {
       setState(() => _cnicError = 'CNIC must be 13 digits');
@@ -144,7 +161,11 @@ class _S extends ConsumerState<PatientEditorDialog> {
               Row(
                 children: [
                   Expanded(
-                    child: DentField(label: 'Patient ID', controller: _code),
+                    child: DentField(
+                      label: 'Patient ID',
+                      controller: _code,
+                      readonly: true,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
