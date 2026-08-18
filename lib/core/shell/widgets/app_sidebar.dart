@@ -30,7 +30,7 @@ class AppSidebar extends ConsumerWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 260),
       curve: Curves.easeOutCubic,
-      width: collapsed ? 78 : 252,
+      width: collapsed ? 5.w : 18.w,
       decoration: BoxDecoration(
         gradient: d.sidebarGradient,
         border: Border(right: BorderSide(color: d.sideLine)),
@@ -86,18 +86,19 @@ class AppSidebar extends ConsumerWidget {
                   style: TextStyle(
                     fontFamily: AppFonts.display,
                     color: Colors.white,
-                    fontSize: 11.sp,
+                    fontSize: 13.sp,
+
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                Text(
-                  'CLINICAL SUITE',
-                  style: TextStyle(
-                    color: AppPalette.sideLabel,
-                    fontSize: 6.5.sp,
-                    letterSpacing: 1,
-                  ),
-                ),
+                // Text(
+                //   'CLINICAL SUITE',
+                //   style: TextStyle(
+                //     color: AppPalette.sideLabel,
+                //     fontSize: 6.5.sp,
+                //     letterSpacing: 1,
+                //   ),
+                // ),
               ],
             ),
           ),
@@ -116,7 +117,7 @@ class AppSidebar extends ConsumerWidget {
             _groupTitles[group]!.toUpperCase(),
             style: TextStyle(
               color: AppPalette.sideLabel,
-              fontSize: 6.2.sp,
+              fontSize: 9.2.sp,
               letterSpacing: 1.4,
               fontWeight: FontWeight.w700,
             ),
@@ -161,7 +162,7 @@ class AppSidebar extends ConsumerWidget {
                   Container(
                     width: 3,
                     height: 20,
-                    margin: const EdgeInsets.only(right: 9),
+                    margin: EdgeInsets.only(right: 5.sp),
                     decoration: BoxDecoration(
                       gradient: context.dent.accentGradient,
                       borderRadius: BorderRadius.circular(4),
@@ -169,7 +170,7 @@ class AppSidebar extends ConsumerWidget {
                   ),
                 Icon(
                   dest.icon,
-                  size: 11.sp,
+                  size: 13.sp,
                   color: active
                       ? AppPalette.sideTextActive
                       : AppPalette.sideText,
@@ -183,7 +184,7 @@ class AppSidebar extends ConsumerWidget {
                         color: active
                             ? AppPalette.sideTextActive
                             : AppPalette.sideText,
-                        fontSize: 9.5.sp,
+                        fontSize: 11.sp,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

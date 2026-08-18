@@ -83,6 +83,8 @@ class _WaConnectDialogState extends ConsumerState<_WaConnectDialog> {
 
   @override
   Widget build(BuildContext context) {
+    print(_error);
+
     final d = context.dent;
     final connected = _status == 'connected';
 
@@ -160,8 +162,9 @@ class _WaConnectDialogState extends ConsumerState<_WaConnectDialog> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    'Could not connect: $_error',
-                    style: TextStyle(color: d.alert, fontSize: 8.5.sp),
+                    // _error
+                    'Could not connect. Please contact your Service provider.',
+                    style: TextStyle(color: d.alert, fontSize: 9.5.sp),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -179,7 +182,7 @@ class _WaConnectDialogState extends ConsumerState<_WaConnectDialog> {
                   'Open WhatsApp on the clinic phone → Linked Devices → '
                   'Link a Device → scan this code.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: d.text3, fontSize: 8.5.sp),
+                  style: TextStyle(color: d.text3, fontSize: 9.5.sp),
                 ),
                 const SizedBox(height: 18),
                 if (_qr != null)

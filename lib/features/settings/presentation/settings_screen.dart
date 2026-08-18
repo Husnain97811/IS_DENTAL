@@ -396,9 +396,9 @@ class _S extends ConsumerState<SettingsScreen> {
                                       branchName: b.name,
                                     );
                                   },
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.qr_code_rounded,
-                                    size: 16,
+                                    size: 14.sp,
                                   ),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: d.teal,

@@ -214,7 +214,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 ),
                             ),
                           ),
-                          const TextSpan(text: ' 👋'),
+                          // const TextSpan(text: ' 👋'),
                         ],
                       ),
                     ),

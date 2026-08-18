@@ -1018,7 +1018,7 @@ class _RefreshButtonState extends ConsumerState<_RefreshButton>
           ),
           child: RotationTransition(
             turns: _spin,
-            child: Icon(Icons.refresh_rounded, size: 11.sp, color: d.text3),
+            child: Icon(Icons.refresh_rounded, size: 12.sp, color: d.text3),
           ),
         ),
       ),
