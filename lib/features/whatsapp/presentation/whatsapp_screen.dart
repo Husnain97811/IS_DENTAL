@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:sizer/sizer.dart';
 
 import '../../../core/constants/views.dart';
@@ -48,6 +49,12 @@ class WhatsAppScreen extends ConsumerWidget {
             )
           else if (premium) ...[
             _OffersSection(),
+            SizedBox(height: 2.4.h),
+            // ── Inbox (official API replies) ──
+            if (visible.any((b) => b.officialConnected)) ...[
+              SizedBox(height: 2.4.h),
+              _InboxSection(),
+            ],
             SizedBox(height: 2.4.h),
           ],
           for (final b in visible) _BranchWaCard(branch: b, premium: premium),
@@ -548,4 +555,228 @@ class _OffersSection extends ConsumerWidget {
     constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
     padding: EdgeInsets.zero,
   );
+}
+
+class _InboxSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final d = context.dent;
+    final convosAsync = ref.watch(waConversationsProvider);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: d.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: d.line),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: d.teal.withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(Icons.inbox_rounded, size: 20, color: d.teal),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'WhatsApp Inbox',
+                        style: TextStyle(
+                          color: d.text1,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Patient replies (Official API)',
+                        style: TextStyle(color: d.text3, fontSize: 8.sp),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.refresh_rounded, size: 18, color: d.text3),
+                  onPressed: () => ref.invalidate(waConversationsProvider),
+                  tooltip: 'Refresh',
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: d.line),
+          convosAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Padding(
+              padding: const EdgeInsets.all(18),
+              child: Text(
+                'Could not load inbox: $e',
+                style: TextStyle(color: d.alert, fontSize: 8.sp),
+              ),
+            ),
+            data: (convos) => convos.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Text(
+                      'No messages yet. Patient replies will appear here.',
+                      style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+                    ),
+                  )
+                : ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: 45.h),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          for (final c in convos) _convoTile(context, d, c),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _convoTile(BuildContext context, DentColors d, WaConversation c) {
+    final d2 = context.dent;
+    return InkWell(
+      onTap: () => _showConversation(context, d2, c),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: d.line)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: d.teal.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.person_rounded, size: 18, color: d.teal),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    c.patientName ?? c.waNumber,
+                    style: TextStyle(
+                      color: d.text1,
+                      fontSize: 9.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    c.lastMessage,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: d.text3, fontSize: 8.sp),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              _ago(c.lastAt),
+              style: TextStyle(color: d.text4, fontSize: 7.sp),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showConversation(BuildContext context, DentColors d, WaConversation c) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: d.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 460, maxHeight: 70.h),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        c.patientName ?? c.waNumber,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close_rounded, size: 20, color: d.text3),
+                      onPressed: () => Navigator.pop(dialogCtx),
+                    ),
+                  ],
+                ),
+              ),
+              Divider(height: 1, color: d.line),
+              Flexible(
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    for (final m in c.messages)
+                      Align(
+                        alignment: m.direction == 'in'
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          constraints: BoxConstraints(maxWidth: 70.w),
+                          decoration: BoxDecoration(
+                            color: m.direction == 'in'
+                                ? d.surface2
+                                : d.teal.withValues(alpha: .15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            m.body,
+                            style: TextStyle(color: d.text1, fontSize: 8.5.sp),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _ago(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+    if (diff.inHours < 24) return '${diff.inHours}h';
+    return '${diff.inDays}d';
+  }
 }

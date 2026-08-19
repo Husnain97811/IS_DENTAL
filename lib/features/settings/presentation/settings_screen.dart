@@ -11,9 +11,6 @@ import '../../../core/constants/views.dart';
 import '../../../licensing/presentation/license_providers.dart';
 import 'widgets/staff_editor.dart';
 import 'package:printing/printing.dart';
-import 'package:is_dental/core/utils/pdf_output.dart';
-import 'package:is_dental/features/reports/data/reports_pdf.dart';
-import 'package:is_dental/features/reports/presentation/reports_controller.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});

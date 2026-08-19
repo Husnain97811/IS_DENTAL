@@ -139,6 +139,8 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
           expiresAt: _expires,
           branchId: branchId,
           createdBy: staff,
+          sendApp: _sendApp,
+          sendWhatsApp: _sendWhatsApp,
         );
 
     if (!mounted) return;

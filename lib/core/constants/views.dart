@@ -64,3 +64,5 @@ export 'package:is_dental/features/branches/presentation/branch_controller.dart'
 export 'package:is_dental/features/settings/presentation/settings_controller.dart';
 export 'package:is_dental/features/settings/presentation/widgets/wa_connect_dialog.dart';
 export 'package:is_dental/features/settings/data/wa_connect_service.dart';
+export 'package:is_dental/features/whatsapp/data/wa_inbox_service.dart';
+export 'package:is_dental/features/whatsapp/presentation/wa_inbox_controller.dart';

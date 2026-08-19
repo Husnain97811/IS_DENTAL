@@ -42,13 +42,24 @@ class OfferRepository {
   /// Creates the offer locally + on Supabase, then calls the send-offer
   /// Edge Function to push it to all clinic patients with the app.
   /// Returns the number of pushes sent (0 if offline or function not ready).
+  // Future<({bool ok, int sent, String? error})> createAndSend({
+  //   required String title,
+  //   required String body,
+  //   String? imageUrl,
+  //   DateTime? startsAt,
+  //   DateTime? expiresAt,
+  //   String? branchId, // null = all branches
+  //   required String createdBy,
+  //   bool sendApp = true,
+  //   bool sendWhatsApp = false,
+  // }) async {
   Future<({bool ok, int sent, String? error})> createAndSend({
     required String title,
     required String body,
     String? imageUrl,
     DateTime? startsAt,
     DateTime? expiresAt,
-    String? branchId, // null = all branches
+    String? branchId,
     required String createdBy,
     bool sendApp = true,
     bool sendWhatsApp = false,
@@ -104,15 +115,17 @@ class OfferRepository {
           'branchId': branchId,
           'sendApp': sendApp,
           'sendWhatsApp': sendWhatsApp,
+          'waTemplate': 'hello_world',
         },
       );
       final data = res.data as Map<String, dynamic>?;
       final sent = (data?['sent'] as num?)?.toInt() ?? 0;
-      // record sent_count locally
+      final waSent = (data?['waSent'] as num?)?.toInt() ?? 0;
+      final total = sent + waSent;
       await (_db.update(_db.offers)..where((t) => t.uuid.equals(uuid))).write(
-        OffersCompanion(sentCount: Value(sent)),
+        OffersCompanion(sentCount: Value(total)),
       );
-      return (ok: true, sent: sent, error: null);
+      return (ok: true, sent: total, error: null);
     } catch (e) {
       // offer is saved; sending failed (e.g. Firebase not set up yet)
       return (ok: false, sent: 0, error: 'Offer saved, but sending failed: $e');
