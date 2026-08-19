@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/branches/domain/branch.dart';
+import 'package:is_dental/features/branches/presentation/branch_controller.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../../core/constants/views.dart';
@@ -9,16 +11,26 @@ import '../../data/wa_connect_service.dart';
 
 Future<void> showWaConnectDialog(
   BuildContext context, {
+  required int branchLocalId,
   required String branchId,
   required String branchName,
 }) => showDialog(
   context: context,
   barrierDismissible: false,
-  builder: (_) => _WaConnectDialog(branchId: branchId, branchName: branchName),
+  builder: (_) => _WaConnectDialog(
+    branchLocalId: branchLocalId,
+    branchId: branchId,
+    branchName: branchName,
+  ),
 );
 
 class _WaConnectDialog extends ConsumerStatefulWidget {
-  const _WaConnectDialog({required this.branchId, required this.branchName});
+  const _WaConnectDialog({
+    required this.branchLocalId,
+    required this.branchId,
+    required this.branchName,
+  });
+  final int branchLocalId;
   final String branchId;
   final String branchName;
   @override
@@ -73,10 +85,23 @@ class _WaConnectDialogState extends ConsumerState<_WaConnectDialog> {
       if (!mounted) return;
       setState(() {
         _status = r.status;
-        if (r.qr != null) _qr = r.qr; // refresh rotating QR
+        if (r.qr != null) _qr = r.qr;
       });
       if (r.status == 'connected') {
         _poll?.cancel();
+        final db = ref.read(appDatabaseProvider);
+        await db.setBranchQrStatus(widget.branchLocalId, 'connected');
+        final branches = ref.read(branchesStreamProvider).value ?? const [];
+        Branch? branch;
+        for (final b in branches) {
+          if (b.id == widget.branchLocalId) {
+            branch = b;
+            break;
+          }
+        }
+        if (branch != null && branch.waReminderChannel == 'none') {
+          await db.setBranchReminderChannel(widget.branchLocalId, 'qr');
+        }
       }
     });
   }

@@ -82,17 +82,17 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Patients', style: Theme.of(context).textTheme.displayLarge),
-              Row(
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: () => context.go(AppRoutes.offers),
-                    icon: Icon(Icons.campaign_rounded, size: 12.sp),
-                    label: const Text('Offers'),
-                  ),
-                  SizedBox(width: 0.5.w),
-                  toothChartButton(d),
-                ],
-              ),
+              // Row(
+              //   children: [
+              //     OutlinedButton.icon(
+              //       onPressed: () => context.go(AppRoutes.offers),
+              //       icon: Icon(Icons.campaign_rounded, size: 12.sp),
+              //       label: const Text('Offers'),
+              //     ),
+              //     SizedBox(width: 0.5.w),
+              //     toothChartButton(d),
+              //   ],
+              // ),
             ],
           ),
           const SizedBox(height: 4),

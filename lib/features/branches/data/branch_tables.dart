@@ -21,6 +21,11 @@ class Branches extends Table {
   BoolColumn get waEnabled => boolean().withDefault(const Constant(false))();
   TextColumn get waMethod =>
       text().withDefault(const Constant('official'))(); // 'qr' | 'official'
+  // ── WhatsApp v2 (independent QR + Official) ──
+  TextColumn get waQrStatus => text().nullable()(); // 'connected' | null
+  TextColumn get waReminderChannel => text().withDefault(
+    const Constant('none'),
+  )(); // 'qr' | 'official' | 'none'
   TextColumn get waPhone => text().nullable()(); // the branch's WhatsApp number
   TextColumn get waApiToken =>
       text().nullable()(); // official: their Meta token

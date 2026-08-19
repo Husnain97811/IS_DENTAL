@@ -69,7 +69,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -267,6 +267,14 @@ class AppDatabase extends _$AppDatabase {
     },
 
     onUpgrade: (m, from, to) async {
+      if (from < 17) {
+        try {
+          await m.addColumn(branches, branches.waQrStatus);
+        } catch (_) {}
+        try {
+          await m.addColumn(branches, branches.waReminderChannel);
+        } catch (_) {}
+      }
       if (from < 6) await m.createTable(branches);
       if (from < 7) await m.addColumn(users, users.branchId);
       if (from < 8) await m.addColumn(appointments, appointments.billed);
@@ -360,6 +368,44 @@ class AppDatabase extends _$AppDatabase {
       updatedAt: Value(DateTime.now()),
     ),
   );
+
+  Future<void> setBranchQrStatus(int id, String? status) =>
+      (update(branches)..where((t) => t.id.equals(id))).write(
+        BranchesCompanion(
+          waQrStatus: Value(status),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  Future<void> setBranchOfficialApi({
+    required int id,
+    String? apiToken,
+    String? phoneId,
+    String? phone,
+  }) => (update(branches)..where((t) => t.id.equals(id))).write(
+    BranchesCompanion(
+      waApiToken: Value(apiToken),
+      waPhoneId: Value(phoneId),
+      waPhone: Value(phone),
+      updatedAt: Value(DateTime.now()),
+    ),
+  );
+
+  Future<void> setBranchReminderChannel(int id, String channel) =>
+      (update(branches)..where((t) => t.id.equals(id))).write(
+        BranchesCompanion(
+          waReminderChannel: Value(channel),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  Future<void> setBranchWaEnabled(int id, bool enabled) =>
+      (update(branches)..where((t) => t.id.equals(id))).write(
+        BranchesCompanion(
+          waEnabled: Value(enabled),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
 
   /// Next invoice number as a 7-digit string ('0000001', '0000002', …).
   /// Scans existing invoice numbers, takes the max numeric value, adds 1.

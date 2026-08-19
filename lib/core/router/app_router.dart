@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:is_dental/features/offers/presentation/offers_screen.dart';
 import 'package:is_dental/features/requests/presentation/requests_screen.dart';
+import 'package:is_dental/features/whatsapp/presentation/whatsapp_screen.dart';
 import '../constants/views.dart';
 import 'app_routes.dart';
 
@@ -82,10 +83,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: AppRoutes.patients,
                 builder: (c, s) => const PatientsScreen(),
                 routes: [
-                  GoRoute(
-                    path: 'offers',
-                    builder: (c, s) => const OffersScreen(),
-                  ),
+                  // GoRoute(
+                  //   path: 'offers',
+                  //   builder: (c, s) => const OffersScreen(),
+                  // ),
                   GoRoute(
                     path: ':id',
                     builder: (c, s) => PatientDetailScreen(
@@ -93,6 +94,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.whatsapp,
+                builder: (c, s) => const WhatsAppScreen(),
               ),
             ],
           ),

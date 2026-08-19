@@ -42,21 +42,6 @@ class _S extends ConsumerState<TreatmentsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Treatment Catalog',
-                style: Theme.of(context).textTheme.displayLarge,
-              ),
-              toothChartButton(d),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Procedures & pricing · tap a card to edit.',
-            style: TextStyle(color: d.text3, fontSize: 9.sp),
-          ),
           SizedBox(height: 2.2.h),
           async.when(
             loading: () => const Padding(
@@ -93,43 +78,6 @@ class _S extends ConsumerState<TreatmentsScreen> {
                   ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget toothChartButton(DentColors d) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const ToothChartScreen()));
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF38BDF8), Color(0xFF13E0C4)], // ice → teal
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF38BDF8).withOpacity(0.35),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Text(
-          '3D Chart',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-            fontSize: 9.sp,
-            letterSpacing: 0.4,
-          ),
-        ),
       ),
     );
   }

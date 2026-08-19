@@ -58,6 +58,16 @@ const kNavDestinations = <NavDestination>[
     drawer: DrawerKind.patient,
   ),
   NavDestination(
+    route: AppRoutes.whatsapp,
+    icon: Icons.chat_rounded,
+    label: 'WhatsApp & Reminders',
+    group: NavGroup.operations,
+    title: 'WhatsApp & Reminders',
+    subtitle: 'Connections, reminders & offers',
+    primaryAction: '',
+    drawer: DrawerKind.none,
+  ),
+  NavDestination(
     route: AppRoutes.treatments,
     icon: Icons.medical_services_rounded,
     label: 'Treatments',

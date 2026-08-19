@@ -132,6 +132,8 @@ class SyncEngine {
               waApiToken: Value(r['wa_api_token']),
               waPhoneId: Value(r['wa_phone_id']),
               waSessionStatus: Value(r['wa_session_status']),
+              waQrStatus: Value(r['wa_qr_status']),
+              waReminderChannel: Value(r['wa_reminder_channel'] ?? 'none'),
             ),
             mode: InsertMode.insertOrReplace,
           );
@@ -935,6 +937,8 @@ class SyncEngine {
             'wa_api_token': b.waApiToken,
             'wa_phone_id': b.waPhoneId,
             'wa_session_status': b.waSessionStatus,
+            'wa_qr_status': b.waQrStatus,
+            'wa_reminder_channel': b.waReminderChannel,
           },
       ], onConflict: 'uuid');
       await _setCur('push_branches', _max(changed.map((e) => e.updatedAt)));

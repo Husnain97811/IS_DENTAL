@@ -52,3 +52,15 @@ export 'package:is_dental/features/treatments/presentation/treatments_controller
 export 'package:is_dental/features/appointments/domain/appointment.dart';
 export 'package:is_dental/features/requests/presentation/widgets/approve_request_dialog.dart';
 export 'package:is_dental/features/requests/domain/booking_request.dart';
+export 'package:is_dental/features/offers/domain/offer.dart';
+export 'package:is_dental/features/branches/domain/branch.dart';
+export 'package:is_dental/features/offers/presentation/offers_controller.dart';
+export 'package:is_dental/core/utils/pdf_output.dart';
+export 'package:is_dental/features/reports/data/reports_pdf.dart';
+export 'package:is_dental/features/reports/presentation/reports_controller.dart';
+export 'package:is_dental/features/offers/presentation/widgets/offer_composer.dart';
+export 'package:is_dental/features/branches/presentation/widgets/branch_editor.dart';
+export 'package:is_dental/features/branches/presentation/branch_controller.dart';
+export 'package:is_dental/features/settings/presentation/settings_controller.dart';
+export 'package:is_dental/features/settings/presentation/widgets/wa_connect_dialog.dart';
+export 'package:is_dental/features/settings/data/wa_connect_service.dart';

@@ -50,6 +50,8 @@ class OfferRepository {
     DateTime? expiresAt,
     String? branchId, // null = all branches
     required String createdBy,
+    bool sendApp = true,
+    bool sendWhatsApp = false,
   }) async {
     final clinicId = await _db.currentClinicId() ?? '';
     final uuid = Uuids.v4();
@@ -97,7 +99,12 @@ class OfferRepository {
     try {
       final res = await _sb.functions.invoke(
         'send-offer',
-        body: {'offerId': uuid, 'branchId': branchId},
+        body: {
+          'offerId': uuid,
+          'branchId': branchId,
+          'sendApp': sendApp,
+          'sendWhatsApp': sendWhatsApp,
+        },
       );
       final data = res.data as Map<String, dynamic>?;
       final sent = (data?['sent'] as num?)?.toInt() ?? 0;

@@ -310,7 +310,10 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
                 children: [
                   Text(
                     widget.destination.title,
-                    style: Theme.of(context).textTheme.headlineSmall,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   Text(
                     widget.destination.subtitle,

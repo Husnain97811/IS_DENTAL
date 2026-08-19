@@ -5,15 +5,10 @@ import 'package:is_dental/cloud/data/cloud_service.dart';
 import 'package:is_dental/cloud/data/sync_engine.dart';
 import 'package:is_dental/core/utils/qr_payload.dart';
 import 'package:is_dental/features/settings/data/clinic_qr_pdf.dart';
-import 'package:is_dental/features/settings/presentation/widgets/wa_connect_dialog.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:sizer/sizer.dart';
-import '../../branches/domain/branch.dart';
 import '../../../core/constants/views.dart';
 import '../../../licensing/presentation/license_providers.dart';
-import '../../branches/presentation/branch_controller.dart';
-import '../../branches/presentation/widgets/branch_editor.dart';
-import 'settings_controller.dart';
 import 'widgets/staff_editor.dart';
 import 'package:printing/printing.dart';
 import 'package:is_dental/core/utils/pdf_output.dart';
@@ -179,322 +174,6 @@ class _S extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Future<void> _showWhatsAppEditor(DentColors d, Branch b) async {
-    bool enabled = b.waEnabled;
-    String method = b.waMethod;
-    final phone = TextEditingController(text: b.waPhone ?? '');
-    final apiToken = TextEditingController(text: b.waApiToken ?? '');
-    final phoneId = TextEditingController(text: b.waPhoneId ?? '');
-    final premium = ref.read(
-      isPremiumTierProvider,
-    ); // from tier checker (add if not present)
-
-    await showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) {
-          Widget field(
-            String label,
-            TextEditingController c, {
-            bool obscure = false,
-          }) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 12),
-              Text(
-                label.toUpperCase(),
-                style: TextStyle(
-                  color: d.text4,
-                  fontSize: 9.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: .5,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 13),
-                decoration: BoxDecoration(
-                  color: d.surface2,
-                  borderRadius: BorderRadius.circular(11),
-                  border: Border.all(color: d.line),
-                ),
-                child: Center(
-                  child: TextField(
-                    controller: c,
-                    obscureText: obscure,
-                    style: TextStyle(fontSize: 9.sp, color: d.text1),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-
-          return Dialog(
-            backgroundColor: d.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'WhatsApp · ${b.name}',
-                        style: Theme.of(ctx).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'App notifications always send. This only controls WhatsApp.',
-                        style: TextStyle(color: d.text3, fontSize: 9.sp),
-                      ),
-                      const SizedBox(height: 18),
-
-                      // master toggle
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: d.surface2,
-                          borderRadius: BorderRadius.circular(11),
-                          border: Border.all(color: d.line),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Send WhatsApp reminders',
-                                    style: TextStyle(
-                                      color: d.text1,
-                                      fontSize: 10.5.sp,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    'One reminder before each appointment',
-                                    style: TextStyle(
-                                      color: d.text3,
-                                      fontSize: 9.5.sp,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Switch(
-                              value: enabled,
-                              activeColor: d.teal,
-                              onChanged: (v) => setLocal(() => enabled = v),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      if (enabled) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          'CONNECTION METHOD',
-                          style: TextStyle(
-                            color: d.text4,
-                            fontSize: 9.5.sp,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: .5,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            _methodChip(
-                              d,
-                              'Official API',
-                              method == 'official',
-                              () => setLocal(() => method = 'official'),
-                            ),
-                            const SizedBox(width: 8),
-                            _methodChip(
-                              d,
-                              'QR Code',
-                              method == 'qr',
-                              () => setLocal(() => method = 'qr'),
-                            ),
-                          ],
-                        ),
-                        field('WhatsApp Number', phone),
-                        if (method == 'official') ...[
-                          field(
-                            'API Token (your Meta credentials)',
-                            apiToken,
-                            obscure: true,
-                          ),
-                          field('Phone Number ID', phoneId),
-                          const SizedBox(height: 10),
-                          Text(
-                            'You provide your own WhatsApp Business API credentials. '
-                            'Meta bills you directly for messages.',
-                            style: TextStyle(color: d.text4, fontSize: 9.sp),
-                          ),
-                        ] else ...[
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: d.warn.withValues(alpha: .1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Column(
-                              // mainAxisAlignment: MainAxisAlignment.start,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Scan the QR code to connect.',
-                                  style: TextStyle(
-                                    color: d.text2,
-                                    fontSize: 9.5.sp,
-                                  ),
-                                ),
-                                Text(
-                                  'Note: QR method uses an unofficial WhatsApp connection, Unofficial automation carries a small risk to your number.',
-                                  style: TextStyle(
-                                    color: d.text2,
-                                    fontSize: 9.5.sp,
-                                  ),
-                                ),
-                                SizedBox(height: 8.sp),
-                                // ── Connect button ──
-                                OutlinedButton.icon(
-                                  onPressed: () async {
-                                    // save current settings first so the branch is 'qr' enabled
-                                    await ref
-                                        .read(appDatabaseProvider)
-                                        .updateBranchWhatsApp(
-                                          id: b.id,
-                                          waEnabled: true,
-                                          waMethod: 'qr',
-                                          waPhone: phone.text.trim().isEmpty
-                                              ? null
-                                              : phone.text.trim(),
-                                        );
-                                    // sync so the cloud branch row is 'qr' before connecting
-                                    await syncNow(ref);
-                                    if (!ctx.mounted) return;
-                                    await showWaConnectDialog(
-                                      ctx,
-                                      branchId: b.uuid,
-                                      branchName: b.name,
-                                    );
-                                  },
-                                  icon: Icon(
-                                    Icons.qr_code_rounded,
-                                    size: 14.sp,
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: d.teal,
-                                    side: BorderSide(
-                                      color: d.teal.withValues(alpha: .5),
-                                    ),
-                                    minimumSize: const Size.fromHeight(44),
-                                  ),
-                                  label: Text(
-                                    b.waSessionStatus == 'connected'
-                                        ? 'Reconnect WhatsApp'
-                                        : 'Connect WhatsApp (scan QR)',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-
-                      const SizedBox(height: 22),
-                      Row(
-                        children: [
-                          const Spacer(),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('Cancel'),
-                          ),
-                          const SizedBox(width: 8),
-                          FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: d.ice,
-                              foregroundColor: AppPalette.onAccent,
-                            ),
-                            onPressed: () async {
-                              await ref
-                                  .read(appDatabaseProvider)
-                                  .updateBranchWhatsApp(
-                                    id: b.id,
-                                    waEnabled: enabled,
-                                    waMethod: method,
-                                    waPhone: phone.text.trim().isEmpty
-                                        ? null
-                                        : phone.text.trim(),
-                                    waApiToken: apiToken.text.trim().isEmpty
-                                        ? null
-                                        : apiToken.text.trim(),
-                                    waPhoneId: phoneId.text.trim().isEmpty
-                                        ? null
-                                        : phoneId.text.trim(),
-                                  );
-                              if (ctx.mounted) Navigator.pop(ctx);
-                            },
-                            child: const Text('Save'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _methodChip(
-    DentColors d,
-    String label,
-    bool selected,
-    VoidCallback onTap,
-  ) => Expanded(
-    child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? d.ice.withValues(alpha: .12) : d.surface2,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: selected ? d.ice : d.line),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? d.ice : d.text2,
-            fontSize: 10.5.sp,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    ),
-  );
-
   Future<String> syncNow(WidgetRef ref) async {
     try {
       debugPrint('SYNC: signing in…');
@@ -615,26 +294,6 @@ class _S extends ConsumerState<SettingsScreen> {
     if (!dialogClosed) debugPrint('Restore progress dialog was already gone.');
   }
 
-  Future<void> _save() async {
-    final db = ref.read(appDatabaseProvider);
-    final existing = await db.select(db.clinicProfile).getSingleOrNull();
-    setState(() => _saving = true);
-    await db.saveProfile(
-      clinicId: existing?.clinicId ?? '',
-      name: _name.text.trim(),
-      branch: _branch.text.trim(),
-      currency: _currency.text.trim(),
-      tier: existing?.tier ?? 'standard',
-    );
-    if (mounted) {
-      setState(() => _saving = false);
-      ref.invalidate(clinicProfileProvider);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Clinic profile saved.')));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final d = context.dent;
@@ -695,8 +354,6 @@ class _S extends ConsumerState<SettingsScreen> {
                     const SizedBox(height: 18),
                   ],
                   _hoursPanel(d),
-                  const SizedBox(height: 18),
-                  _whatsAppPanel(d),
 
                   const SizedBox(height: 18),
 
@@ -717,98 +374,6 @@ class _S extends ConsumerState<SettingsScreen> {
               );
             },
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _whatsAppPanel(DentColors d) {
-    final session = ref.watch(authControllerProvider);
-    final role = session?.role;
-    final isOwner = role == AppRole.owner;
-    final branches =
-        ref.watch(branchesStreamProvider).value ?? const <Branch>[];
-    final visible = isOwner
-        ? branches
-        : branches.where((b) => b.uuid == session?.branchId).toList();
-
-    if (visible.isEmpty) {
-      return DentPanel(
-        title: 'WhatsApp Reminders',
-        subtitle: 'Send appointment reminders on WhatsApp',
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Text(
-            'No branch assigned.',
-            style: TextStyle(color: d.text4, fontSize: 8.5.sp),
-          ),
-        ),
-      );
-    }
-
-    return DentPanel(
-      title: 'WhatsApp Reminders',
-      subtitle: 'Per-branch WhatsApp setup · notifications always stay on',
-      child: Column(
-        children: [
-          for (final b in visible)
-            Builder(
-              builder: (_) {
-                final canEdit =
-                    isOwner ||
-                    (role == AppRole.admin && session?.branchId == b.uuid);
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border(bottom: BorderSide(color: d.line)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        b.waEnabled ? Icons.chat_rounded : Icons.chat_outlined,
-                        size: 18,
-                        color: b.waEnabled ? d.teal : d.text4,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              b.name,
-                              style: TextStyle(
-                                color: d.text1,
-                                fontSize: 10.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              b.waEnabled
-                                  ? 'On · ${b.waMethod == 'qr' ? 'QR Code' : 'Official API'}'
-                                        '${b.waPhone == null || b.waPhone!.isEmpty ? '' : ' · ${b.waPhone}'}'
-                                  : 'Off · reminders go by app notification only',
-                              style: TextStyle(color: d.text2, fontSize: 9.sp),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (canEdit)
-                        IconButton(
-                          icon: Icon(
-                            Icons.settings_rounded,
-                            size: 13.sp,
-                            color: d.text4,
-                          ),
-                          onPressed: () => _showWhatsAppEditor(d, b),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
         ],
       ),
     );
@@ -1525,65 +1090,6 @@ class _S extends ConsumerState<SettingsScreen> {
     ),
   );
 
-  Widget _fieldRow(
-    DentColors d,
-    String title,
-    String sub,
-    TextEditingController c,
-  ) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-    decoration: BoxDecoration(
-      border: Border(bottom: BorderSide(color: d.line)),
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: d.text1,
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                sub,
-                style: TextStyle(color: d.text3, fontSize: 8.sp),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(
-          width: 200,
-          child: TextField(
-            controller: c,
-            style: TextStyle(fontSize: 10.sp, color: d.text1),
-            decoration: InputDecoration(
-              isDense: true,
-              filled: true,
-              fillColor: d.surface2,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: d.line),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: d.ice, width: 1.5),
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-
   Widget _toggleRow(
     DentColors d,
     String title,
@@ -1814,18 +1320,6 @@ class _S extends ConsumerState<SettingsScreen> {
     );
   }
 
-  // CSV helper used by the sheet
-  static String _buildPatientCsv(List<dynamic> patients) {
-    final buf = StringBuffer();
-    buf.writeln('Code,Name,Phone,Status,Balance,Last Visit');
-    for (final p in patients) {
-      buf.writeln(
-        '${p.code},"${p.fullName}",${p.phone},${p.status.name},${p.balance},${p.lastVisit ?? "—"}',
-      );
-    }
-    return buf.toString();
-  }
-
   Widget _staffRow(DentColors d, User u) {
     final isOwnerViewing =
         ref.watch(authControllerProvider)?.role == AppRole.owner;
@@ -1960,11 +1454,6 @@ class _ManageSheet extends ConsumerStatefulWidget {
 class _ManageSheetState extends ConsumerState<_ManageSheet> {
   bool _exportingCsv = false;
   bool _exportingPdf = false;
-
-  String _m(int v) => v.toString().replaceAllMapped(
-    RegExp(r'(\d)(?=(\d{3})+$)'),
-    (m) => '${m[1]},',
-  );
 
   @override
   Widget build(BuildContext context) {

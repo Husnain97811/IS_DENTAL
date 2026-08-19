@@ -7448,6 +7448,30 @@ class $BranchesTable extends Branches
     requiredDuringInsert: false,
     defaultValue: const Constant('official'),
   );
+  static const VerificationMeta _waQrStatusMeta = const VerificationMeta(
+    'waQrStatus',
+  );
+  @override
+  late final GeneratedColumn<String> waQrStatus = GeneratedColumn<String>(
+    'wa_qr_status',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _waReminderChannelMeta = const VerificationMeta(
+    'waReminderChannel',
+  );
+  @override
+  late final GeneratedColumn<String> waReminderChannel =
+      GeneratedColumn<String>(
+        'wa_reminder_channel',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('none'),
+      );
   static const VerificationMeta _waPhoneMeta = const VerificationMeta(
     'waPhone',
   );
@@ -7508,6 +7532,8 @@ class $BranchesTable extends Branches
     updatedAt,
     waEnabled,
     waMethod,
+    waQrStatus,
+    waReminderChannel,
     waPhone,
     waApiToken,
     waPhoneId,
@@ -7621,6 +7647,24 @@ class $BranchesTable extends Branches
         waMethod.isAcceptableOrUnknown(data['wa_method']!, _waMethodMeta),
       );
     }
+    if (data.containsKey('wa_qr_status')) {
+      context.handle(
+        _waQrStatusMeta,
+        waQrStatus.isAcceptableOrUnknown(
+          data['wa_qr_status']!,
+          _waQrStatusMeta,
+        ),
+      );
+    }
+    if (data.containsKey('wa_reminder_channel')) {
+      context.handle(
+        _waReminderChannelMeta,
+        waReminderChannel.isAcceptableOrUnknown(
+          data['wa_reminder_channel']!,
+          _waReminderChannelMeta,
+        ),
+      );
+    }
     if (data.containsKey('wa_phone')) {
       context.handle(
         _waPhoneMeta,
@@ -7716,6 +7760,14 @@ class $BranchesTable extends Branches
         DriftSqlType.string,
         data['${effectivePrefix}wa_method'],
       )!,
+      waQrStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wa_qr_status'],
+      ),
+      waReminderChannel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wa_reminder_channel'],
+      )!,
       waPhone: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}wa_phone'],
@@ -7756,6 +7808,8 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
   final DateTime updatedAt;
   final bool waEnabled;
   final String waMethod;
+  final String? waQrStatus;
+  final String waReminderChannel;
   final String? waPhone;
   final String? waApiToken;
   final String? waPhoneId;
@@ -7775,6 +7829,8 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     required this.updatedAt,
     required this.waEnabled,
     required this.waMethod,
+    this.waQrStatus,
+    required this.waReminderChannel,
     this.waPhone,
     this.waApiToken,
     this.waPhoneId,
@@ -7797,6 +7853,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['wa_enabled'] = Variable<bool>(waEnabled);
     map['wa_method'] = Variable<String>(waMethod);
+    if (!nullToAbsent || waQrStatus != null) {
+      map['wa_qr_status'] = Variable<String>(waQrStatus);
+    }
+    map['wa_reminder_channel'] = Variable<String>(waReminderChannel);
     if (!nullToAbsent || waPhone != null) {
       map['wa_phone'] = Variable<String>(waPhone);
     }
@@ -7828,6 +7888,10 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       updatedAt: Value(updatedAt),
       waEnabled: Value(waEnabled),
       waMethod: Value(waMethod),
+      waQrStatus: waQrStatus == null && nullToAbsent
+          ? const Value.absent()
+          : Value(waQrStatus),
+      waReminderChannel: Value(waReminderChannel),
       waPhone: waPhone == null && nullToAbsent
           ? const Value.absent()
           : Value(waPhone),
@@ -7863,6 +7927,8 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       waEnabled: serializer.fromJson<bool>(json['waEnabled']),
       waMethod: serializer.fromJson<String>(json['waMethod']),
+      waQrStatus: serializer.fromJson<String?>(json['waQrStatus']),
+      waReminderChannel: serializer.fromJson<String>(json['waReminderChannel']),
       waPhone: serializer.fromJson<String?>(json['waPhone']),
       waApiToken: serializer.fromJson<String?>(json['waApiToken']),
       waPhoneId: serializer.fromJson<String?>(json['waPhoneId']),
@@ -7887,6 +7953,8 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'waEnabled': serializer.toJson<bool>(waEnabled),
       'waMethod': serializer.toJson<String>(waMethod),
+      'waQrStatus': serializer.toJson<String?>(waQrStatus),
+      'waReminderChannel': serializer.toJson<String>(waReminderChannel),
       'waPhone': serializer.toJson<String?>(waPhone),
       'waApiToken': serializer.toJson<String?>(waApiToken),
       'waPhoneId': serializer.toJson<String?>(waPhoneId),
@@ -7909,6 +7977,8 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     DateTime? updatedAt,
     bool? waEnabled,
     String? waMethod,
+    Value<String?> waQrStatus = const Value.absent(),
+    String? waReminderChannel,
     Value<String?> waPhone = const Value.absent(),
     Value<String?> waApiToken = const Value.absent(),
     Value<String?> waPhoneId = const Value.absent(),
@@ -7928,6 +7998,8 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     updatedAt: updatedAt ?? this.updatedAt,
     waEnabled: waEnabled ?? this.waEnabled,
     waMethod: waMethod ?? this.waMethod,
+    waQrStatus: waQrStatus.present ? waQrStatus.value : this.waQrStatus,
+    waReminderChannel: waReminderChannel ?? this.waReminderChannel,
     waPhone: waPhone.present ? waPhone.value : this.waPhone,
     waApiToken: waApiToken.present ? waApiToken.value : this.waApiToken,
     waPhoneId: waPhoneId.present ? waPhoneId.value : this.waPhoneId,
@@ -7959,6 +8031,12 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       waEnabled: data.waEnabled.present ? data.waEnabled.value : this.waEnabled,
       waMethod: data.waMethod.present ? data.waMethod.value : this.waMethod,
+      waQrStatus: data.waQrStatus.present
+          ? data.waQrStatus.value
+          : this.waQrStatus,
+      waReminderChannel: data.waReminderChannel.present
+          ? data.waReminderChannel.value
+          : this.waReminderChannel,
       waPhone: data.waPhone.present ? data.waPhone.value : this.waPhone,
       waApiToken: data.waApiToken.present
           ? data.waApiToken.value
@@ -7987,6 +8065,8 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
           ..write('updatedAt: $updatedAt, ')
           ..write('waEnabled: $waEnabled, ')
           ..write('waMethod: $waMethod, ')
+          ..write('waQrStatus: $waQrStatus, ')
+          ..write('waReminderChannel: $waReminderChannel, ')
           ..write('waPhone: $waPhone, ')
           ..write('waApiToken: $waApiToken, ')
           ..write('waPhoneId: $waPhoneId, ')
@@ -8011,6 +8091,8 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     updatedAt,
     waEnabled,
     waMethod,
+    waQrStatus,
+    waReminderChannel,
     waPhone,
     waApiToken,
     waPhoneId,
@@ -8034,6 +8116,8 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
           other.updatedAt == this.updatedAt &&
           other.waEnabled == this.waEnabled &&
           other.waMethod == this.waMethod &&
+          other.waQrStatus == this.waQrStatus &&
+          other.waReminderChannel == this.waReminderChannel &&
           other.waPhone == this.waPhone &&
           other.waApiToken == this.waApiToken &&
           other.waPhoneId == this.waPhoneId &&
@@ -8055,6 +8139,8 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
   final Value<DateTime> updatedAt;
   final Value<bool> waEnabled;
   final Value<String> waMethod;
+  final Value<String?> waQrStatus;
+  final Value<String> waReminderChannel;
   final Value<String?> waPhone;
   final Value<String?> waApiToken;
   final Value<String?> waPhoneId;
@@ -8074,6 +8160,8 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     this.updatedAt = const Value.absent(),
     this.waEnabled = const Value.absent(),
     this.waMethod = const Value.absent(),
+    this.waQrStatus = const Value.absent(),
+    this.waReminderChannel = const Value.absent(),
     this.waPhone = const Value.absent(),
     this.waApiToken = const Value.absent(),
     this.waPhoneId = const Value.absent(),
@@ -8094,6 +8182,8 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     this.updatedAt = const Value.absent(),
     this.waEnabled = const Value.absent(),
     this.waMethod = const Value.absent(),
+    this.waQrStatus = const Value.absent(),
+    this.waReminderChannel = const Value.absent(),
     this.waPhone = const Value.absent(),
     this.waApiToken = const Value.absent(),
     this.waPhoneId = const Value.absent(),
@@ -8116,6 +8206,8 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     Expression<DateTime>? updatedAt,
     Expression<bool>? waEnabled,
     Expression<String>? waMethod,
+    Expression<String>? waQrStatus,
+    Expression<String>? waReminderChannel,
     Expression<String>? waPhone,
     Expression<String>? waApiToken,
     Expression<String>? waPhoneId,
@@ -8136,6 +8228,8 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (waEnabled != null) 'wa_enabled': waEnabled,
       if (waMethod != null) 'wa_method': waMethod,
+      if (waQrStatus != null) 'wa_qr_status': waQrStatus,
+      if (waReminderChannel != null) 'wa_reminder_channel': waReminderChannel,
       if (waPhone != null) 'wa_phone': waPhone,
       if (waApiToken != null) 'wa_api_token': waApiToken,
       if (waPhoneId != null) 'wa_phone_id': waPhoneId,
@@ -8158,6 +8252,8 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     Value<DateTime>? updatedAt,
     Value<bool>? waEnabled,
     Value<String>? waMethod,
+    Value<String?>? waQrStatus,
+    Value<String>? waReminderChannel,
     Value<String?>? waPhone,
     Value<String?>? waApiToken,
     Value<String?>? waPhoneId,
@@ -8178,6 +8274,8 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
       updatedAt: updatedAt ?? this.updatedAt,
       waEnabled: waEnabled ?? this.waEnabled,
       waMethod: waMethod ?? this.waMethod,
+      waQrStatus: waQrStatus ?? this.waQrStatus,
+      waReminderChannel: waReminderChannel ?? this.waReminderChannel,
       waPhone: waPhone ?? this.waPhone,
       waApiToken: waApiToken ?? this.waApiToken,
       waPhoneId: waPhoneId ?? this.waPhoneId,
@@ -8230,6 +8328,12 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     if (waMethod.present) {
       map['wa_method'] = Variable<String>(waMethod.value);
     }
+    if (waQrStatus.present) {
+      map['wa_qr_status'] = Variable<String>(waQrStatus.value);
+    }
+    if (waReminderChannel.present) {
+      map['wa_reminder_channel'] = Variable<String>(waReminderChannel.value);
+    }
     if (waPhone.present) {
       map['wa_phone'] = Variable<String>(waPhone.value);
     }
@@ -8262,6 +8366,8 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
           ..write('updatedAt: $updatedAt, ')
           ..write('waEnabled: $waEnabled, ')
           ..write('waMethod: $waMethod, ')
+          ..write('waQrStatus: $waQrStatus, ')
+          ..write('waReminderChannel: $waReminderChannel, ')
           ..write('waPhone: $waPhone, ')
           ..write('waApiToken: $waApiToken, ')
           ..write('waPhoneId: $waPhoneId, ')
@@ -15008,6 +15114,8 @@ typedef $$BranchesTableCreateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<bool> waEnabled,
       Value<String> waMethod,
+      Value<String?> waQrStatus,
+      Value<String> waReminderChannel,
       Value<String?> waPhone,
       Value<String?> waApiToken,
       Value<String?> waPhoneId,
@@ -15029,6 +15137,8 @@ typedef $$BranchesTableUpdateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<bool> waEnabled,
       Value<String> waMethod,
+      Value<String?> waQrStatus,
+      Value<String> waReminderChannel,
       Value<String?> waPhone,
       Value<String?> waApiToken,
       Value<String?> waPhoneId,
@@ -15111,6 +15221,16 @@ class $$BranchesTableFilterComposer
 
   ColumnFilters<String> get waMethod => $composableBuilder(
     column: $table.waMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get waQrStatus => $composableBuilder(
+    column: $table.waQrStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get waReminderChannel => $composableBuilder(
+    column: $table.waReminderChannel,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15214,6 +15334,16 @@ class $$BranchesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get waQrStatus => $composableBuilder(
+    column: $table.waQrStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get waReminderChannel => $composableBuilder(
+    column: $table.waReminderChannel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get waPhone => $composableBuilder(
     column: $table.waPhone,
     builder: (column) => ColumnOrderings(column),
@@ -15294,6 +15424,16 @@ class $$BranchesTableAnnotationComposer
   GeneratedColumn<String> get waMethod =>
       $composableBuilder(column: $table.waMethod, builder: (column) => column);
 
+  GeneratedColumn<String> get waQrStatus => $composableBuilder(
+    column: $table.waQrStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get waReminderChannel => $composableBuilder(
+    column: $table.waReminderChannel,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get waPhone =>
       $composableBuilder(column: $table.waPhone, builder: (column) => column);
 
@@ -15353,6 +15493,8 @@ class $$BranchesTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> waEnabled = const Value.absent(),
                 Value<String> waMethod = const Value.absent(),
+                Value<String?> waQrStatus = const Value.absent(),
+                Value<String> waReminderChannel = const Value.absent(),
                 Value<String?> waPhone = const Value.absent(),
                 Value<String?> waApiToken = const Value.absent(),
                 Value<String?> waPhoneId = const Value.absent(),
@@ -15372,6 +15514,8 @@ class $$BranchesTableTableManager
                 updatedAt: updatedAt,
                 waEnabled: waEnabled,
                 waMethod: waMethod,
+                waQrStatus: waQrStatus,
+                waReminderChannel: waReminderChannel,
                 waPhone: waPhone,
                 waApiToken: waApiToken,
                 waPhoneId: waPhoneId,
@@ -15393,6 +15537,8 @@ class $$BranchesTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> waEnabled = const Value.absent(),
                 Value<String> waMethod = const Value.absent(),
+                Value<String?> waQrStatus = const Value.absent(),
+                Value<String> waReminderChannel = const Value.absent(),
                 Value<String?> waPhone = const Value.absent(),
                 Value<String?> waApiToken = const Value.absent(),
                 Value<String?> waPhoneId = const Value.absent(),
@@ -15412,6 +15558,8 @@ class $$BranchesTableTableManager
                 updatedAt: updatedAt,
                 waEnabled: waEnabled,
                 waMethod: waMethod,
+                waQrStatus: waQrStatus,
+                waReminderChannel: waReminderChannel,
                 waPhone: waPhone,
                 waApiToken: waApiToken,
                 waPhoneId: waPhoneId,
