@@ -338,6 +338,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
       ),
     );
   }
+  // ---
 
   Widget _tag(BuildContext context, String text, Color color) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
