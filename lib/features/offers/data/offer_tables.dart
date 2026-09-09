@@ -9,6 +9,8 @@ class Offers extends Table {
   TextColumn get title => text()();
   TextColumn get body => text()();
   TextColumn get imageUrl => text().nullable()();
+  BoolColumn get sentApp => boolean().withDefault(const Constant(true))();
+  BoolColumn get sentWhatsApp => boolean().withDefault(const Constant(false))();
   DateTimeColumn get startsAt => dateTime().nullable()();
   DateTimeColumn get expiresAt => dateTime().nullable()();
   IntColumn get sentCount => integer().withDefault(const Constant(0))();

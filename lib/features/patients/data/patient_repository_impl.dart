@@ -232,6 +232,7 @@ class PatientRepositoryImpl implements PatientRepository {
             ),
           );
     }
+    await _touchPatient(patientId);
   }
 
   /// Update a plan's title and replace its steps wholesale (simple + safe).
@@ -262,12 +263,14 @@ class PatientRepositoryImpl implements PatientRepository {
             ),
           );
     }
+    await _touchPatientByPlan(planId);
   }
 
   @override
   Future<void> deletePlan(int planId) async {
     await (_db.update(_db.treatmentPlans)..where((t) => t.id.equals(planId)))
         .write(TreatmentPlansCompanion(isDeleted: const Value(true)));
+    await _touchPatientByPlan(planId); // ← ADD
   }
 
   /// Set a step's status. When set to `done`, stamps completedAt = now and
@@ -312,7 +315,23 @@ class PatientRepositoryImpl implements PatientRepository {
         );
       }
     }
+    await _touchPatientByPlan(step.planId); // ← ADD at the end
   }
+
+  /// Bump the patient that owns a given plan.
+  Future<void> _touchPatientByPlan(int planId) async {
+    final plan = await (_db.select(
+      _db.treatmentPlans,
+    )..where((t) => t.id.equals(planId))).getSingleOrNull();
+    if (plan != null) await _touchPatient(plan.patientId);
+  }
+
+  /// Touch the parent patient's updatedAt so plan changes ride the next sync
+  /// (treatment plans push inside _pushPatientChildren, keyed on patient.updatedAt).
+  Future<void> _touchPatient(int patientId) =>
+      (_db.update(_db.patients)..where((t) => t.id.equals(patientId))).write(
+        PatientsCompanion(updatedAt: Value(DateTime.now())),
+      );
 
   Future<void> _audit(
     String clinicId,

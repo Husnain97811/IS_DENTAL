@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/utils/uuids.dart';
 import 'package:is_dental/features/offers/data/offer_tables.dart';
 import 'package:is_dental/features/requests/data/booking_request_tables.dart';
+import 'package:is_dental/features/patients/data/xray_tables.dart';
 
 import '../constants/views.dart';
 import 'database_connection.dart';
@@ -62,6 +63,7 @@ class Users extends Table {
     Branches,
     BookingRequests,
     Offers,
+    PatientXrays,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -69,7 +71,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 19;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -259,6 +261,47 @@ class AppDatabase extends _$AppDatabase {
     return DateTime.tryParse(v);
   }
 
+  /// X-rays for a patient, newest first.
+  Stream<List<XrayRow>> watchXrays(int patientId) =>
+      (select(patientXrays)
+            ..where(
+              (t) => t.patientId.equals(patientId) & t.isDeleted.equals(false),
+            )
+            ..orderBy([(t) => OrderingTerm.desc(t.takenAt)]))
+          .watch();
+
+  /// Count of X-rays stored in a given calendar year (for the basic-tier cap).
+  /// Count of X-rays stored within a given period (the clinic's subscription year).
+  Future<int> xrayCountBetween(DateTime start, DateTime end) async {
+    final rows =
+        await (select(patientXrays)..where(
+              (t) =>
+                  t.isDeleted.equals(false) &
+                  t.createdAt.isBiggerOrEqualValue(start) &
+                  t.createdAt.isSmallerThanValue(end),
+            ))
+            .get();
+    return rows.length;
+  }
+
+  /// All non-deleted X-rays (optionally branch-filtered) for ZIP export.
+  Future<List<XrayRow>> allXrays({String? branchId}) =>
+      (select(patientXrays)
+            ..where(
+              (t) =>
+                  t.isDeleted.equals(false) &
+                  (branchId == null
+                      ? const Constant(true)
+                      : t.branchId.equals(branchId)),
+            )
+            ..orderBy([(t) => OrderingTerm.desc(t.takenAt)]))
+          .get();
+
+  Future<void> softDeleteXray(int id) =>
+      (update(patientXrays)..where((t) => t.id.equals(id))).write(
+        const PatientXraysCompanion(isDeleted: Value(true)),
+      );
+
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
@@ -267,22 +310,34 @@ class AppDatabase extends _$AppDatabase {
     },
 
     onUpgrade: (m, from, to) async {
-      if (from < 17) {
+      if (from < 6) {
         try {
-          await m.addColumn(branches, branches.waQrStatus);
-        } catch (_) {}
-        try {
-          await m.addColumn(branches, branches.waReminderChannel);
+          await m.createTable(branches);
         } catch (_) {}
       }
-      if (from < 6) await m.createTable(branches);
-      if (from < 7) await m.addColumn(users, users.branchId);
-      if (from < 8) await m.addColumn(appointments, appointments.billed);
+      if (from < 7) {
+        try {
+          await m.addColumn(users, users.branchId);
+        } catch (_) {}
+      }
+      if (from < 8) {
+        try {
+          await m.addColumn(appointments, appointments.billed);
+        } catch (_) {}
+      }
       if (from < 9) {
-        await m.addColumn(users, users.email);
-        await m.addColumn(users, users.phone);
+        try {
+          await m.addColumn(users, users.email);
+        } catch (_) {}
+        try {
+          await m.addColumn(users, users.phone);
+        } catch (_) {}
       }
-      if (from < 10) await m.addColumn(treatments, treatments.branchId);
+      if (from < 10) {
+        try {
+          await m.addColumn(treatments, treatments.branchId);
+        } catch (_) {}
+      }
       if (from < 11) {
         try {
           await m.addColumn(patients, patients.cnic);
@@ -302,14 +357,21 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(branches, branches.closedDays);
         } catch (_) {}
       }
-      if (from < 13) await m.createTable(bookingRequests);
+      if (from < 13) {
+        try {
+          await m.createTable(bookingRequests);
+        } catch (_) {}
+      }
       if (from < 14) {
         try {
           await m.addColumn(treatmentSteps, treatmentSteps.completedAt);
         } catch (_) {}
       }
-      if (from < 15) await m.createTable(offers);
-      // v16 additions below
+      if (from < 15) {
+        try {
+          await m.createTable(offers);
+        } catch (_) {}
+      }
       if (from < 16) {
         try {
           await m.addColumn(branches, branches.waEnabled);
@@ -328,6 +390,27 @@ class AppDatabase extends _$AppDatabase {
         } catch (_) {}
         try {
           await m.addColumn(branches, branches.waSessionStatus);
+        } catch (_) {}
+      }
+      if (from < 17) {
+        try {
+          await m.addColumn(branches, branches.waQrStatus);
+        } catch (_) {}
+        try {
+          await m.addColumn(branches, branches.waReminderChannel);
+        } catch (_) {}
+      }
+      if (from < 18) {
+        try {
+          await m.addColumn(offers, offers.sentApp);
+        } catch (_) {}
+        try {
+          await m.addColumn(offers, offers.sentWhatsApp);
+        } catch (_) {}
+      }
+      if (from < 19) {
+        try {
+          await m.createTable(patientXrays);
         } catch (_) {}
       }
     },

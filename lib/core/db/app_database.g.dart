@@ -9413,6 +9413,36 @@ class $OffersTable extends Offers with TableInfo<$OffersTable, OfferRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sentAppMeta = const VerificationMeta(
+    'sentApp',
+  );
+  @override
+  late final GeneratedColumn<bool> sentApp = GeneratedColumn<bool>(
+    'sent_app',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("sent_app" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _sentWhatsAppMeta = const VerificationMeta(
+    'sentWhatsApp',
+  );
+  @override
+  late final GeneratedColumn<bool> sentWhatsApp = GeneratedColumn<bool>(
+    'sent_whats_app',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("sent_whats_app" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _startsAtMeta = const VerificationMeta(
     'startsAt',
   );
@@ -9506,6 +9536,8 @@ class $OffersTable extends Offers with TableInfo<$OffersTable, OfferRow> {
     title,
     body,
     imageUrl,
+    sentApp,
+    sentWhatsApp,
     startsAt,
     expiresAt,
     sentCount,
@@ -9571,6 +9603,21 @@ class $OffersTable extends Offers with TableInfo<$OffersTable, OfferRow> {
       context.handle(
         _imageUrlMeta,
         imageUrl.isAcceptableOrUnknown(data['image_url']!, _imageUrlMeta),
+      );
+    }
+    if (data.containsKey('sent_app')) {
+      context.handle(
+        _sentAppMeta,
+        sentApp.isAcceptableOrUnknown(data['sent_app']!, _sentAppMeta),
+      );
+    }
+    if (data.containsKey('sent_whats_app')) {
+      context.handle(
+        _sentWhatsAppMeta,
+        sentWhatsApp.isAcceptableOrUnknown(
+          data['sent_whats_app']!,
+          _sentWhatsAppMeta,
+        ),
       );
     }
     if (data.containsKey('starts_at')) {
@@ -9652,6 +9699,14 @@ class $OffersTable extends Offers with TableInfo<$OffersTable, OfferRow> {
         DriftSqlType.string,
         data['${effectivePrefix}image_url'],
       ),
+      sentApp: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}sent_app'],
+      )!,
+      sentWhatsApp: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}sent_whats_app'],
+      )!,
       startsAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}starts_at'],
@@ -9697,6 +9752,8 @@ class OfferRow extends DataClass implements Insertable<OfferRow> {
   final String title;
   final String body;
   final String? imageUrl;
+  final bool sentApp;
+  final bool sentWhatsApp;
   final DateTime? startsAt;
   final DateTime? expiresAt;
   final int sentCount;
@@ -9712,6 +9769,8 @@ class OfferRow extends DataClass implements Insertable<OfferRow> {
     required this.title,
     required this.body,
     this.imageUrl,
+    required this.sentApp,
+    required this.sentWhatsApp,
     this.startsAt,
     this.expiresAt,
     required this.sentCount,
@@ -9734,6 +9793,8 @@ class OfferRow extends DataClass implements Insertable<OfferRow> {
     if (!nullToAbsent || imageUrl != null) {
       map['image_url'] = Variable<String>(imageUrl);
     }
+    map['sent_app'] = Variable<bool>(sentApp);
+    map['sent_whats_app'] = Variable<bool>(sentWhatsApp);
     if (!nullToAbsent || startsAt != null) {
       map['starts_at'] = Variable<DateTime>(startsAt);
     }
@@ -9763,6 +9824,8 @@ class OfferRow extends DataClass implements Insertable<OfferRow> {
       imageUrl: imageUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(imageUrl),
+      sentApp: Value(sentApp),
+      sentWhatsApp: Value(sentWhatsApp),
       startsAt: startsAt == null && nullToAbsent
           ? const Value.absent()
           : Value(startsAt),
@@ -9792,6 +9855,8 @@ class OfferRow extends DataClass implements Insertable<OfferRow> {
       title: serializer.fromJson<String>(json['title']),
       body: serializer.fromJson<String>(json['body']),
       imageUrl: serializer.fromJson<String?>(json['imageUrl']),
+      sentApp: serializer.fromJson<bool>(json['sentApp']),
+      sentWhatsApp: serializer.fromJson<bool>(json['sentWhatsApp']),
       startsAt: serializer.fromJson<DateTime?>(json['startsAt']),
       expiresAt: serializer.fromJson<DateTime?>(json['expiresAt']),
       sentCount: serializer.fromJson<int>(json['sentCount']),
@@ -9812,6 +9877,8 @@ class OfferRow extends DataClass implements Insertable<OfferRow> {
       'title': serializer.toJson<String>(title),
       'body': serializer.toJson<String>(body),
       'imageUrl': serializer.toJson<String?>(imageUrl),
+      'sentApp': serializer.toJson<bool>(sentApp),
+      'sentWhatsApp': serializer.toJson<bool>(sentWhatsApp),
       'startsAt': serializer.toJson<DateTime?>(startsAt),
       'expiresAt': serializer.toJson<DateTime?>(expiresAt),
       'sentCount': serializer.toJson<int>(sentCount),
@@ -9830,6 +9897,8 @@ class OfferRow extends DataClass implements Insertable<OfferRow> {
     String? title,
     String? body,
     Value<String?> imageUrl = const Value.absent(),
+    bool? sentApp,
+    bool? sentWhatsApp,
     Value<DateTime?> startsAt = const Value.absent(),
     Value<DateTime?> expiresAt = const Value.absent(),
     int? sentCount,
@@ -9845,6 +9914,8 @@ class OfferRow extends DataClass implements Insertable<OfferRow> {
     title: title ?? this.title,
     body: body ?? this.body,
     imageUrl: imageUrl.present ? imageUrl.value : this.imageUrl,
+    sentApp: sentApp ?? this.sentApp,
+    sentWhatsApp: sentWhatsApp ?? this.sentWhatsApp,
     startsAt: startsAt.present ? startsAt.value : this.startsAt,
     expiresAt: expiresAt.present ? expiresAt.value : this.expiresAt,
     sentCount: sentCount ?? this.sentCount,
@@ -9862,6 +9933,10 @@ class OfferRow extends DataClass implements Insertable<OfferRow> {
       title: data.title.present ? data.title.value : this.title,
       body: data.body.present ? data.body.value : this.body,
       imageUrl: data.imageUrl.present ? data.imageUrl.value : this.imageUrl,
+      sentApp: data.sentApp.present ? data.sentApp.value : this.sentApp,
+      sentWhatsApp: data.sentWhatsApp.present
+          ? data.sentWhatsApp.value
+          : this.sentWhatsApp,
       startsAt: data.startsAt.present ? data.startsAt.value : this.startsAt,
       expiresAt: data.expiresAt.present ? data.expiresAt.value : this.expiresAt,
       sentCount: data.sentCount.present ? data.sentCount.value : this.sentCount,
@@ -9882,6 +9957,8 @@ class OfferRow extends DataClass implements Insertable<OfferRow> {
           ..write('title: $title, ')
           ..write('body: $body, ')
           ..write('imageUrl: $imageUrl, ')
+          ..write('sentApp: $sentApp, ')
+          ..write('sentWhatsApp: $sentWhatsApp, ')
           ..write('startsAt: $startsAt, ')
           ..write('expiresAt: $expiresAt, ')
           ..write('sentCount: $sentCount, ')
@@ -9902,6 +9979,8 @@ class OfferRow extends DataClass implements Insertable<OfferRow> {
     title,
     body,
     imageUrl,
+    sentApp,
+    sentWhatsApp,
     startsAt,
     expiresAt,
     sentCount,
@@ -9921,6 +10000,8 @@ class OfferRow extends DataClass implements Insertable<OfferRow> {
           other.title == this.title &&
           other.body == this.body &&
           other.imageUrl == this.imageUrl &&
+          other.sentApp == this.sentApp &&
+          other.sentWhatsApp == this.sentWhatsApp &&
           other.startsAt == this.startsAt &&
           other.expiresAt == this.expiresAt &&
           other.sentCount == this.sentCount &&
@@ -9938,6 +10019,8 @@ class OffersCompanion extends UpdateCompanion<OfferRow> {
   final Value<String> title;
   final Value<String> body;
   final Value<String?> imageUrl;
+  final Value<bool> sentApp;
+  final Value<bool> sentWhatsApp;
   final Value<DateTime?> startsAt;
   final Value<DateTime?> expiresAt;
   final Value<int> sentCount;
@@ -9953,6 +10036,8 @@ class OffersCompanion extends UpdateCompanion<OfferRow> {
     this.title = const Value.absent(),
     this.body = const Value.absent(),
     this.imageUrl = const Value.absent(),
+    this.sentApp = const Value.absent(),
+    this.sentWhatsApp = const Value.absent(),
     this.startsAt = const Value.absent(),
     this.expiresAt = const Value.absent(),
     this.sentCount = const Value.absent(),
@@ -9969,6 +10054,8 @@ class OffersCompanion extends UpdateCompanion<OfferRow> {
     required String title,
     required String body,
     this.imageUrl = const Value.absent(),
+    this.sentApp = const Value.absent(),
+    this.sentWhatsApp = const Value.absent(),
     this.startsAt = const Value.absent(),
     this.expiresAt = const Value.absent(),
     this.sentCount = const Value.absent(),
@@ -9988,6 +10075,8 @@ class OffersCompanion extends UpdateCompanion<OfferRow> {
     Expression<String>? title,
     Expression<String>? body,
     Expression<String>? imageUrl,
+    Expression<bool>? sentApp,
+    Expression<bool>? sentWhatsApp,
     Expression<DateTime>? startsAt,
     Expression<DateTime>? expiresAt,
     Expression<int>? sentCount,
@@ -10004,6 +10093,8 @@ class OffersCompanion extends UpdateCompanion<OfferRow> {
       if (title != null) 'title': title,
       if (body != null) 'body': body,
       if (imageUrl != null) 'image_url': imageUrl,
+      if (sentApp != null) 'sent_app': sentApp,
+      if (sentWhatsApp != null) 'sent_whats_app': sentWhatsApp,
       if (startsAt != null) 'starts_at': startsAt,
       if (expiresAt != null) 'expires_at': expiresAt,
       if (sentCount != null) 'sent_count': sentCount,
@@ -10022,6 +10113,8 @@ class OffersCompanion extends UpdateCompanion<OfferRow> {
     Value<String>? title,
     Value<String>? body,
     Value<String?>? imageUrl,
+    Value<bool>? sentApp,
+    Value<bool>? sentWhatsApp,
     Value<DateTime?>? startsAt,
     Value<DateTime?>? expiresAt,
     Value<int>? sentCount,
@@ -10038,6 +10131,8 @@ class OffersCompanion extends UpdateCompanion<OfferRow> {
       title: title ?? this.title,
       body: body ?? this.body,
       imageUrl: imageUrl ?? this.imageUrl,
+      sentApp: sentApp ?? this.sentApp,
+      sentWhatsApp: sentWhatsApp ?? this.sentWhatsApp,
       startsAt: startsAt ?? this.startsAt,
       expiresAt: expiresAt ?? this.expiresAt,
       sentCount: sentCount ?? this.sentCount,
@@ -10071,6 +10166,12 @@ class OffersCompanion extends UpdateCompanion<OfferRow> {
     }
     if (imageUrl.present) {
       map['image_url'] = Variable<String>(imageUrl.value);
+    }
+    if (sentApp.present) {
+      map['sent_app'] = Variable<bool>(sentApp.value);
+    }
+    if (sentWhatsApp.present) {
+      map['sent_whats_app'] = Variable<bool>(sentWhatsApp.value);
     }
     if (startsAt.present) {
       map['starts_at'] = Variable<DateTime>(startsAt.value);
@@ -10106,12 +10207,754 @@ class OffersCompanion extends UpdateCompanion<OfferRow> {
           ..write('title: $title, ')
           ..write('body: $body, ')
           ..write('imageUrl: $imageUrl, ')
+          ..write('sentApp: $sentApp, ')
+          ..write('sentWhatsApp: $sentWhatsApp, ')
           ..write('startsAt: $startsAt, ')
           ..write('expiresAt: $expiresAt, ')
           ..write('sentCount: $sentCount, ')
           ..write('createdBy: $createdBy, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PatientXraysTable extends PatientXrays
+    with TableInfo<$PatientXraysTable, XrayRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PatientXraysTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _clinicIdMeta = const VerificationMeta(
+    'clinicId',
+  );
+  @override
+  late final GeneratedColumn<String> clinicId = GeneratedColumn<String>(
+    'clinic_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _patientIdMeta = const VerificationMeta(
+    'patientId',
+  );
+  @override
+  late final GeneratedColumn<int> patientId = GeneratedColumn<int>(
+    'patient_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _patientUuidMeta = const VerificationMeta(
+    'patientUuid',
+  );
+  @override
+  late final GeneratedColumn<String> patientUuid = GeneratedColumn<String>(
+    'patient_uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _filePathMeta = const VerificationMeta(
+    'filePath',
+  );
+  @override
+  late final GeneratedColumn<String> filePath = GeneratedColumn<String>(
+    'file_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fileNameMeta = const VerificationMeta(
+    'fileName',
+  );
+  @override
+  late final GeneratedColumn<String> fileName = GeneratedColumn<String>(
+    'file_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fileTypeMeta = const VerificationMeta(
+    'fileType',
+  );
+  @override
+  late final GeneratedColumn<String> fileType = GeneratedColumn<String>(
+    'file_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('image'),
+  );
+  static const VerificationMeta _captionMeta = const VerificationMeta(
+    'caption',
+  );
+  @override
+  late final GeneratedColumn<String> caption = GeneratedColumn<String>(
+    'caption',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _takenAtMeta = const VerificationMeta(
+    'takenAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> takenAt = GeneratedColumn<DateTime>(
+    'taken_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    uuid,
+    clinicId,
+    branchId,
+    patientId,
+    patientUuid,
+    filePath,
+    fileName,
+    fileType,
+    caption,
+    takenAt,
+    createdAt,
+    isDeleted,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'patient_xrays';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<XrayRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('clinic_id')) {
+      context.handle(
+        _clinicIdMeta,
+        clinicId.isAcceptableOrUnknown(data['clinic_id']!, _clinicIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
+    if (data.containsKey('patient_id')) {
+      context.handle(
+        _patientIdMeta,
+        patientId.isAcceptableOrUnknown(data['patient_id']!, _patientIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_patientIdMeta);
+    }
+    if (data.containsKey('patient_uuid')) {
+      context.handle(
+        _patientUuidMeta,
+        patientUuid.isAcceptableOrUnknown(
+          data['patient_uuid']!,
+          _patientUuidMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_patientUuidMeta);
+    }
+    if (data.containsKey('file_path')) {
+      context.handle(
+        _filePathMeta,
+        filePath.isAcceptableOrUnknown(data['file_path']!, _filePathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_filePathMeta);
+    }
+    if (data.containsKey('file_name')) {
+      context.handle(
+        _fileNameMeta,
+        fileName.isAcceptableOrUnknown(data['file_name']!, _fileNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fileNameMeta);
+    }
+    if (data.containsKey('file_type')) {
+      context.handle(
+        _fileTypeMeta,
+        fileType.isAcceptableOrUnknown(data['file_type']!, _fileTypeMeta),
+      );
+    }
+    if (data.containsKey('caption')) {
+      context.handle(
+        _captionMeta,
+        caption.isAcceptableOrUnknown(data['caption']!, _captionMeta),
+      );
+    }
+    if (data.containsKey('taken_at')) {
+      context.handle(
+        _takenAtMeta,
+        takenAt.isAcceptableOrUnknown(data['taken_at']!, _takenAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  XrayRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return XrayRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      clinicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clinic_id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      ),
+      patientId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}patient_id'],
+      )!,
+      patientUuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}patient_uuid'],
+      )!,
+      filePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}file_path'],
+      )!,
+      fileName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}file_name'],
+      )!,
+      fileType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}file_type'],
+      )!,
+      caption: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}caption'],
+      )!,
+      takenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}taken_at'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+    );
+  }
+
+  @override
+  $PatientXraysTable createAlias(String alias) {
+    return $PatientXraysTable(attachedDatabase, alias);
+  }
+}
+
+class XrayRow extends DataClass implements Insertable<XrayRow> {
+  final int id;
+  final String uuid;
+  final String clinicId;
+  final String? branchId;
+  final int patientId;
+  final String patientUuid;
+  final String filePath;
+  final String fileName;
+  final String fileType;
+  final String caption;
+  final DateTime takenAt;
+  final DateTime createdAt;
+  final bool isDeleted;
+  const XrayRow({
+    required this.id,
+    required this.uuid,
+    required this.clinicId,
+    this.branchId,
+    required this.patientId,
+    required this.patientUuid,
+    required this.filePath,
+    required this.fileName,
+    required this.fileType,
+    required this.caption,
+    required this.takenAt,
+    required this.createdAt,
+    required this.isDeleted,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['uuid'] = Variable<String>(uuid);
+    map['clinic_id'] = Variable<String>(clinicId);
+    if (!nullToAbsent || branchId != null) {
+      map['branch_id'] = Variable<String>(branchId);
+    }
+    map['patient_id'] = Variable<int>(patientId);
+    map['patient_uuid'] = Variable<String>(patientUuid);
+    map['file_path'] = Variable<String>(filePath);
+    map['file_name'] = Variable<String>(fileName);
+    map['file_type'] = Variable<String>(fileType);
+    map['caption'] = Variable<String>(caption);
+    map['taken_at'] = Variable<DateTime>(takenAt);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    return map;
+  }
+
+  PatientXraysCompanion toCompanion(bool nullToAbsent) {
+    return PatientXraysCompanion(
+      id: Value(id),
+      uuid: Value(uuid),
+      clinicId: Value(clinicId),
+      branchId: branchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchId),
+      patientId: Value(patientId),
+      patientUuid: Value(patientUuid),
+      filePath: Value(filePath),
+      fileName: Value(fileName),
+      fileType: Value(fileType),
+      caption: Value(caption),
+      takenAt: Value(takenAt),
+      createdAt: Value(createdAt),
+      isDeleted: Value(isDeleted),
+    );
+  }
+
+  factory XrayRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return XrayRow(
+      id: serializer.fromJson<int>(json['id']),
+      uuid: serializer.fromJson<String>(json['uuid']),
+      clinicId: serializer.fromJson<String>(json['clinicId']),
+      branchId: serializer.fromJson<String?>(json['branchId']),
+      patientId: serializer.fromJson<int>(json['patientId']),
+      patientUuid: serializer.fromJson<String>(json['patientUuid']),
+      filePath: serializer.fromJson<String>(json['filePath']),
+      fileName: serializer.fromJson<String>(json['fileName']),
+      fileType: serializer.fromJson<String>(json['fileType']),
+      caption: serializer.fromJson<String>(json['caption']),
+      takenAt: serializer.fromJson<DateTime>(json['takenAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'uuid': serializer.toJson<String>(uuid),
+      'clinicId': serializer.toJson<String>(clinicId),
+      'branchId': serializer.toJson<String?>(branchId),
+      'patientId': serializer.toJson<int>(patientId),
+      'patientUuid': serializer.toJson<String>(patientUuid),
+      'filePath': serializer.toJson<String>(filePath),
+      'fileName': serializer.toJson<String>(fileName),
+      'fileType': serializer.toJson<String>(fileType),
+      'caption': serializer.toJson<String>(caption),
+      'takenAt': serializer.toJson<DateTime>(takenAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+    };
+  }
+
+  XrayRow copyWith({
+    int? id,
+    String? uuid,
+    String? clinicId,
+    Value<String?> branchId = const Value.absent(),
+    int? patientId,
+    String? patientUuid,
+    String? filePath,
+    String? fileName,
+    String? fileType,
+    String? caption,
+    DateTime? takenAt,
+    DateTime? createdAt,
+    bool? isDeleted,
+  }) => XrayRow(
+    id: id ?? this.id,
+    uuid: uuid ?? this.uuid,
+    clinicId: clinicId ?? this.clinicId,
+    branchId: branchId.present ? branchId.value : this.branchId,
+    patientId: patientId ?? this.patientId,
+    patientUuid: patientUuid ?? this.patientUuid,
+    filePath: filePath ?? this.filePath,
+    fileName: fileName ?? this.fileName,
+    fileType: fileType ?? this.fileType,
+    caption: caption ?? this.caption,
+    takenAt: takenAt ?? this.takenAt,
+    createdAt: createdAt ?? this.createdAt,
+    isDeleted: isDeleted ?? this.isDeleted,
+  );
+  XrayRow copyWithCompanion(PatientXraysCompanion data) {
+    return XrayRow(
+      id: data.id.present ? data.id.value : this.id,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      patientId: data.patientId.present ? data.patientId.value : this.patientId,
+      patientUuid: data.patientUuid.present
+          ? data.patientUuid.value
+          : this.patientUuid,
+      filePath: data.filePath.present ? data.filePath.value : this.filePath,
+      fileName: data.fileName.present ? data.fileName.value : this.fileName,
+      fileType: data.fileType.present ? data.fileType.value : this.fileType,
+      caption: data.caption.present ? data.caption.value : this.caption,
+      takenAt: data.takenAt.present ? data.takenAt.value : this.takenAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('XrayRow(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('branchId: $branchId, ')
+          ..write('patientId: $patientId, ')
+          ..write('patientUuid: $patientUuid, ')
+          ..write('filePath: $filePath, ')
+          ..write('fileName: $fileName, ')
+          ..write('fileType: $fileType, ')
+          ..write('caption: $caption, ')
+          ..write('takenAt: $takenAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('isDeleted: $isDeleted')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    uuid,
+    clinicId,
+    branchId,
+    patientId,
+    patientUuid,
+    filePath,
+    fileName,
+    fileType,
+    caption,
+    takenAt,
+    createdAt,
+    isDeleted,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is XrayRow &&
+          other.id == this.id &&
+          other.uuid == this.uuid &&
+          other.clinicId == this.clinicId &&
+          other.branchId == this.branchId &&
+          other.patientId == this.patientId &&
+          other.patientUuid == this.patientUuid &&
+          other.filePath == this.filePath &&
+          other.fileName == this.fileName &&
+          other.fileType == this.fileType &&
+          other.caption == this.caption &&
+          other.takenAt == this.takenAt &&
+          other.createdAt == this.createdAt &&
+          other.isDeleted == this.isDeleted);
+}
+
+class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
+  final Value<int> id;
+  final Value<String> uuid;
+  final Value<String> clinicId;
+  final Value<String?> branchId;
+  final Value<int> patientId;
+  final Value<String> patientUuid;
+  final Value<String> filePath;
+  final Value<String> fileName;
+  final Value<String> fileType;
+  final Value<String> caption;
+  final Value<DateTime> takenAt;
+  final Value<DateTime> createdAt;
+  final Value<bool> isDeleted;
+  const PatientXraysCompanion({
+    this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
+    this.clinicId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.patientId = const Value.absent(),
+    this.patientUuid = const Value.absent(),
+    this.filePath = const Value.absent(),
+    this.fileName = const Value.absent(),
+    this.fileType = const Value.absent(),
+    this.caption = const Value.absent(),
+    this.takenAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+  });
+  PatientXraysCompanion.insert({
+    this.id = const Value.absent(),
+    required String uuid,
+    required String clinicId,
+    this.branchId = const Value.absent(),
+    required int patientId,
+    required String patientUuid,
+    required String filePath,
+    required String fileName,
+    this.fileType = const Value.absent(),
+    this.caption = const Value.absent(),
+    this.takenAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+  }) : uuid = Value(uuid),
+       clinicId = Value(clinicId),
+       patientId = Value(patientId),
+       patientUuid = Value(patientUuid),
+       filePath = Value(filePath),
+       fileName = Value(fileName);
+  static Insertable<XrayRow> custom({
+    Expression<int>? id,
+    Expression<String>? uuid,
+    Expression<String>? clinicId,
+    Expression<String>? branchId,
+    Expression<int>? patientId,
+    Expression<String>? patientUuid,
+    Expression<String>? filePath,
+    Expression<String>? fileName,
+    Expression<String>? fileType,
+    Expression<String>? caption,
+    Expression<DateTime>? takenAt,
+    Expression<DateTime>? createdAt,
+    Expression<bool>? isDeleted,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (uuid != null) 'uuid': uuid,
+      if (clinicId != null) 'clinic_id': clinicId,
+      if (branchId != null) 'branch_id': branchId,
+      if (patientId != null) 'patient_id': patientId,
+      if (patientUuid != null) 'patient_uuid': patientUuid,
+      if (filePath != null) 'file_path': filePath,
+      if (fileName != null) 'file_name': fileName,
+      if (fileType != null) 'file_type': fileType,
+      if (caption != null) 'caption': caption,
+      if (takenAt != null) 'taken_at': takenAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+    });
+  }
+
+  PatientXraysCompanion copyWith({
+    Value<int>? id,
+    Value<String>? uuid,
+    Value<String>? clinicId,
+    Value<String?>? branchId,
+    Value<int>? patientId,
+    Value<String>? patientUuid,
+    Value<String>? filePath,
+    Value<String>? fileName,
+    Value<String>? fileType,
+    Value<String>? caption,
+    Value<DateTime>? takenAt,
+    Value<DateTime>? createdAt,
+    Value<bool>? isDeleted,
+  }) {
+    return PatientXraysCompanion(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      clinicId: clinicId ?? this.clinicId,
+      branchId: branchId ?? this.branchId,
+      patientId: patientId ?? this.patientId,
+      patientUuid: patientUuid ?? this.patientUuid,
+      filePath: filePath ?? this.filePath,
+      fileName: fileName ?? this.fileName,
+      fileType: fileType ?? this.fileType,
+      caption: caption ?? this.caption,
+      takenAt: takenAt ?? this.takenAt,
+      createdAt: createdAt ?? this.createdAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (clinicId.present) {
+      map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (patientId.present) {
+      map['patient_id'] = Variable<int>(patientId.value);
+    }
+    if (patientUuid.present) {
+      map['patient_uuid'] = Variable<String>(patientUuid.value);
+    }
+    if (filePath.present) {
+      map['file_path'] = Variable<String>(filePath.value);
+    }
+    if (fileName.present) {
+      map['file_name'] = Variable<String>(fileName.value);
+    }
+    if (fileType.present) {
+      map['file_type'] = Variable<String>(fileType.value);
+    }
+    if (caption.present) {
+      map['caption'] = Variable<String>(caption.value);
+    }
+    if (takenAt.present) {
+      map['taken_at'] = Variable<DateTime>(takenAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PatientXraysCompanion(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('branchId: $branchId, ')
+          ..write('patientId: $patientId, ')
+          ..write('patientUuid: $patientUuid, ')
+          ..write('filePath: $filePath, ')
+          ..write('fileName: $fileName, ')
+          ..write('fileType: $fileType, ')
+          ..write('caption: $caption, ')
+          ..write('takenAt: $takenAt, ')
+          ..write('createdAt: $createdAt, ')
           ..write('isDeleted: $isDeleted')
           ..write(')'))
         .toString();
@@ -10139,6 +10982,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $OffersTable offers = $OffersTable(this);
+  late final $PatientXraysTable patientXrays = $PatientXraysTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -10160,6 +11004,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     branches,
     bookingRequests,
     offers,
+    patientXrays,
   ];
 }
 
@@ -16036,6 +16881,8 @@ typedef $$OffersTableCreateCompanionBuilder =
       required String title,
       required String body,
       Value<String?> imageUrl,
+      Value<bool> sentApp,
+      Value<bool> sentWhatsApp,
       Value<DateTime?> startsAt,
       Value<DateTime?> expiresAt,
       Value<int> sentCount,
@@ -16053,6 +16900,8 @@ typedef $$OffersTableUpdateCompanionBuilder =
       Value<String> title,
       Value<String> body,
       Value<String?> imageUrl,
+      Value<bool> sentApp,
+      Value<bool> sentWhatsApp,
       Value<DateTime?> startsAt,
       Value<DateTime?> expiresAt,
       Value<int> sentCount,
@@ -16103,6 +16952,16 @@ class $$OffersTableFilterComposer
 
   ColumnFilters<String> get imageUrl => $composableBuilder(
     column: $table.imageUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get sentApp => $composableBuilder(
+    column: $table.sentApp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get sentWhatsApp => $composableBuilder(
+    column: $table.sentWhatsApp,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16186,6 +17045,16 @@ class $$OffersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get sentApp => $composableBuilder(
+    column: $table.sentApp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get sentWhatsApp => $composableBuilder(
+    column: $table.sentWhatsApp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get startsAt => $composableBuilder(
     column: $table.startsAt,
     builder: (column) => ColumnOrderings(column),
@@ -16252,6 +17121,14 @@ class $$OffersTableAnnotationComposer
   GeneratedColumn<String> get imageUrl =>
       $composableBuilder(column: $table.imageUrl, builder: (column) => column);
 
+  GeneratedColumn<bool> get sentApp =>
+      $composableBuilder(column: $table.sentApp, builder: (column) => column);
+
+  GeneratedColumn<bool> get sentWhatsApp => $composableBuilder(
+    column: $table.sentWhatsApp,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get startsAt =>
       $composableBuilder(column: $table.startsAt, builder: (column) => column);
 
@@ -16309,6 +17186,8 @@ class $$OffersTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<String> body = const Value.absent(),
                 Value<String?> imageUrl = const Value.absent(),
+                Value<bool> sentApp = const Value.absent(),
+                Value<bool> sentWhatsApp = const Value.absent(),
                 Value<DateTime?> startsAt = const Value.absent(),
                 Value<DateTime?> expiresAt = const Value.absent(),
                 Value<int> sentCount = const Value.absent(),
@@ -16324,6 +17203,8 @@ class $$OffersTableTableManager
                 title: title,
                 body: body,
                 imageUrl: imageUrl,
+                sentApp: sentApp,
+                sentWhatsApp: sentWhatsApp,
                 startsAt: startsAt,
                 expiresAt: expiresAt,
                 sentCount: sentCount,
@@ -16341,6 +17222,8 @@ class $$OffersTableTableManager
                 required String title,
                 required String body,
                 Value<String?> imageUrl = const Value.absent(),
+                Value<bool> sentApp = const Value.absent(),
+                Value<bool> sentWhatsApp = const Value.absent(),
                 Value<DateTime?> startsAt = const Value.absent(),
                 Value<DateTime?> expiresAt = const Value.absent(),
                 Value<int> sentCount = const Value.absent(),
@@ -16356,6 +17239,8 @@ class $$OffersTableTableManager
                 title: title,
                 body: body,
                 imageUrl: imageUrl,
+                sentApp: sentApp,
+                sentWhatsApp: sentWhatsApp,
                 startsAt: startsAt,
                 expiresAt: expiresAt,
                 sentCount: sentCount,
@@ -16384,6 +17269,348 @@ typedef $$OffersTableProcessedTableManager =
       $$OffersTableUpdateCompanionBuilder,
       (OfferRow, BaseReferences<_$AppDatabase, $OffersTable, OfferRow>),
       OfferRow,
+      PrefetchHooks Function()
+    >;
+typedef $$PatientXraysTableCreateCompanionBuilder =
+    PatientXraysCompanion Function({
+      Value<int> id,
+      required String uuid,
+      required String clinicId,
+      Value<String?> branchId,
+      required int patientId,
+      required String patientUuid,
+      required String filePath,
+      required String fileName,
+      Value<String> fileType,
+      Value<String> caption,
+      Value<DateTime> takenAt,
+      Value<DateTime> createdAt,
+      Value<bool> isDeleted,
+    });
+typedef $$PatientXraysTableUpdateCompanionBuilder =
+    PatientXraysCompanion Function({
+      Value<int> id,
+      Value<String> uuid,
+      Value<String> clinicId,
+      Value<String?> branchId,
+      Value<int> patientId,
+      Value<String> patientUuid,
+      Value<String> filePath,
+      Value<String> fileName,
+      Value<String> fileType,
+      Value<String> caption,
+      Value<DateTime> takenAt,
+      Value<DateTime> createdAt,
+      Value<bool> isDeleted,
+    });
+
+class $$PatientXraysTableFilterComposer
+    extends Composer<_$AppDatabase, $PatientXraysTable> {
+  $$PatientXraysTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get patientId => $composableBuilder(
+    column: $table.patientId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get patientUuid => $composableBuilder(
+    column: $table.patientUuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get filePath => $composableBuilder(
+    column: $table.filePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fileName => $composableBuilder(
+    column: $table.fileName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fileType => $composableBuilder(
+    column: $table.fileType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get caption => $composableBuilder(
+    column: $table.caption,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get takenAt => $composableBuilder(
+    column: $table.takenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PatientXraysTableOrderingComposer
+    extends Composer<_$AppDatabase, $PatientXraysTable> {
+  $$PatientXraysTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get patientId => $composableBuilder(
+    column: $table.patientId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get patientUuid => $composableBuilder(
+    column: $table.patientUuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get filePath => $composableBuilder(
+    column: $table.filePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fileName => $composableBuilder(
+    column: $table.fileName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fileType => $composableBuilder(
+    column: $table.fileType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get caption => $composableBuilder(
+    column: $table.caption,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get takenAt => $composableBuilder(
+    column: $table.takenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PatientXraysTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PatientXraysTable> {
+  $$PatientXraysTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get clinicId =>
+      $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<int> get patientId =>
+      $composableBuilder(column: $table.patientId, builder: (column) => column);
+
+  GeneratedColumn<String> get patientUuid => $composableBuilder(
+    column: $table.patientUuid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get filePath =>
+      $composableBuilder(column: $table.filePath, builder: (column) => column);
+
+  GeneratedColumn<String> get fileName =>
+      $composableBuilder(column: $table.fileName, builder: (column) => column);
+
+  GeneratedColumn<String> get fileType =>
+      $composableBuilder(column: $table.fileType, builder: (column) => column);
+
+  GeneratedColumn<String> get caption =>
+      $composableBuilder(column: $table.caption, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get takenAt =>
+      $composableBuilder(column: $table.takenAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+}
+
+class $$PatientXraysTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PatientXraysTable,
+          XrayRow,
+          $$PatientXraysTableFilterComposer,
+          $$PatientXraysTableOrderingComposer,
+          $$PatientXraysTableAnnotationComposer,
+          $$PatientXraysTableCreateCompanionBuilder,
+          $$PatientXraysTableUpdateCompanionBuilder,
+          (XrayRow, BaseReferences<_$AppDatabase, $PatientXraysTable, XrayRow>),
+          XrayRow,
+          PrefetchHooks Function()
+        > {
+  $$PatientXraysTableTableManager(_$AppDatabase db, $PatientXraysTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PatientXraysTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PatientXraysTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PatientXraysTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
+                Value<String> clinicId = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
+                Value<int> patientId = const Value.absent(),
+                Value<String> patientUuid = const Value.absent(),
+                Value<String> filePath = const Value.absent(),
+                Value<String> fileName = const Value.absent(),
+                Value<String> fileType = const Value.absent(),
+                Value<String> caption = const Value.absent(),
+                Value<DateTime> takenAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+              }) => PatientXraysCompanion(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                branchId: branchId,
+                patientId: patientId,
+                patientUuid: patientUuid,
+                filePath: filePath,
+                fileName: fileName,
+                fileType: fileType,
+                caption: caption,
+                takenAt: takenAt,
+                createdAt: createdAt,
+                isDeleted: isDeleted,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String uuid,
+                required String clinicId,
+                Value<String?> branchId = const Value.absent(),
+                required int patientId,
+                required String patientUuid,
+                required String filePath,
+                required String fileName,
+                Value<String> fileType = const Value.absent(),
+                Value<String> caption = const Value.absent(),
+                Value<DateTime> takenAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+              }) => PatientXraysCompanion.insert(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                branchId: branchId,
+                patientId: patientId,
+                patientUuid: patientUuid,
+                filePath: filePath,
+                fileName: fileName,
+                fileType: fileType,
+                caption: caption,
+                takenAt: takenAt,
+                createdAt: createdAt,
+                isDeleted: isDeleted,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PatientXraysTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PatientXraysTable,
+      XrayRow,
+      $$PatientXraysTableFilterComposer,
+      $$PatientXraysTableOrderingComposer,
+      $$PatientXraysTableAnnotationComposer,
+      $$PatientXraysTableCreateCompanionBuilder,
+      $$PatientXraysTableUpdateCompanionBuilder,
+      (XrayRow, BaseReferences<_$AppDatabase, $PatientXraysTable, XrayRow>),
+      XrayRow,
       PrefetchHooks Function()
     >;
 
@@ -16422,4 +17649,6 @@ class $AppDatabaseManager {
       $$BookingRequestsTableTableManager(_db, _db.bookingRequests);
   $$OffersTableTableManager get offers =>
       $$OffersTableTableManager(_db, _db.offers);
+  $$PatientXraysTableTableManager get patientXrays =>
+      $$PatientXraysTableTableManager(_db, _db.patientXrays);
 }

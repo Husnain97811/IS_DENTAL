@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:is_dental/features/patients/presentation/widgets/plan_editor.dart';
+import 'package:is_dental/features/patients/presentation/widgets/xray_card.dart';
 import 'package:sizer/sizer.dart';
 import 'package:is_dental/core/theme/app_typography.dart';
 import 'package:is_dental/core/theme/dent_colors.dart';
@@ -111,6 +112,8 @@ class PatientDetailScreen extends ConsumerWidget {
                   // const SizedBox(height: 18),
                   _detailsCard(context, d, patient),
                   // _planCard(context, d, plan),
+                  const SizedBox(height: 16),
+                  XrayCard(patientId: patient.id, patientUuid: patient.uuid),
                   const SizedBox(height: 18),
                   _plansCard(context, ref, d, plans),
                 ],

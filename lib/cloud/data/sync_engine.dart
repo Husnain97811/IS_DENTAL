@@ -67,6 +67,9 @@ class SyncEngine {
       await _db.delete(_db.users).go();
       await _db.delete(_db.branches).go();
       await _db.delete(_db.patients).go();
+      //comment for personal reference
+      // ⚠ DO NOT wipe patientXrays — X-rays are LOCAL-ONLY and not in the
+      // cloud. Deleting them here would destroy them permanently.
     });
 
     // 2. reset all sync cursors so pulls fetch EVERYTHING from the start

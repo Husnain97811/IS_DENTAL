@@ -5,6 +5,7 @@ import 'package:is_dental/core/router/app_routes.dart';
 import 'package:is_dental/features/appointments/presentation/widgets/appointment_editor.dart';
 import 'package:is_dental/features/patients/presentation/widgets/patient_editor.dart';
 import 'package:is_dental/features/patients/presentation/widgets/patient_qr_dialog.dart';
+import 'package:is_dental/features/patients/presentation/widgets/xray_export_button.dart';
 import 'package:sizer/sizer.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -31,7 +32,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
             child: Text(
               'Select a patient to preview.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: d.text4, fontSize: 9.sp),
+              style: TextStyle(color: d.text4, fontSize: 10.5.sp),
             ),
           ),
         ),
@@ -131,7 +132,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
                     style: TextStyle(
                       fontFamily: AppFonts.display,
                       color: Colors.white,
-                      fontSize: 16.sp,
+                      fontSize: 18.5.sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -174,7 +175,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
           const SizedBox(height: 3),
           Text(
             '${_cap(p.gender.name)} · ${p.age} yrs · ID #${p.code}',
-            style: TextStyle(color: d.text3, fontSize: 9.5.sp),
+            style: TextStyle(color: d.text3, fontSize: 11.sp),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -205,7 +206,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
               label,
               style: TextStyle(
                 color: d.text4,
-                fontSize: 10.sp,
+                fontSize: 11.5.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -214,7 +215,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
               value,
               style: TextStyle(
                 fontFamily: AppFonts.display,
-                fontSize: 10.sp,
+                fontSize: 11.5.sp,
                 fontWeight: FontWeight.w600,
                 color: color ?? d.text1,
               ),
@@ -265,7 +266,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
                   title,
                   style: TextStyle(
                     fontFamily: AppFonts.display,
-                    fontSize: 9.5.sp,
+                    fontSize: 11.sp,
                     fontWeight: FontWeight.w600,
                     color: d.text1,
                   ),
@@ -274,7 +275,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
               if (sub != null)
                 Text(
                   sub,
-                  style: TextStyle(color: d.text4, fontSize: 7.sp),
+                  style: TextStyle(color: d.text4, fontSize: 8.sp),
                 ),
             ],
           ),
@@ -299,7 +300,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
             ),
             onPressed: () => showPatientQrDialog(context, p),
             icon: Icon(Icons.qr_code_2_rounded, size: 11.sp),
-            label: const Text('Show Patient QR'),
+            label: Text('Show Patient QR', style: TextStyle(fontSize: 10.5.sp)),
           ),
           const SizedBox(height: 9),
           OutlinedButton.icon(
@@ -310,7 +311,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
             ),
             onPressed: () => context.push('${AppRoutes.patients}/${p.id}'),
             icon: Icon(Icons.event_rounded, size: 11.sp),
-            label: const Text('View History'),
+            label: Text('View History', style: TextStyle(fontSize: 10.5.sp)),
           ),
           const SizedBox(height: 9),
           OutlinedButton.icon(
@@ -321,8 +322,14 @@ class PatientSnapshotDrawer extends ConsumerWidget {
             ),
             onPressed: () => showPatientEditor(context, existing: p),
             icon: Icon(Icons.event_rounded, size: 11.sp),
-            label: const Text('Edit Patient Details'),
+            label: Text(
+              'Edit Patient Details',
+              style: TextStyle(fontSize: 10.5.sp),
+            ),
           ),
+          const SizedBox(height: 9),
+          XrayExportButton(),
+
           const SizedBox(height: 9),
           FilledButton.icon(
             style: FilledButton.styleFrom(
@@ -332,7 +339,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
             ),
             onPressed: () => showAppointmentEditor(context, patientId: p.id),
             icon: Icon(Icons.edit, size: 11.sp),
-            label: const Text('Book Next Visit'),
+            label: Text('Book Next Visit', style: TextStyle(fontSize: 10.5.sp)),
           ),
         ],
       ),
@@ -351,7 +358,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
       text,
       style: TextStyle(
         color: color,
-        fontSize: 9.5.sp,
+        fontSize: 11.sp,
         fontWeight: FontWeight.w600,
       ),
     ),

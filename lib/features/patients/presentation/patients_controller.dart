@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:is_dental/features/patients/data/xray_repository.dart';
 import '../../../core/db/app_database.dart';
 import '../data/patient_repository_impl.dart';
 import '../domain/patient.dart';
@@ -60,3 +61,11 @@ final plansProvider = StreamProvider.autoDispose
       (ref, patientId) =>
           ref.watch(patientRepositoryProvider).watchPlans(patientId),
     );
+
+final xrayRepositoryProvider = Provider(
+  (ref) => XrayRepository(ref.watch(appDatabaseProvider)),
+);
+
+final xraysProvider = StreamProvider.family<List<XrayRow>, int>(
+  (ref, patientId) => ref.watch(xrayRepositoryProvider).watch(patientId),
+);
