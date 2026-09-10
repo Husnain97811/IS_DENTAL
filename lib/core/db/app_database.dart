@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/utils/uuids.dart';
 import 'package:is_dental/features/offers/data/offer_tables.dart';
+import 'package:is_dental/features/prescriptions/data/prescription_tables.dart';
 import 'package:is_dental/features/requests/data/booking_request_tables.dart';
 import 'package:is_dental/features/patients/data/xray_tables.dart';
 
@@ -43,6 +44,8 @@ class Users extends Table {
 
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  static const _kRxStart = 'rx_start_no';
+  static const _kRxPrefix = 'rx_prefix';
 }
 
 @DriftDatabase(
@@ -64,6 +67,12 @@ class Users extends Table {
     BookingRequests,
     Offers,
     PatientXrays,
+    Medicines,
+    PrecautionSets,
+    PrecautionLines,
+    Prescriptions,
+    PrescriptionItems,
+    PrescriptionCare,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -71,7 +80,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -413,6 +422,26 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(patientXrays);
         } catch (_) {}
       }
+      if (from < 20) {
+        try {
+          await m.createTable(medicines);
+        } catch (_) {}
+        try {
+          await m.createTable(precautionSets);
+        } catch (_) {}
+        try {
+          await m.createTable(precautionLines);
+        } catch (_) {}
+        try {
+          await m.createTable(prescriptions);
+        } catch (_) {}
+        try {
+          await m.createTable(prescriptionItems);
+        } catch (_) {}
+        try {
+          await m.createTable(prescriptionCare);
+        } catch (_) {}
+      }
     },
   );
 
@@ -505,6 +534,49 @@ class AppDatabase extends _$AppDatabase {
       if (n > maxN) maxN = n;
     }
     return (maxN + 1).toString().padLeft(7, '0');
+  }
+
+  // for letter head settngs
+  Future<String> rxSetting(String key, [String fallback = '']) async =>
+      (await getSetting('rx_$key')) ?? fallback;
+  Future<void> setRxSetting(String key, String v) => setSetting('rx_$key', v);
+
+  static const _kIdleMins = 'idle_timeout_minutes';
+
+  /// Auto-logout timeout in minutes. 0 = disabled. Default 10.
+  Future<int> idleTimeoutMinutes() async =>
+      int.tryParse(await getSetting(_kIdleMins) ?? '') ?? 10;
+
+  Future<void> setIdleTimeoutMinutes(int m) =>
+      setSetting(_kIdleMins, m.toString());
+
+  /// Next prescription number, 'RX-0000001' style.but you can change first rx from rx_start_no
+  static const _kRxStart = 'rx_start_no';
+  static const _kRxPrefix = 'rx_prefix';
+  Future<int> rxStartNo() async =>
+      int.tryParse(await getSetting(_kRxStart) ?? '') ?? 1;
+  Future<void> setRxStartNo(int n) => setSetting(_kRxStart, n.toString());
+
+  Future<String> rxPrefix() async => (await getSetting(_kRxPrefix)) ?? 'RX-';
+  Future<void> setRxPrefix(String p) => setSetting(_kRxPrefix, p);
+
+  /// Next prescription number. Continues from the highest issued number,
+  /// but jumps forward to the configured start if that start is higher.
+  /// (Lets a clinic migrating from a paper book begin at e.g. RX-0023500.)
+  Future<String> nextRxNo() async {
+    final clinicId = await currentClinicId() ?? '';
+    final rows = await (select(
+      prescriptions,
+    )..where((t) => t.clinicId.equals(clinicId))).get();
+    var maxN = 0;
+    for (final r in rows) {
+      final n = int.tryParse(r.rxNo.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+      if (n > maxN) maxN = n;
+    }
+    final start = await rxStartNo();
+    final next = (maxN + 1) > start ? (maxN + 1) : start;
+    final prefix = await rxPrefix();
+    return '$prefix${next.toString().padLeft(7, '0')}';
   }
 
   /// True if this exact invoice number already exists (active clinic).

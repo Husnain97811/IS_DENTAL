@@ -47,17 +47,19 @@ class DentPanel extends StatelessWidget {
                       children: [
                         Text(
                           title!,
-                          style: Theme.of(context).textTheme.titleLarge,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                color: d.text1,
+                                fontSize: 12.5.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                         if (subtitle != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
                               subtitle!,
-                              style: TextStyle(
-                                color: d.text4,
-                                fontSize: 9.5.sp,
-                              ),
+                              style: TextStyle(color: d.text3, fontSize: 10.sp),
                             ),
                           ),
                       ],

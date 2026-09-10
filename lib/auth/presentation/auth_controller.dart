@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../../core/constants/views.dart';
-import '../../features/branches/presentation/branch_controller.dart';
 
 class AuthController extends Notifier<AuthSession?> {
   @override
@@ -25,3 +25,6 @@ class AuthController extends Notifier<AuthSession?> {
 final authControllerProvider = NotifierProvider<AuthController, AuthSession?>(
   AuthController.new,
 );
+
+/// Idle auto-logout timeout, in minutes. 0 = never.
+final idleTimeoutProvider = StateProvider<int>((_) => 10);

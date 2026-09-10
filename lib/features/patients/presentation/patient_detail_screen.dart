@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:is_dental/features/patients/presentation/widgets/plan_editor.dart';
 import 'package:is_dental/features/patients/presentation/widgets/xray_card.dart';
+import 'package:is_dental/features/prescriptions/presentation/widgets/prescription_card.dart';
 import 'package:sizer/sizer.dart';
 import 'package:is_dental/core/theme/app_typography.dart';
 import 'package:is_dental/core/theme/dent_colors.dart';
@@ -100,6 +101,13 @@ class PatientDetailScreen extends ConsumerWidget {
                   _lastVisitCard(context, d, patient, last),
                   const SizedBox(height: 18),
                   _historyCard(context, d, appts),
+                  const SizedBox(height: 18),
+                  PrescriptionCard(
+                    patientId: patient.id,
+                    patientUuid: patient.uuid,
+                    patientName: patient.fullName,
+                    allergies: patient.allergies,
+                  ),
                   const SizedBox(height: 18),
                   _invoicesCard(context, d, invoices),
                 ],
@@ -305,14 +313,14 @@ class PatientDetailScreen extends ConsumerWidget {
                         _fmtDate(last.startsAt),
                         style: TextStyle(
                           color: d.text1,
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 10.5.sp,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         '${last.procedure} · ${last.dentist}',
-                        style: TextStyle(color: d.text3, fontSize: 8.5.sp),
+                        style: TextStyle(color: d.text2, fontSize: 9.5.sp),
                       ),
                     ],
                   ),
@@ -359,14 +367,17 @@ class PatientDetailScreen extends ConsumerWidget {
                               a.procedure,
                               style: TextStyle(
                                 color: d.text1,
-                                fontSize: 9.sp,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 10.5.sp,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               '${_fmtDate(a.startsAt)} · ${a.dentist}',
-                              style: TextStyle(color: d.text3, fontSize: 8.sp),
+                              style: TextStyle(
+                                color: d.text2,
+                                fontSize: 9.5.sp,
+                              ),
                             ),
                           ],
                         ),

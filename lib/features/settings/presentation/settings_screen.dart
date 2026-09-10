@@ -349,6 +349,7 @@ class _S extends ConsumerState<SettingsScreen> {
                   // Owner only: branches
                   if (premium && isOwner) ...[
                     _branchesPanel(d),
+
                     const SizedBox(height: 18),
                   ],
                   _hoursPanel(d),
@@ -883,6 +884,8 @@ class _S extends ConsumerState<SettingsScreen> {
               .read(themeModeProvider.notifier)
               .set(v ? ThemeMode.dark : ThemeMode.light),
         ),
+        const SizedBox(height: 18),
+        const _IdleTimeoutRow(),
         // Padding(
         //   padding: const EdgeInsets.all(18),
         //   child: Row(
@@ -1702,5 +1705,83 @@ Future<String> syncNow(WidgetRef ref) async {
   } catch (e) {
     debugPrint('SYNC: FAILED $e');
     return 'Sync failed: $e';
+  }
+}
+
+class _IdleTimeoutRow extends ConsumerStatefulWidget {
+  const _IdleTimeoutRow();
+  @override
+  ConsumerState<_IdleTimeoutRow> createState() => _IdleTimeoutRowState();
+}
+
+class _IdleTimeoutRowState extends ConsumerState<_IdleTimeoutRow> {
+  static const _options = [0, 2, 5, 10, 15, 30, 60];
+
+  @override
+  Widget build(BuildContext context) {
+    final d = context.dent;
+    final mins = ref.watch(idleTimeoutProvider);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Auto-logout after inactivity',
+                  style: TextStyle(
+                    fontSize: 10.5.sp,
+                    color: d.text1,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  mins == 0
+                      ? 'Disabled — the app stays signed in'
+                      : 'Signs out automatically after $mins minutes of no activity',
+                  style: TextStyle(fontSize: 10.5.sp, color: d.text3),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            height: 42,
+            padding: const EdgeInsets.symmetric(horizontal: 13),
+            decoration: BoxDecoration(
+              color: d.surface2,
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: d.line),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                value: _options.contains(mins) ? mins : 10,
+                dropdownColor: d.surface,
+                borderRadius: BorderRadius.circular(12),
+                icon: Icon(Icons.expand_more_rounded, size: 19, color: d.text3),
+                items: [
+                  for (final m in _options)
+                    DropdownMenuItem(
+                      value: m,
+                      child: Text(
+                        m == 0 ? 'Never' : '$m minutes',
+                        style: TextStyle(fontSize: 10.5.sp, color: d.text1),
+                      ),
+                    ),
+                ],
+                onChanged: (v) async {
+                  if (v == null) return;
+                  await ref.read(appDatabaseProvider).setIdleTimeoutMinutes(v);
+                  ref.read(idleTimeoutProvider.notifier).state =
+                      v; // IdleLock reacts
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

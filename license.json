@@ -1,12 +1,12 @@
 {
-  "clinicId": "FAST-ISL-987463",
-  "clinicName": "Fast Dental Clinic",
+  "clinicId": "TESTING-PHA-987463",
+  "clinicName": "Testing activation",
   "tier": "premium",
   "cloudPackage": "cloud",
-  "maxBranches": 3,
-  "maxUsers": 8,
-  "issuedAt": "2026-07-23T15:40:32.281481Z",
-  "expiresAt": "2027-07-23T15:40:32.281483Z",
+  "maxBranches": 1,
+  "maxUsers": 2,
+  "issuedAt": "2026-09-10T08:41:04.998688Z",
+  "expiresAt": "2026-09-15T08:41:04.999008Z",
   "machineFingerprint": "ANY",
-  "signature": "kXZroQpdtb+ExRbaW6osKmtd+GQxdFtBelVnW2A6saOLrQCH0hBs1m3rOL9KpLHm7nXBGxkYnY4KyuHdQ+Kt05f35srYKodDcx/0xpDsfp1XqGmPYLxpajQkznBjeDDDn1XhL3cx+IUkySFuRT9VuZHyUvAv9MjvIpGb/z+alfpaxhhFtDyPsB6NIJ8Mk0v0k4GxBQ0Hb5vxwX5dO6UJdApIdRDspKlmKWmTKSEZPXfatug+TLjyLmXKYteYDeNB89BbabDBvL1p3paI59FXp/vZcnyPuTeI8MoL37f+EmObqby/eR4jXJ4/KPfuBxoD+5Gcy+V1u+Gq3lhUpbkkmw=="
+  "signature": "HweITfqn2fdiX56LbaGwl/Y6nf7f5e7tw+NoPrEi3mNgPe1eyX6jebs+U9b3Ls34w/1K9yNkerzlvTnopbqvhfum9VqcBq19GWjh6BQ3we/k/uS9i0IcMAuVjKJmEfyyAKoJQiN5+qIZg+YPNron/M9FMgIYSq8ByUD6oEdIiaWisQCb2hsV/zxEZuqjtqz+u09P+NBmBrhLoQSbjaraT7K7O4TrYVKKmzReYSKvyc5U0OnfYe0DUo2HLAx2cB+bRBrdNgjvh63+Sd17IPf5JWYV1mDCvci/SFBWENpw+MqJE81r9L99lun0Z78oECDCRWRfHJ6w3oJcN/sSvunpbA=="
 }

@@ -5,6 +5,7 @@ class AppRoutes {
   static const patients = '/patients';
   static const treatments = '/treatments';
   static const billing = '/billing';
+  static const prescriptions = '/prescriptions';
   static const inventory = '/inventory';
   static const reports = '/reports';
   static const settings = '/settings';

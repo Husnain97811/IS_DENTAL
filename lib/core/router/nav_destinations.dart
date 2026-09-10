@@ -48,6 +48,16 @@ const kNavDestinations = <NavDestination>[
     // badge: '18',
   ),
   NavDestination(
+    route: AppRoutes.prescriptions,
+    icon: Icons.medication_rounded,
+    label: 'Prescriptions',
+    group: NavGroup.clinical,
+    title: 'Prescriptions',
+    subtitle: 'Medicines, precautions & format',
+    primaryAction: 'Add Medicine',
+    drawer: DrawerKind.none,
+  ),
+  NavDestination(
     route: AppRoutes.patients,
     icon: Icons.people_alt_rounded,
     label: 'Patients',

@@ -96,7 +96,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
-    - assets/video/        # put dental_bg.mp4 here (optional, can add later)
+    - assets/video/       
     - assets/
     - .env
   fonts:
@@ -109,6 +109,14 @@ flutter:
     - family: JetBrains Mono
       fonts:
         - asset: assets/fonts/JetBrainsMono.ttf
+    - family: NotoNaskhArabic
+      fonts:
+        - asset: assets/fonts/NotoNaskhArabic-Regular.ttf
+        - asset: assets/fonts/NotoNaskhArabic-Bold.ttf
+          weight: 700
+    - family: NotoNaskhArabic
+      fonts:
+        - asset: assets/fonts/NotoNaskhArabic.ttf
 
 
 

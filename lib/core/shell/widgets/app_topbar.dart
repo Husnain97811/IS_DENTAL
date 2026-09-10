@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:is_dental/core/utils/pdf_output.dart';
 import 'package:is_dental/features/patients/presentation/widgets/inventory_editor.dart';
+import 'package:is_dental/features/prescriptions/presentation/prescription_controller.dart';
+import 'package:is_dental/features/prescriptions/presentation/widgets/medicine_editor.dart';
 import 'package:is_dental/features/reports/data/reports_pdf.dart';
 import 'package:is_dental/features/reports/presentation/reports_controller.dart';
 import 'package:sizer/sizer.dart';
@@ -112,6 +114,8 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
     AppRoutes.treatments => 'Search treatments…',
     AppRoutes.billing => 'Search invoices…',
     AppRoutes.inventory => 'Search inventory…',
+    AppRoutes.prescriptions => 'Search medicines…',
+
     _ => 'Search patients…',
   };
 
@@ -123,6 +127,7 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
     List<InventoryItem> inventory,
     List<Treatment> treatments,
     List<Appointment> appts,
+    List<Medicine> medicines,
   ) {
     if (q.isEmpty) return const [];
     String two(int v) => v.toString().padLeft(2, '0');
@@ -163,6 +168,25 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
                 onTap: () {
                   _resetSearch();
                   showTreatmentEditor(context, existing: t);
+                },
+              ),
+        ].take(8).toList();
+      case AppRoutes.prescriptions:
+        return [
+          for (final m in medicines)
+            if ('${m.name} ${m.category} ${m.form}'.toLowerCase().contains(q))
+              _Result(
+                icon: Icons.medication_rounded,
+                title: m.name,
+                subtitle: [
+                  m.form,
+                  m.defaultDosage,
+                  m.defaultFrequency,
+                  m.category,
+                ].where((e) => e.isNotEmpty).join(' · '),
+                onTap: () {
+                  _resetSearch();
+                  showMedicineEditor(context, existing: m);
                 },
               ),
         ].take(8).toList();
@@ -224,6 +248,7 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
     final treatments =
         ref.watch(treatmentsStreamProvider).value ?? const <Treatment>[];
     final viewedMonth = ref.watch(viewedMonthProvider);
+    final medicines = ref.watch(medicinesProvider).value ?? const <Medicine>[];
 
     const monthNames = [
       'January',
@@ -288,6 +313,7 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
       inventory,
       treatments,
       monthAppts,
+      medicines,
     );
 
     return ClipRect(
@@ -678,6 +704,8 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
         showAppointmentEditor(context);
       case AppRoutes.treatments:
         showTreatmentEditor(context);
+      case AppRoutes.prescriptions:
+        showMedicineEditor(context);
       case AppRoutes.reports:
         showPdfOutput(
           context,

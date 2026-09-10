@@ -66,3 +66,7 @@ export 'package:is_dental/features/settings/presentation/widgets/wa_connect_dial
 export 'package:is_dental/features/settings/data/wa_connect_service.dart';
 export 'package:is_dental/features/whatsapp/data/wa_inbox_service.dart';
 export 'package:is_dental/features/whatsapp/presentation/wa_inbox_controller.dart';
+export 'package:is_dental/features/prescriptions/data/domain/prescription.dart';
+export 'package:is_dental/features/prescriptions/presentation/prescriptions_screen.dart';
+export 'package:is_dental/features/requests/presentation/requests_screen.dart';
+export 'package:is_dental/features/whatsapp/presentation/whatsapp_screen.dart';

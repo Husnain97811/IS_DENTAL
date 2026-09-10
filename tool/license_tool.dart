@@ -4,8 +4,8 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:pointycastle/export.dart';
 
-final _clinicName = 'Fast Dental Clinic';
-final _clinicCity = 'Islamabad';
+final _clinicName = 'Testing activation';
+final _clinicCity = 'Phase 8';
 
 // Edit the license you want to issue (defaults are fine for testing):
 final licenseFields = <String, dynamic>{
@@ -13,11 +13,11 @@ final licenseFields = <String, dynamic>{
   'clinicName': _clinicName,
   'tier': 'premium',
   'cloudPackage': 'cloud',
-  'maxBranches': 3,
-  'maxUsers': 8,
+  'maxBranches': 1,
+  'maxUsers': 2,
   'issuedAt': DateTime.now(),
   // 'expiresAt': DateTime.now().add(const Duration(days: -1)),
-  'expiresAt': DateTime.now().add(const Duration(days: 365)),
+  'expiresAt': DateTime.now().add(const Duration(days: 5)),
   'machineFingerprint': 'ANY',
 };
 

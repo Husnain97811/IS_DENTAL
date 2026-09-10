@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/constants/app_flags.dart';
+import 'package:is_dental/features/prescriptions/presentation/widgets/prescription_editor.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/constants/views.dart';
@@ -157,14 +158,29 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                                 for (final a in filtered)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 6),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: AppointmentTile(appt: a),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        _ApptActions(appt: a),
-                                      ],
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: d.surface,
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: d.line),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          AppointmentTile(appt: a),
+                                          Divider(height: 1, color: d.line),
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              12,
+                                              10,
+                                              12,
+                                              10,
+                                            ),
+                                            child: _ApptActions(appt: a),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                               ],
@@ -304,6 +320,27 @@ class _ApptActions extends ConsumerWidget {
     }
   }
 
+  Future<void> _prescribe(BuildContext context, WidgetRef ref) async {
+    final db = ref.read(appDatabaseProvider);
+    final p = await (db.select(
+      db.patients,
+    )..where((t) => t.id.equals(appt.patientId))).getSingleOrNull();
+    if (p == null || !context.mounted) return;
+
+    await showPrescriptionEditor(
+      context,
+      patientId: p.id,
+      patientUuid: p.uuid,
+      patientName: p.fullName,
+      allergies: p.allergies,
+      // pre-link this visit so the doctor never has to pick it
+      presetAppointmentId: appt.id,
+      presetAppointmentLabel:
+          '${appt.startsAt.day}/${appt.startsAt.month}/${appt.startsAt.year} · ${appt.procedure}',
+      presetDoctorName: appt.dentist,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final d = context.dent;
@@ -311,63 +348,87 @@ class _ApptActions extends ConsumerWidget {
     final billed =
         ref.watch(billedAppointmentIdsProvider).value?.contains(appt.id) ??
         false;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+
+    return Row(
       children: [
-        SizedBox(
-          width: 92,
-          child: OutlinedButton(
+        Expanded(
+          child: OutlinedButton.icon(
             onPressed: arrived ? null : () => _confirmArrived(context, ref),
+            icon: Icon(
+              arrived ? Icons.check_circle_rounded : Icons.how_to_reg_rounded,
+              size: 15,
+            ),
             style: OutlinedButton.styleFrom(
               foregroundColor: arrived ? d.text4 : d.ok,
+              disabledForegroundColor: d.ok,
               side: BorderSide(color: arrived ? d.line : d.ok),
-              padding: const EdgeInsets.symmetric(vertical: 9),
+              padding: const EdgeInsets.symmetric(vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: Text(
-              arrived ? 'Arrived ✓' : 'Arrived',
-              style: TextStyle(fontSize: 8.5.sp, fontWeight: FontWeight.w600),
+            label: Text(
+              arrived ? 'Arrived' : 'Mark Arrived',
+              style: TextStyle(fontSize: 9.5.sp, fontWeight: FontWeight.w600),
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: 92,
+        const SizedBox(width: 8),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () => _prescribe(context, ref),
+            icon: const Icon(Icons.medication_rounded, size: 15),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: d.tealDeep,
+              side: BorderSide(color: d.tealDeep.withValues(alpha: .55)),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            label: Text(
+              'Prescribe',
+              style: TextStyle(fontSize: 9.5.sp, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
           child: billed
-              ? OutlinedButton(
+              ? OutlinedButton.icon(
                   onPressed: null,
+                  icon: const Icon(Icons.check_circle_rounded, size: 15),
                   style: OutlinedButton.styleFrom(
                     disabledForegroundColor: d.ok,
                     side: BorderSide(color: d.line),
-                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: Text(
-                    'Billed ✓',
+                  label: Text(
+                    'Billed',
                     style: TextStyle(
-                      fontSize: 8.5.sp,
+                      fontSize: 9.5.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 )
-              : FilledButton(
+              : FilledButton.icon(
                   onPressed: () => _bill(context, ref),
+                  icon: const Icon(Icons.receipt_long_rounded, size: 15),
                   style: FilledButton.styleFrom(
                     backgroundColor: d.ice,
                     foregroundColor: AppPalette.onAccent,
-                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: Text(
+                  label: Text(
                     'Bill',
                     style: TextStyle(
-                      fontSize: 8.5.sp,
+                      fontSize: 9.5.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
