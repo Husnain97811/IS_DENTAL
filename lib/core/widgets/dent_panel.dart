@@ -50,7 +50,7 @@ class DentPanel extends StatelessWidget {
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(
                                 color: d.text1,
-                                fontSize: 12.5.sp,
+                                fontSize: 14.sp,
                                 fontWeight: FontWeight.w600,
                               ),
                         ),
@@ -100,7 +100,7 @@ class PanelLink extends StatelessWidget {
             label,
             style: TextStyle(
               color: d.ice,
-              fontSize: 9.5.sp,
+              fontSize: 10.5.sp,
               fontWeight: FontWeight.w600,
             ),
           ),

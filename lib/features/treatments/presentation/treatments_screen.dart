@@ -97,8 +97,8 @@ class _S extends ConsumerState<TreatmentsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 20.sp,
+            height: 20.sp,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(13),
@@ -112,7 +112,7 @@ class _S extends ConsumerState<TreatmentsScreen> {
             child: Icon(
               Icons.medical_services_rounded,
               color: d.tealDeep,
-              size: 12.sp,
+              size: 14.sp,
             ),
           ),
           const SizedBox(height: 14),
@@ -120,7 +120,7 @@ class _S extends ConsumerState<TreatmentsScreen> {
             t.name,
             style: TextStyle(
               fontFamily: AppFonts.display,
-              fontSize: 10.sp,
+              fontSize: 13.sp,
               fontWeight: FontWeight.w600,
               color: d.text1,
             ),
@@ -130,7 +130,7 @@ class _S extends ConsumerState<TreatmentsScreen> {
             t.category.toUpperCase(),
             style: TextStyle(
               color: d.text4,
-              fontSize: 7.sp,
+              fontSize: 10.sp,
               fontWeight: FontWeight.w600,
               letterSpacing: .5,
             ),
@@ -150,7 +150,7 @@ class _S extends ConsumerState<TreatmentsScreen> {
                   style: TextStyle(
                     fontFamily: AppFonts.display,
                     fontSize: 11.sp,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     color: d.text1,
                   ),
                 ),
@@ -160,7 +160,7 @@ class _S extends ConsumerState<TreatmentsScreen> {
                     const SizedBox(width: 5),
                     Text(
                       t.duration,
-                      style: TextStyle(color: d.text3, fontSize: 8.sp),
+                      style: TextStyle(color: d.text3, fontSize: 11.sp),
                     ),
                   ],
                 ),

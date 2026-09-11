@@ -224,13 +224,17 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                   Expanded(
                     child: Text(
                       'New Appointment',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: d.text1,
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   IconButton(
                     icon: Icon(
                       Icons.close_rounded,
-                      size: 12.sp,
+                      size: 13.sp,
                       color: d.text3,
                     ),
                     onPressed: () => Navigator.of(context).pop(),
@@ -262,7 +266,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                               'No procedures yet. Add them in Treatments.',
                               style: TextStyle(
                                 color: d.text4,
-                                fontSize: 8.5.sp,
+                                fontSize: 9.5.sp,
                               ),
                             ),
                           )
@@ -279,7 +283,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                                     child: Text(
                                       p,
                                       style: TextStyle(
-                                        fontSize: 9.sp,
+                                        fontSize: 12.sp,
                                         color: d.text1,
                                       ),
                                     ),
@@ -296,10 +300,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             child: Text(
                               'No clinicians found. Add staff in Settings.',
-                              style: TextStyle(
-                                color: d.text4,
-                                fontSize: 8.5.sp,
-                              ),
+                              style: TextStyle(color: d.text4, fontSize: 9.sp),
                             ),
                           )
                         : _box(
@@ -315,7 +316,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                                     child: Text(
                                       name,
                                       style: TextStyle(
-                                        fontSize: 9.sp,
+                                        fontSize: 12.sp,
                                         color: d.text1,
                                       ),
                                     ),
@@ -342,18 +343,18 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                           children: [
                             Icon(
                               Icons.calendar_today_rounded,
-                              size: 10.sp,
+                              size: 12.sp,
                               color: d.text3,
                             ),
                             const SizedBox(width: 10),
                             Text(
                               '${_date.day}/${_date.month}/${_date.year}',
-                              style: TextStyle(fontSize: 9.sp, color: d.text1),
+                              style: TextStyle(fontSize: 12.sp, color: d.text1),
                             ),
                             const Spacer(),
                             Icon(
                               Icons.expand_more_rounded,
-                              size: 11.sp,
+                              size: 14.sp,
                               color: d.text4,
                             ),
                           ],
@@ -383,7 +384,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                         if (slots.isEmpty)
                           Text(
                             'No slots for this day.',
-                            style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+                            style: TextStyle(color: d.text4, fontSize: 9.sp),
                           ),
                       ],
                     ),
@@ -412,7 +413,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                               child: Text(
                                 '$m min',
                                 style: TextStyle(
-                                  fontSize: 9.sp,
+                                  fontSize: 11.sp,
                                   color: d.text1,
                                 ),
                               ),
@@ -431,7 +432,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                         _customTime && _slot != null
                             ? 'Custom: ${_slot!.hour.toString().padLeft(2, '0')}:${_slot!.minute.toString().padLeft(2, '0')}'
                             : 'Set custom time',
-                        style: TextStyle(fontSize: 8.5.sp),
+                        style: TextStyle(fontSize: 11.sp),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -467,7 +468,13 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                         ),
                       )
                     : const Icon(Icons.check_rounded, size: 17),
-                label: const Text('Confirm Booking'),
+                label: Text(
+                  'Confirm Booking',
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ],
@@ -481,8 +488,8 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
     child: Text(
       t.toUpperCase(),
       style: TextStyle(
-        color: d.text4,
-        fontSize: 7.sp,
+        color: d.text3,
+        fontSize: 11.sp,
         fontWeight: FontWeight.w700,
         letterSpacing: .5,
       ),
@@ -509,8 +516,8 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
   }) => GestureDetector(
     onTap: onTap,
     child: Container(
-      width: 84,
-      height: 36,
+      width: 5.w,
+      height: 5.h,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: selected ? null : d.surface2,
@@ -521,7 +528,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
       child: Text(
         label,
         style: AppTypography.mono(
-          size: 8.sp,
+          size: 11.sp,
           color: selected ? AppPalette.onAccent : (busy ? d.text4 : d.text2),
           weight: selected ? FontWeight.w600 : FontWeight.w500,
         ).copyWith(decoration: busy ? TextDecoration.lineThrough : null),

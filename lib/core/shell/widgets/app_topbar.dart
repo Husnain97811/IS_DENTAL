@@ -343,7 +343,7 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
                   ),
                   Text(
                     widget.destination.subtitle,
-                    style: TextStyle(color: d.text4, fontSize: 8.sp),
+                    style: TextStyle(color: d.text4, fontSize: 10.sp),
                   ),
                 ],
               ),
@@ -397,15 +397,15 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
               controller: _searchCtrl,
               focusNode: _searchFocus,
               onChanged: _onSearch,
-              style: TextStyle(fontSize: 9.5.sp, color: d.text1),
+              style: TextStyle(fontSize: 13.5.sp, color: d.text1),
               decoration: InputDecoration(
                 isDense: true,
                 hintText: _hintFor(route, monthName),
-                hintStyle: TextStyle(color: d.text4, fontSize: 9.sp),
+                hintStyle: TextStyle(color: d.text4, fontSize: 12.sp),
                 prefixIcon: Icon(
                   Icons.search_rounded,
                   color: d.text4,
-                  size: 11.sp,
+                  size: 13.5.sp,
                 ),
                 filled: true,
                 fillColor: d.surface2,
@@ -573,10 +573,10 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
       ),
       menuChildren: notifs.isEmpty
           ? [
-              const MenuItemButton(
+              MenuItemButton(
                 onPressed: null,
                 child: SizedBox(
-                  width: 220,
+                  width: 25.w,
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: 6),
                     child: Text('No new notifications'),
@@ -615,8 +615,8 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Container(
-          width: 42,
-          height: 42,
+          width: 20.sp,
+          height: 20.sp,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: d.line),
@@ -624,7 +624,7 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              Icon(icon, size: 11.sp, color: d.text3),
+              Icon(icon, size: 14.sp, color: d.text3),
               if (dot)
                 Positioned(
                   top: 9,
@@ -655,7 +655,7 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
         onTap: () => _onPrimary(context, ref),
         child: Container(
           height: 42,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: EdgeInsets.all(8.sp),
           decoration: BoxDecoration(
             gradient: d.accentGradient,
             borderRadius: BorderRadius.circular(12),
@@ -669,19 +669,19 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
           ),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.add_rounded,
                 color: AppPalette.onAccent,
-                size: 18,
+                size: 15.5.sp,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               Text(
                 widget.destination.primaryAction,
                 style: TextStyle(
                   fontFamily: AppFonts.body,
                   color: AppPalette.onAccent,
                   fontWeight: FontWeight.w700,
-                  fontSize: 9.sp,
+                  fontSize: 11.sp,
                 ),
               ),
             ],
@@ -751,13 +751,13 @@ class _DbStatusButton extends ConsumerWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: () => _showDialog(context, ref),
         child: Container(
-          width: 42,
-          height: 42,
+          width: 20.sp,
+          height: 20.sp,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: d.line),
           ),
-          child: Icon(Icons.storage_rounded, size: 11.sp, color: d.text3),
+          child: Icon(Icons.storage_rounded, size: 14.sp, color: d.text3),
         ),
       ),
     );
@@ -1041,15 +1041,15 @@ class _RefreshButtonState extends ConsumerState<_RefreshButton>
         borderRadius: BorderRadius.circular(12),
         onTap: _refresh,
         child: Container(
-          width: 42,
-          height: 42,
+          width: 20.sp,
+          height: 20.sp,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: d.line),
           ),
           child: RotationTransition(
             turns: _spin,
-            child: Icon(Icons.refresh_rounded, size: 12.sp, color: d.text3),
+            child: Icon(Icons.refresh_rounded, size: 14.sp, color: d.text3),
           ),
         ),
       ),

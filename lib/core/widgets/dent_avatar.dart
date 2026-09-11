@@ -29,7 +29,7 @@ class DentAvatar extends StatelessWidget {
         fontFamily: AppFonts.display,
         color: fg,
         fontWeight: FontWeight.w700,
-        fontSize: 10.sp,
+        fontSize: 13.5.sp,
       ),
     ),
   );

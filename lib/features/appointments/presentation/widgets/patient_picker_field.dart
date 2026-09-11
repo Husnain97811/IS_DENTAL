@@ -145,10 +145,10 @@ class _PatientPickerFieldState extends State<PatientPickerField> {
         Text(
           widget.label.toUpperCase(),
           style: TextStyle(
-            fontSize: 7.5.sp,
+            fontSize: 11.sp,
             fontWeight: FontWeight.w700,
             letterSpacing: .5,
-            color: d.text4,
+            color: d.text3,
           ),
         ),
         const SizedBox(height: 7),
@@ -156,18 +156,18 @@ class _PatientPickerFieldState extends State<PatientPickerField> {
           controller: _ctrl,
           focusNode: _focus,
           onChanged: _onTextChanged,
-          style: TextStyle(fontSize: 9.sp, color: d.text1),
+          style: TextStyle(fontSize: 12.sp, color: d.text1),
           decoration: InputDecoration(
             isDense: true,
             hintText: widget.hint,
-            hintStyle: TextStyle(color: d.text4, fontSize: 9.sp),
+            hintStyle: TextStyle(color: d.text4, fontSize: 11.sp),
             prefixIcon: Icon(Icons.search_rounded, color: d.text4, size: 11.sp),
             suffixIcon: _choice == null
                 ? null
                 : IconButton(
                     icon: Icon(
                       Icons.close_rounded,
-                      size: 11.sp,
+                      size: 12.sp,
                       color: d.text4,
                     ),
                     onPressed: () {
@@ -200,8 +200,8 @@ class _PatientPickerFieldState extends State<PatientPickerField> {
             padding: const EdgeInsets.only(top: 7),
             child: Text(
               "New patient — “${(_choice as NewPatientChoice).name}” will be "
-              'created when you confirm the booking.',
-              style: TextStyle(fontSize: 7.5.sp, color: d.teal, height: 1.4),
+              'created automatically when you confirm the booking.',
+              style: TextStyle(fontSize: 9.5.sp, color: d.teal, height: 1.4),
             ),
           )
         else if (!_showSuggestions && _choice is ExistingPatientChoice)
@@ -209,7 +209,7 @@ class _PatientPickerFieldState extends State<PatientPickerField> {
             padding: const EdgeInsets.only(top: 7),
             child: Text(
               'Existing patient · #${(_choice as ExistingPatientChoice).patient.code}',
-              style: AppTypography.mono(size: 7.5.sp, color: d.text4),
+              style: AppTypography.mono(size: 11.sp, color: d.text4),
             ),
           ),
 
@@ -249,7 +249,7 @@ class _PatientPickerFieldState extends State<PatientPickerField> {
             p.initials,
             bg: const Color(0x2638BDF8),
             fg: const Color(0xFF38BDF8),
-            size: 32,
+            size: 18.sp,
             radius: 9,
           ),
           const SizedBox(width: 11),
@@ -262,13 +262,13 @@ class _PatientPickerFieldState extends State<PatientPickerField> {
                   style: TextStyle(
                     color: d.text1,
                     fontWeight: FontWeight.w600,
-                    fontSize: 9.sp,
+                    fontSize: 11.sp,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   '#${p.code} · ${p.phone}',
-                  style: AppTypography.mono(size: 7.sp, color: d.text4),
+                  style: AppTypography.mono(size: 9.5.sp, color: d.text3),
                 ),
               ],
             ),
@@ -288,8 +288,8 @@ class _PatientPickerFieldState extends State<PatientPickerField> {
       child: Row(
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 18.sp,
+            height: 18.sp,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: d.teal.withValues(alpha: .14),
@@ -297,7 +297,7 @@ class _PatientPickerFieldState extends State<PatientPickerField> {
             ),
             child: Icon(
               Icons.person_add_alt_1_rounded,
-              size: 11.sp,
+              size: 12.sp,
               color: d.teal,
             ),
           ),
@@ -305,7 +305,7 @@ class _PatientPickerFieldState extends State<PatientPickerField> {
           Expanded(
             child: RichText(
               text: TextSpan(
-                style: TextStyle(fontSize: 9.sp, color: d.text2),
+                style: TextStyle(fontSize: 11.sp, color: d.text2),
                 children: [
                   const TextSpan(text: 'Create new patient  '),
                   TextSpan(

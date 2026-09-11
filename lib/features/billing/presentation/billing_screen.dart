@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/constants/app_flags.dart';
-import 'package:is_dental/core/theme/app_palette.dart';
-import 'package:is_dental/features/billing/presentation/widgets/invoice_editor.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/theme/app_typography.dart';
@@ -52,36 +50,7 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Billing & Invoices',
-                      style: Theme.of(context).textTheme.displayLarge,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Click an invoice to preview & print.',
-                      style: TextStyle(color: d.text3, fontSize: 9.sp),
-                    ),
-                  ],
-                ),
-              ),
-              // FilledButton.icon(
-              //   style: FilledButton.styleFrom(
-              //     backgroundColor: d.ice,
-              //     foregroundColor: AppPalette.onAccent,
-              //   ),
-              //   onPressed: () => showInvoiceEditor(context),
-              //   icon: const Icon(Icons.add_rounded, size: 18),
-              //   label: const Text('New Invoice'),
-              // ),
-            ],
-          ),
-          SizedBox(height: 2.2.h),
+          SizedBox(height: 2.h),
           async.when(
             loading: () => const Padding(
               padding: EdgeInsets.all(40),
@@ -111,35 +80,30 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                           'Collected',
                           'Rs ${_m(paidMtd)}',
                           KpiTone.teal,
-                          Icons.payments_rounded,
+                          // Icons.payments_rounded,
                         ),
                         (
                           'Pending',
                           'Rs ${_m(pending)}',
                           KpiTone.amber,
-                          Icons.schedule_rounded,
+                          // Icons.schedule_rounded,
                         ),
                         (
                           'Invoices',
                           '${list.length}',
                           KpiTone.blue,
-                          Icons.receipt_long_rounded,
+                          // Icons.receipt_long_rounded,
                         ),
                         (
                           'Avg. Invoice',
                           'Rs ${_m(avg)}',
                           KpiTone.slate,
-                          Icons.trending_up_rounded,
+                          // Icons.trending_up_rounded,
                         ),
                       ])
                         SizedBox(
-                          width: 240,
-                          child: KpiCard(
-                            icon: c.$4,
-                            tone: c.$3,
-                            label: c.$1,
-                            value: c.$2,
-                          ),
+                          width: 12.w,
+                          child: KpiCard(tone: c.$3, label: c.$1, value: c.$2),
                         ),
                     ],
                   ),
@@ -173,8 +137,8 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
 
   Widget _header(DentColors d) {
     TextStyle h() => TextStyle(
-      color: d.text4,
-      fontSize: 7.sp,
+      color: d.text1,
+      fontSize: 12.sp,
       fontWeight: FontWeight.w700,
       letterSpacing: .7,
     );
@@ -188,9 +152,9 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
           Expanded(flex: 2, child: Text('INVOICE', style: h())),
           Expanded(flex: 3, child: Text('PATIENT', style: h())),
           Expanded(flex: 2, child: Text('DATE', style: h())),
-          Expanded(flex: 3, child: Text('PROCEDURE', style: h())),
+          // Expanded(flex: 3, child: Text('PROCEDURE', style: h())),
           Expanded(flex: 2, child: Text('AMOUNT', style: h())),
-          Expanded(flex: 2, child: Text('STATUS', style: h())),
+          Expanded(flex: 1, child: Text('STATUS', style: h())),
         ],
       ),
     );
@@ -214,9 +178,9 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
               child: Text(
                 '#${inv.invoiceNo}',
                 style: AppTypography.mono(
-                  size: 8.5.sp,
-                  weight: FontWeight.w600,
-                  color: d.text1,
+                  size: 11.sp,
+                  // weight: FontWeight.w600,
+                  color: d.text2,
                 ),
               ),
             ),
@@ -225,8 +189,8 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
               child: Text(
                 inv.patientName,
                 style: TextStyle(
-                  color: d.text1,
-                  fontSize: 9.sp,
+                  color: d.text2,
+                  fontSize: 11.sp,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -235,26 +199,26 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
               flex: 2,
               child: Text(
                 inv.issuedAt.toString().split(' ').first,
-                style: TextStyle(color: d.text2, fontSize: 8.5.sp),
+                style: TextStyle(color: d.text2, fontSize: 11.sp),
               ),
             ),
-            Expanded(
-              flex: 3,
-              child: Text(
-                inv.summary,
-                style: TextStyle(color: d.text2, fontSize: 8.5.sp),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            // Expanded(
+            //   flex: 3,
+            //   child: Text(
+            //     inv.summary,
+            //     style: TextStyle(color: d.text2, fontSize: 11.sp),
+            //     overflow: TextOverflow.ellipsis,
+            //   ),
+            // ),
             Expanded(
               flex: 2,
               child: Text(
                 'Rs ${_m(inv.total)}',
-                style: AppTypography.mono(size: 8.5.sp, color: d.text1),
+                style: AppTypography.mono(size: 11.sp, color: d.text2),
               ),
             ),
             Expanded(
-              flex: 2,
+              flex: 1,
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: StatusChip(label, kind: chip),

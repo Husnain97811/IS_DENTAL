@@ -93,7 +93,7 @@ const kNavDestinations = <NavDestination>[
     label: 'Billing & Invoices',
     group: NavGroup.operations,
     title: 'Billing & Invoices',
-    subtitle: 'Payments & receipts',
+    subtitle: 'Click an invoice to preview',
     primaryAction: 'New Invoice',
     drawer: DrawerKind.invoice,
   ),

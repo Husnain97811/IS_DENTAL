@@ -52,13 +52,18 @@ class InvoiceDrawer extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           'Invoice Preview',
-                          style: Theme.of(context).textTheme.titleMedium,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: d.text1,
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                       ),
                       Text(
                         '#${inv.invoiceNo}',
                         style: AppTypography.mono(
-                          size: 7.5.sp,
+                          size: 9.5.sp,
                           color: d.ice,
                           weight: FontWeight.w700,
                         ),
@@ -82,7 +87,7 @@ class InvoiceDrawer extends ConsumerWidget {
                                   inv.patientName,
                                   style: TextStyle(
                                     fontFamily: AppFonts.display,
-                                    fontSize: 11.sp,
+                                    fontSize: 12.5.sp,
                                     fontWeight: FontWeight.w600,
                                     color: d.text1,
                                   ),
@@ -90,8 +95,8 @@ class InvoiceDrawer extends ConsumerWidget {
                                 Text(
                                   inv.issuedAt.toString().split(' ').first,
                                   style: AppTypography.mono(
-                                    size: 7.5.sp,
-                                    color: d.text4,
+                                    size: 9.5.sp,
+                                    color: d.text2,
                                   ),
                                 ),
                               ],
@@ -110,12 +115,12 @@ class InvoiceDrawer extends ConsumerWidget {
                       ),
                       SizedBox(height: 1.6.h),
                       for (final it in inv.items)
-                        _line(d, it.description, 'Rs ${_m(it.amount)}'),
+                        _line(d, it.description, '${_m(it.amount)}'),
                       if (inv.adjustment != 0)
                         _line(
                           d,
                           'Insurance adjustment',
-                          '– Rs ${_m(inv.adjustment)}',
+                          '–${_m(inv.adjustment)}',
                         ),
                       Container(
                         margin: const EdgeInsets.only(top: 6),
@@ -130,7 +135,7 @@ class InvoiceDrawer extends ConsumerWidget {
                               'Total Due',
                               style: TextStyle(
                                 fontFamily: AppFonts.display,
-                                fontSize: 11.sp,
+                                fontSize: 12.sp,
                                 fontWeight: FontWeight.w600,
                                 color: d.text1,
                               ),
@@ -139,7 +144,7 @@ class InvoiceDrawer extends ConsumerWidget {
                               'Rs ${_m(inv.total)}',
                               style: TextStyle(
                                 fontFamily: AppFonts.display,
-                                fontSize: 11.sp,
+                                fontSize: 12.sp,
                                 fontWeight: FontWeight.w600,
                                 color: d.text1,
                               ),
@@ -219,12 +224,16 @@ class InvoiceDrawer extends ConsumerWidget {
         Flexible(
           child: Text(
             label,
-            style: TextStyle(color: d.text2, fontSize: 8.5.sp),
+            style: TextStyle(
+              color: d.text2,
+              fontSize: 10.sp,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         Text(
           amount,
-          style: AppTypography.mono(size: 8.5.sp, color: d.text1),
+          style: AppTypography.mono(size: 11.sp, color: d.text1),
         ),
       ],
     ),

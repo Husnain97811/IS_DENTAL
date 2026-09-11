@@ -71,7 +71,7 @@ class AppointmentTile extends StatelessWidget {
               child: Text(
                 '${two(appt.startsAt.hour)}:${two(appt.startsAt.minute)}',
                 style: AppTypography.mono(
-                  size: 9.sp,
+                  size: 11.sp,
                   color: d.text1,
                   weight: FontWeight.w500,
                 ),
@@ -90,7 +90,7 @@ class AppointmentTile extends StatelessWidget {
               appt.patientInitials,
               bg: avBg,
               fg: avFg,
-              size: 38,
+              size: 21.sp,
               radius: 11,
             ),
             const SizedBox(width: 12),
@@ -104,7 +104,7 @@ class AppointmentTile extends StatelessWidget {
                         child: Text(
                           appt.patientName,
                           style: TextStyle(
-                            fontSize: 10.5.sp,
+                            fontSize: 12.sp,
                             fontWeight: FontWeight.w600,
                             color: d.text1,
                           ),
@@ -120,7 +120,7 @@ class AppointmentTile extends StatelessWidget {
                     '${appt.procedure} · ${appt.durationMin} min',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: d.text3, fontSize: 8.5.sp),
+                    style: TextStyle(color: d.text3, fontSize: 10.sp),
                   ),
                 ],
               ),
@@ -133,7 +133,7 @@ class AppointmentTile extends StatelessWidget {
                   appt.dentist,
                   style: TextStyle(
                     color: d.text2,
-                    fontSize: 10.sp,
+                    fontSize: 11.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

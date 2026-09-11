@@ -37,8 +37,6 @@ class _S extends ConsumerState<PrescriptionsScreen> {
           //   'Medicines catalog, Urdu precaution templates and print format.',
           //   style: TextStyle(color: d.text3, fontSize: 10.5.sp),
           // ),
-          SizedBox(height: 1.2.h),
-
           SegmentedControl(
             items: canFormat
                 ? const ['Medicines', 'Precautions', 'Print Format']
