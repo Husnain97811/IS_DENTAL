@@ -2,12 +2,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:is_dental/core/utils/pdf_output.dart';
 import 'package:is_dental/features/patients/presentation/widgets/inventory_editor.dart';
 import 'package:is_dental/features/prescriptions/presentation/prescription_controller.dart';
 import 'package:is_dental/features/prescriptions/presentation/widgets/medicine_editor.dart';
-import 'package:is_dental/features/reports/data/reports_pdf.dart';
-import 'package:is_dental/features/reports/presentation/reports_controller.dart';
+
 import 'package:sizer/sizer.dart';
 import '../../constants/views.dart';
 import '../../router/nav_destinations.dart';
@@ -702,6 +700,8 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
       case AppRoutes.dashboard:
       case AppRoutes.appointments:
         showAppointmentEditor(context);
+      case AppRoutes.whatsapp:
+        showOfferComposer(context);
       case AppRoutes.treatments:
         showTreatmentEditor(context);
       case AppRoutes.prescriptions:

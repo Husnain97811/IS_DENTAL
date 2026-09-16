@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/constants/app_flags.dart';
+import 'package:is_dental/features/appointments/presentation/widgets/appointment_actions_dialog.dart';
 import 'package:is_dental/features/prescriptions/presentation/widgets/prescription_editor.dart';
 import 'package:sizer/sizer.dart';
 
@@ -351,6 +352,26 @@ class _ApptActions extends ConsumerWidget {
 
     return Row(
       children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () => showAppointmentActions(context, appt),
+            icon: const Icon(Icons.more_horiz_rounded, size: 15),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: d.text2,
+              side: BorderSide(color: d.line),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            label: Text(
+              'Manage',
+              style: TextStyle(fontSize: 9.5.sp, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+
         Expanded(
           child: OutlinedButton.icon(
             onPressed: arrived ? null : () => _confirmArrived(context, ref),

@@ -8,6 +8,40 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
   AppointmentRepositoryImpl(this._db);
   final AppDatabase _db;
 
+  /// Cancel — soft-delete so the row still syncs and the history survives.
+  @override
+  Future<void> cancel(int id, {String? reason}) =>
+      (_db.update(_db.appointments)..where((t) => t.id.equals(id))).write(
+        AppointmentsCompanion(
+          status: const Value('cancelled'),
+          isDeleted: const Value(true),
+          notes: reason == null || reason.isEmpty
+              ? const Value.absent()
+              : Value(reason),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  /// Reschedule — move to a new slot. Keeps the same row, so history and
+  /// any linked prescription stay attached.
+  @override
+  Future<void> reschedule({
+    required int id,
+    required DateTime startsAt,
+    String? dentist,
+    int? durationMin,
+  }) => (_db.update(_db.appointments)..where((t) => t.id.equals(id))).write(
+    AppointmentsCompanion(
+      startsAt: Value(startsAt),
+      dentist: dentist == null ? const Value.absent() : Value(dentist),
+      durationMin: durationMin == null
+          ? const Value.absent()
+          : Value(durationMin),
+      status: const Value('upcoming'),
+      updatedAt: Value(DateTime.now()),
+    ),
+  );
+
   @override
   Stream<List<Appointment>> watchAppointmentsForDay(
     DateTime day, {

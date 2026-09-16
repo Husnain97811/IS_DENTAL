@@ -1,7 +1,14 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 part 'appointment.freezed.dart';
 
-enum AppointmentStatus { inChair, waiting, completed, upcoming, noShow }
+enum AppointmentStatus {
+  inChair,
+  waiting,
+  completed,
+  upcoming,
+  noShow,
+  cancelled,
+}
 
 @freezed
 abstract class Appointment with _$Appointment {

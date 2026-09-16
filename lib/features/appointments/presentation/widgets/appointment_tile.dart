@@ -57,8 +57,20 @@ class AppointmentTile extends StatelessWidget {
         ChipKind.overdue,
         'No-show',
       ),
+      AppointmentStatus.cancelled => (
+        d.alert,
+        d.alert.withValues(alpha: .14),
+        dark ? const Color(0xFFFB7185) : const Color(0xFFBE123C),
+        ChipKind.overdue,
+        'Cancelled',
+      ),
     };
-    String two(int v) => v.toString().padLeft(2, '0');
+    String hm(DateTime t) {
+      final h = t.hour == 0 ? 12 : (t.hour > 12 ? t.hour - 12 : t.hour);
+      final m = t.minute.toString().padLeft(2, '0');
+      return '$h:$m ${t.hour >= 12 ? 'PM' : 'AM'}';
+    }
+
     return InkWell(
       borderRadius: BorderRadius.circular(13),
       onTap: () {},
@@ -67,9 +79,9 @@ class AppointmentTile extends StatelessWidget {
         child: Row(
           children: [
             SizedBox(
-              width: 50,
+              width: 68,
               child: Text(
-                '${two(appt.startsAt.hour)}:${two(appt.startsAt.minute)}',
+                hm(appt.startsAt),
                 style: AppTypography.mono(
                   size: 11.sp,
                   color: d.text1,

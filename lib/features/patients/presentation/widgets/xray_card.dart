@@ -24,7 +24,7 @@ class XrayCard extends ConsumerWidget {
 
     // license drives both the tier and the subscription window
     final lic = ref.watch(licenseControllerProvider).value?.license;
-    final isLimited = lic?.tier == LicenseTier.basic; // only basic is capped
+    final isLimited = lic?.tier == LicenseTier.basic;
     final expiresAt = lic?.expiresAt;
 
     return Container(

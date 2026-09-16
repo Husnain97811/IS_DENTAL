@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/settings/domain/entitlements.dart';
 
 import 'package:sizer/sizer.dart';
 
@@ -350,91 +351,97 @@ class _OffersSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final d = context.dent;
     final offers = ref.watch(offersProvider).value ?? const <Offer>[];
+    final ent = ref.watch(entitlementsProvider);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: d.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: d.line),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // header
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: d.ice.withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(11),
+    //here check if user has premium tier then show this offer container
+    if (ent.tier == LicenseTier.premium) {
+      return Container(
+        decoration: BoxDecoration(
+          color: d.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: d.line),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // header
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: d.ice.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Icon(Icons.campaign_rounded, size: 20, color: d.ice),
                   ),
-                  child: Icon(Icons.campaign_rounded, size: 20, color: d.ice),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Offers & Promotions',
-                        style: TextStyle(
-                          color: d.text1,
-                          fontSize: 12.5.sp,
-                          fontWeight: FontWeight.w700,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Offers & Promotions',
+                          style: TextStyle(
+                            color: d.text1,
+                            fontSize: 12.5.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Send promotions to patients with the app',
-                        style: TextStyle(color: d.text3, fontSize: 9.sp),
-                      ),
+                        Text(
+                          'Send promotions to patients with the app',
+                          style: TextStyle(color: d.text3, fontSize: 9.sp),
+                        ),
+                      ],
+                    ),
+                  ),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: d.ice,
+                      foregroundColor: AppPalette.onAccent,
+                      minimumSize: const Size(0, 42),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    onPressed: () => showOfferComposer(context),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('New Offer'),
+                  ),
+                ],
+              ),
+            ),
+            if (offers.isNotEmpty) Divider(height: 1, color: d.line),
+
+            // offers list — capped to 40% of screen height, then scrolls
+            if (offers.isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
+                child: Text(
+                  'No offers yet. Tap "New Offer" to send your first one.',
+                  style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+                ),
+              )
+            else
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: 40.h),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      for (final o in offers) _offerCard(context, ref, d, o),
                     ],
                   ),
                 ),
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: d.ice,
-                    foregroundColor: AppPalette.onAccent,
-                    minimumSize: const Size(0, 42),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  onPressed: () => showOfferComposer(context),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('New Offer'),
-                ),
-              ],
-            ),
-          ),
-          if (offers.isNotEmpty) Divider(height: 1, color: d.line),
-
-          // offers list — capped to 40% of screen height, then scrolls
-          if (offers.isEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
-              child: Text(
-                'No offers yet. Tap "New Offer" to send your first one.',
-                style: TextStyle(color: d.text4, fontSize: 8.5.sp),
               ),
-            )
-          else
-            ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: 40.h),
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    for (final o in offers) _offerCard(context, ref, d, o),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    } else {
+      return SizedBox.shrink();
+    }
   }
 
   Widget _offerCard(

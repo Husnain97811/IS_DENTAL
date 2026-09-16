@@ -1,12 +1,12 @@
 {
-  "clinicId": "TESTING-PHA-987463",
-  "clinicName": "Testing activation",
+  "clinicId": "RENEW-MUX-987463",
+  "clinicName": "RENEW SKIN & DENTAL CLINIC",
   "tier": "premium",
   "cloudPackage": "cloud",
   "maxBranches": 1,
-  "maxUsers": 2,
-  "issuedAt": "2026-09-10T08:41:04.998688Z",
-  "expiresAt": "2026-09-15T08:41:04.999008Z",
+  "maxUsers": 3,
+  "issuedAt": "2026-09-12T15:33:25.028091Z",
+  "expiresAt": "2026-09-15T15:33:25.028197Z",
   "machineFingerprint": "ANY",
-  "signature": "HweITfqn2fdiX56LbaGwl/Y6nf7f5e7tw+NoPrEi3mNgPe1eyX6jebs+U9b3Ls34w/1K9yNkerzlvTnopbqvhfum9VqcBq19GWjh6BQ3we/k/uS9i0IcMAuVjKJmEfyyAKoJQiN5+qIZg+YPNron/M9FMgIYSq8ByUD6oEdIiaWisQCb2hsV/zxEZuqjtqz+u09P+NBmBrhLoQSbjaraT7K7O4TrYVKKmzReYSKvyc5U0OnfYe0DUo2HLAx2cB+bRBrdNgjvh63+Sd17IPf5JWYV1mDCvci/SFBWENpw+MqJE81r9L99lun0Z78oECDCRWRfHJ6w3oJcN/sSvunpbA=="
+  "signature": "S4UQBzwPF3nVTzhfeN8RIBVNy8n7PG9UXoehJ4TpyeTA+pORk75tz51ucqhk2C1QlcVKuu4HYrWf/qpgv1syr+C6WqBbPSI9QTWn+LRsQ79wqCvepE0BXoFMXUEl55g7sXIJDw8o+XQRpGUyPUZUY9KjDSaY8a4OdtrNeKfs089pkCylJbI5QnrbC12nVC/iLIi/SMW77hof/N3wZWLV8iWbNw9XdfbrGbQ1fpzwYCiqhQcC0lQX0VAiK/IW6qzYESW8I02ZNGoomwyhfn8zNqbUQWOXpn0939GRkHZOVpBS0Pf5nc21tvISWL4+xT8v9diY8iQfQNWTQS7i62MQow=="
 }

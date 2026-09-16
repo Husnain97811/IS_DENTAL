@@ -3,7 +3,7 @@ import 'package:bcrypt/bcrypt.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:is_dental/features/branches/presentation/branch_controller.dart';
+import 'package:is_dental/features/settings/domain/entitlements.dart';
 import 'package:sizer/sizer.dart';
 import '../../../../core/constants/views.dart';
 import '../../../../core/widgets/dent_field.dart';
@@ -137,6 +137,20 @@ class _S extends ConsumerState<StaffEditorDialog> {
     if (phone.isEmpty) {
       setState(() => _error = 'Enter a phone number.');
       return;
+    }
+
+    // ── licence cap (new logins only) ──
+    if (!_isEdit) {
+      final ent = ref.read(entitlementsProvider);
+      final count = await ref.read(appDatabaseProvider).userCount();
+      if (count >= ent.maxUsers) {
+        setState(
+          () => _error =
+              'Your ${ent.tierLabel} plan covers ${ent.maxUsers} logins. '
+              'Get in touch to add more.',
+        );
+        return;
+      }
     }
 
     setState(() {

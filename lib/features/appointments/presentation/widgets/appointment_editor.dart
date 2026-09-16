@@ -68,6 +68,10 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
       initialTime: _slot != null
           ? TimeOfDay.fromDateTime(_slot!)
           : ref.read(clinicScheduleProvider).start,
+      builder: (ctx, child) => MediaQuery(
+        data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: false),
+        child: child!,
+      ),
     );
     if (t == null) return;
     setState(() {
@@ -104,8 +108,12 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
       final cEnd = conflict.startsAt.add(
         Duration(minutes: conflict.durationMin),
       );
-      String hm(DateTime t) =>
-          '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+      String hm(DateTime t) {
+        final h = t.hour == 0 ? 12 : (t.hour > 12 ? t.hour - 12 : t.hour);
+        final m = t.minute.toString().padLeft(2, '0');
+        return '$h:$m ${t.hour >= 12 ? 'PM' : 'AM'}';
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -185,7 +193,12 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
     final slots = ref.watch(daySlotsProvider(_date));
     final dentists = ref.watch(dentistsProvider).value ?? [];
     final procedures = ref.watch(proceduresProvider);
-    String two(int v) => v.toString().padLeft(2, '0');
+    String hm(DateTime t) {
+      final h = t.hour == 0 ? 12 : (t.hour > 12 ? t.hour - 12 : t.hour);
+      final m = t.minute.toString().padLeft(2, '0');
+      return '$h:$m ${t.hour >= 12 ? 'PM' : 'AM'}';
+    }
+
     final initialPatient = _initialPatient(patients);
 
     // seed/reset procedure from catalog
@@ -371,7 +384,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                         for (final s in slots)
                           _slotChip(
                             d,
-                            '${two(s.time.hour)}:${two(s.time.minute)}',
+                            hm(s.time),
                             busy: s.busy,
                             selected: _slot == s.time,
                             onTap: s.busy
@@ -430,7 +443,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                       icon: Icon(Icons.more_time_rounded, size: 11.sp),
                       label: Text(
                         _customTime && _slot != null
-                            ? 'Custom: ${_slot!.hour.toString().padLeft(2, '0')}:${_slot!.minute.toString().padLeft(2, '0')}'
+                            ? 'Custom: ${hm(_slot!)}'
                             : 'Set custom time',
                         style: TextStyle(fontSize: 11.sp),
                       ),
@@ -516,7 +529,7 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
   }) => GestureDetector(
     onTap: onTap,
     child: Container(
-      width: 5.w,
+      width: 9.w,
       height: 5.h,
       alignment: Alignment.center,
       decoration: BoxDecoration(

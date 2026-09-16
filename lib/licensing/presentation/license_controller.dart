@@ -19,10 +19,20 @@ class LicenseController extends AsyncNotifier<LicenseState> {
 
   Future<LicenseState> _resolve() async {
     final s = await _lic.resolveLicense();
-    if (s.status != LicenseStatus.active)
+    if (s.status != LicenseStatus.active) {
       return s; // notActivated / invalid / expired
-    if (await _conn.withinWindow())
+    }
+
+    // ── OFFLINE LICENCE: no cloud package means no heartbeat, ever.
+    // These installs never sync, so requiring an internet check would lock
+    // out software that was sold as fully offline.
+    if (s.license!.cloudPackage == CloudPackage.none) {
+      return s;
+    }
+
+    if (await _conn.withinWindow()) {
       return s; // synced within 48h → full offline use
+    }
     final hb = await _conn.heartbeat(
       clinicId: s.license!.clinicId,
       licenseExpiry: s.license!.expiresAt,
@@ -44,7 +54,10 @@ class LicenseController extends AsyncNotifier<LicenseState> {
   Future<({bool ok, String? error})> activate(String raw) async {
     final r = await _lic.activate(raw);
     if (r.ok) {
-      await _conn.seedContact();
+      final lic = (await _lic.resolveLicense()).license;
+      if (lic?.cloudPackage == CloudPackage.cloud) {
+        await _conn.seedContact();
+      }
       state = AsyncData(await _resolve());
     }
     return r;
@@ -73,9 +86,11 @@ class LicenseController extends AsyncNotifier<LicenseState> {
       password: password,
     );
     state = AsyncData(await svc.resolveLicense());
-    unawaited(
-      _conn.heartbeat(clinicId: lic.clinicId, licenseExpiry: lic.expiresAt),
-    );
+    if (lic.cloudPackage == CloudPackage.cloud) {
+      unawaited(
+        _conn.heartbeat(clinicId: lic.clinicId, licenseExpiry: lic.expiresAt),
+      );
+    }
   }
 
   Future<void> reload() async => state = AsyncData(await _resolve());

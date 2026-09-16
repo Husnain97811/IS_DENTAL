@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/settings/domain/entitlements.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../../core/constants/views.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/dent_colors.dart';
 import '../../../../core/widgets/dent_field.dart';
@@ -41,8 +43,29 @@ class _S extends ConsumerState<BranchEditorDialog> {
 
   Future<void> _save() async {
     if (_name.text.trim().isEmpty) return;
-    setState(() => _busy = true);
     final e = widget.existing;
+
+    // ── licence cap (new branches only) ──
+    if (e == null) {
+      final ent = ref.read(entitlementsProvider);
+      final active =
+          (ref.read(branchesStreamProvider).value ?? const <Branch>[]).length;
+      if (active >= ent.maxBranches) {
+        await showDentDialog(
+          context,
+          kind: DentDialogKind.warning,
+          title: 'Branch limit reached',
+          message:
+              'Your ${ent.tierLabel} plan covers ${ent.maxBranches} '
+              'branch${ent.maxBranches == 1 ? '' : 'es'}. '
+              'Get in touch to add more.',
+          confirmLabel: 'OK',
+        );
+        return;
+      }
+    }
+
+    setState(() => _busy = true);
     await ref
         .read(branchRepositoryProvider)
         .upsertBranch(
