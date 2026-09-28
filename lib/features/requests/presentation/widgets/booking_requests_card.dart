@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:is_dental/features/settings/domain/entitlements.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../../core/constants/views.dart';
@@ -42,6 +43,13 @@ class BookingRequestsCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // ── Licence gate — Standard and up, cloud only ──
+    // Must sit ABOVE the pendingRequestsProvider watch so a gated clinic
+    // never subscribes to the request stream at all.
+    if (!ref.watch(entitlementsProvider).bookingRequests) {
+      return const SizedBox.shrink();
+    }
+
     final d = context.dent;
     final async = ref.watch(pendingRequestsProvider);
     final all = async.value ?? const <BookingRequestView>[];
@@ -163,8 +171,6 @@ class BookingRequestsCard extends ConsumerWidget {
                       _ago(r.createdAt),
                       style: TextStyle(color: d.text4, fontSize: 9.sp),
                     ),
-
-                    // const SizedBox(width: 6),
                   ],
                 ),
                 const SizedBox(height: 1),
@@ -173,7 +179,6 @@ class BookingRequestsCard extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: d.text3, fontSize: 10.5.sp),
                 ),
-
                 Text(
                   _slotLabel(r.slotPkt),
                   style: AppTypography.mono(size: 9.5.sp, color: d.text2),

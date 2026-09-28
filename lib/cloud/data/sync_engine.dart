@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/cloud/data/cloud_service.dart';
+import 'package:is_dental/core/utils/uuids.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/db/app_database.dart';
 
@@ -37,10 +38,13 @@ class SyncEngine {
     await step('patients', () => _syncPatients(clinicId));
     await step('branches', () => _syncBranches(clinicId));
     await step('treatments', () => _syncTreatments(clinicId));
+    await step('medicines', () => _syncMedicines(clinicId));
+    await step('precaution_sets', () => _syncPrecautionSets(clinicId));
     await step('inventory', () => _syncInventory(clinicId));
     await step('users', () => _syncUsers(clinicId));
     await step('appointments', () => _syncAppointments(clinicId));
     await step('booking_requests', () => _syncBookingRequests(clinicId));
+    await step('permissions', () => _syncPermissions(clinicId));
 
     await step('invoices', () => _syncInvoices(clinicId));
 
@@ -67,6 +71,12 @@ class SyncEngine {
       await _db.delete(_db.users).go();
       await _db.delete(_db.branches).go();
       await _db.delete(_db.patients).go();
+      await _db.delete(_db.prescriptionItems).go();
+      await _db.delete(_db.prescriptionCare).go();
+      await _db.delete(_db.prescriptions).go();
+      await _db.delete(_db.precautionLines).go();
+      await _db.delete(_db.precautionSets).go();
+      await _db.delete(_db.medicines).go();
       //comment for personal reference
       // ⚠ DO NOT wipe patientXrays — X-rays are LOCAL-ONLY and not in the
       // cloud. Deleting them here would destroy them permanently.
@@ -78,6 +88,10 @@ class SyncEngine {
       'push_patients',
       'pull_appointments',
       'push_appointments',
+      'pull_medicines',
+      'push_medicines',
+      'pull_precaution_sets',
+      'push_precaution_sets',
       'pull_invoices',
       'push_invoices',
       'pull_inventory',
@@ -102,6 +116,8 @@ class SyncEngine {
     await _restoreTreatments(clinicId);
     await _restoreInventory(clinicId);
     await _restoreAppointments(clinicId);
+    await _restoreMedicines(clinicId);
+    await _restorePrecautionSets(clinicId);
     await _restoreBookingRequests(clinicId);
     await _restoreInvoices(clinicId); // brings invoice items
   }
@@ -156,6 +172,8 @@ class SyncEngine {
               username: Value(r['username'] ?? ''),
               passwordHash: Value(r['password_hash'] ?? ''),
               role: Value(r['role'] ?? 'receptionist'),
+              email: Value(r['email']),
+              phone: Value(r['phone']),
               isDeleted: Value(r['is_deleted'] ?? false),
               updatedAt: Value(DateTime.parse(r['updated_at'])),
             ),
@@ -207,6 +225,8 @@ class SyncEngine {
             TreatmentsCompanion(
               uuid: Value(r['uuid']),
               clinicId: Value(clinicId),
+              branchId: Value(r['branch_id']),
+
               name: Value(r['name'] ?? ''),
               category: Value(r['category'] ?? ''),
               price: Value(r['price'] ?? 0),
@@ -257,6 +277,7 @@ class SyncEngine {
               dentist: Value(r['dentist'] ?? ''),
               chair: Value(r['chair'] ?? 1),
               procedure: Value(r['procedure'] ?? ''),
+              billed: Value(r['billed'] ?? false),
               startsAt: Value(DateTime.parse(r['starts_at'])),
               durationMin: Value(r['duration_min'] ?? 30),
               status: Value(r['status'] ?? 'upcoming'),
@@ -303,6 +324,9 @@ class SyncEngine {
     for (final r in await _pullAll('invoices', clinicId)) {
       final localPid = await _patientId(r['patient_uuid']);
       if (localPid == null) continue;
+      final localApptId = r['appointment_uuid'] == null
+          ? null
+          : await _appointmentId(r['appointment_uuid']);
       final invId = await _db
           .into(_db.invoices)
           .insert(
@@ -311,6 +335,7 @@ class SyncEngine {
               clinicId: Value(clinicId),
               branchId: Value(r['branch_id']),
               patientId: Value(localPid),
+              appointmentId: Value(localApptId),
               invoiceNo: Value(r['invoice_no'] ?? ''),
               issuedAt: Value(DateTime.parse(r['issued_at'])),
               status: Value(r['status'] ?? 'pending'),
@@ -345,6 +370,74 @@ class SyncEngine {
     }
   }
 
+  Future<void> _restoreMedicines(String clinicId) async {
+    for (final r in await _pullAll('medicines', clinicId)) {
+      await _db
+          .into(_db.medicines)
+          .insert(
+            MedicinesCompanion(
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              name: Value(r['name'] ?? ''),
+              form: Value(r['form'] ?? ''),
+              defaultDosage: Value(r['default_dosage'] ?? ''),
+              defaultFrequency: Value(r['default_frequency'] ?? ''),
+              category: Value(r['category'] ?? ''),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+    }
+  }
+
+  Future<void> _restorePrecautionSets(String clinicId) async {
+    for (final r in await _pullAll('precaution_sets', clinicId)) {
+      final setId = await _db
+          .into(_db.precautionSets)
+          .insert(
+            PrecautionSetsCompanion(
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              name: Value(r['name'] ?? ''),
+              position: Value(r['position'] ?? 0),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+      for (final l in (r['lines'] as List? ?? const [])) {
+        await _db
+            .into(_db.precautionLines)
+            .insert(
+              PrecautionLinesCompanion.insert(
+                setId: setId,
+                position: Value(l['position'] ?? 0),
+                urdu: Value(l['urdu'] ?? ''),
+                english: Value(l['english'] ?? ''),
+              ),
+            );
+      }
+    }
+  }
+
+  Future<void> _restorePermissions(String clinicId) async {
+    for (final r in await _pullAll('role_permissions', clinicId)) {
+      await _db
+          .into(_db.rolePermissions)
+          .insert(
+            RolePermissionsCompanion.insert(
+              clinicId: clinicId,
+              role: r['role'],
+              key: r['key'],
+              allowed: Value(r['allowed'] ?? false),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+    }
+  }
+
   // ---- cursor + helpers ----
   Future<DateTime> _cur(String k) async =>
       DateTime.tryParse(await _db.getSetting('sync_$k') ?? '') ??
@@ -370,6 +463,14 @@ class SyncEngine {
   Future<String?> _patientUuid(int id) async => (await (_db.select(
     _db.patients,
   )..where((t) => t.id.equals(id))).getSingleOrNull())?.uuid;
+
+  Future<String?> _appointmentUuid(int id) async => (await (_db.select(
+    _db.appointments,
+  )..where((t) => t.id.equals(id))).getSingleOrNull())?.uuid;
+
+  Future<int?> _appointmentId(String uuid) async => (await (_db.select(
+    _db.appointments,
+  )..where((t) => t.uuid.equals(uuid))).getSingleOrNull())?.id;
   Future<int?> _patientId(String uuid) async => (await (_db.select(
     _db.patients,
   )..where((t) => t.uuid.equals(uuid))).getSingleOrNull())?.id;
@@ -494,6 +595,50 @@ class SyncEngine {
         ],
       });
     }
+
+    // ── prescriptions (items + care as JSON, like treatment plans) ──
+    final rxs = await (_db.select(
+      _db.prescriptions,
+    )..where((t) => t.patientId.equals(p.id))).get();
+    await _sb.from('prescriptions').delete().eq('patient_uuid', p.uuid);
+    for (final rx in rxs) {
+      final items =
+          await (_db.select(_db.prescriptionItems)
+                ..where((t) => t.prescriptionId.equals(rx.id))
+                ..orderBy([(t) => OrderingTerm.asc(t.position)]))
+              .get();
+      final care =
+          await (_db.select(_db.prescriptionCare)
+                ..where((t) => t.prescriptionId.equals(rx.id))
+                ..orderBy([(t) => OrderingTerm.asc(t.position)]))
+              .get();
+      await _sb.from('prescriptions').insert({
+        'clinic_id': clinicId,
+        'branch_id': rx.branchId,
+        'patient_uuid': p.uuid,
+        'rx_no': rx.rxNo,
+        'appointment_label': rx.appointmentLabel,
+        'doctor_name': rx.doctorName,
+        'advice': rx.advice,
+        'issued_at': _iso(rx.issuedAt),
+        'is_deleted': rx.isDeleted,
+        'items': [
+          for (final i in items)
+            {
+              'position': i.position,
+              'medicine': i.medicine,
+              'dosage': i.dosage,
+              'frequency': i.frequency,
+              'duration': i.duration,
+              'instructions': i.instructions,
+            },
+        ],
+        'care': [
+          for (final c in care)
+            {'position': c.position, 'urdu': c.urdu, 'english': c.english},
+        ],
+      });
+    }
   }
 
   Future<void> _pullPatientChildren(
@@ -568,6 +713,79 @@ class SyncEngine {
             );
       }
     }
+
+    // ── prescriptions ──
+    final rxRows =
+        (await _sb
+                .from('prescriptions')
+                .select()
+                .eq('patient_uuid', patientUuid))
+            as List;
+
+    for (final lr in await (_db.select(
+      _db.prescriptions,
+    )..where((t) => t.patientId.equals(localId))).get()) {
+      await (_db.delete(
+        _db.prescriptionItems,
+      )..where((t) => t.prescriptionId.equals(lr.id))).go();
+      await (_db.delete(
+        _db.prescriptionCare,
+      )..where((t) => t.prescriptionId.equals(lr.id))).go();
+    }
+    await (_db.delete(
+      _db.prescriptions,
+    )..where((t) => t.patientId.equals(localId))).go();
+
+    for (final r in rxRows) {
+      final rxId = await _db
+          .into(_db.prescriptions)
+          .insert(
+            PrescriptionsCompanion.insert(
+              uuid: Uuids.v4(),
+              clinicId: clinicId,
+              branchId: Value(r['branch_id']),
+              patientId: localId,
+              patientUuid: patientUuid,
+              rxNo: Value(r['rx_no'] ?? ''),
+              appointmentLabel: Value(r['appointment_label'] ?? ''),
+              doctorName: Value(r['doctor_name'] ?? ''),
+              advice: Value(r['advice'] ?? ''),
+              issuedAt: Value(
+                r['issued_at'] == null
+                    ? DateTime.now()
+                    : DateTime.parse(r['issued_at']),
+              ),
+              isDeleted: Value(r['is_deleted'] ?? false),
+            ),
+          );
+      for (final i in (r['items'] as List? ?? const [])) {
+        await _db
+            .into(_db.prescriptionItems)
+            .insert(
+              PrescriptionItemsCompanion.insert(
+                prescriptionId: rxId,
+                position: Value(i['position'] ?? 0),
+                medicine: i['medicine'] ?? '',
+                dosage: Value(i['dosage'] ?? ''),
+                frequency: Value(i['frequency'] ?? ''),
+                duration: Value(i['duration'] ?? ''),
+                instructions: Value(i['instructions'] ?? ''),
+              ),
+            );
+      }
+      for (final c in (r['care'] as List? ?? const [])) {
+        await _db
+            .into(_db.prescriptionCare)
+            .insert(
+              PrescriptionCareCompanion.insert(
+                prescriptionId: rxId,
+                position: Value(c['position'] ?? 0),
+                urdu: Value(c['urdu'] ?? ''),
+                english: Value(c['english'] ?? ''),
+              ),
+            );
+      }
+    }
   }
 
   // ================= APPOINTMENTS =================
@@ -589,6 +807,7 @@ class SyncEngine {
           'dentist': a.dentist,
           'chair': a.chair,
           'procedure': a.procedure,
+          'billed': a.billed,
           'starts_at': _iso(a.startsAt),
           'duration_min': a.durationMin,
           'status': a.status,
@@ -622,6 +841,7 @@ class SyncEngine {
               dentist: Value(r['dentist'] ?? ''),
               chair: Value(r['chair'] ?? 1),
               procedure: Value(r['procedure'] ?? ''),
+              billed: Value(r['billed'] ?? false),
               startsAt: Value(DateTime.parse(r['starts_at'])),
               durationMin: Value(r['duration_min'] ?? 30),
               status: Value(r['status'] ?? 'upcoming'),
@@ -726,6 +946,9 @@ class SyncEngine {
           'invoice_no': inv.invoiceNo,
           'issued_at': _iso(inv.issuedAt),
           'status': inv.status,
+          'appointment_uuid': inv.appointmentId == null
+              ? null
+              : await _appointmentUuid(inv.appointmentId!),
           'summary': inv.summary,
           'subtotal': inv.subtotal,
           'adjustment': inv.adjustment,
@@ -762,6 +985,9 @@ class SyncEngine {
       final u = DateTime.parse(r['updated_at']);
       final localPid = await _patientId(r['patient_uuid']);
       if (localPid == null) continue;
+      final localApptId = r['appointment_uuid'] == null
+          ? null
+          : await _appointmentId(r['appointment_uuid']);
       final existing = await (_db.select(
         _db.invoices,
       )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
@@ -775,6 +1001,7 @@ class SyncEngine {
               clinicId: Value(clinicId),
               branchId: Value(r['branch_id']),
               patientId: Value(localPid),
+              appointmentId: Value(localApptId),
               invoiceNo: Value(r['invoice_no'] ?? ''),
               issuedAt: Value(DateTime.parse(r['issued_at'])),
               status: Value(r['status'] ?? 'pending'),
@@ -878,6 +1105,7 @@ class SyncEngine {
           {
             'uuid': t.uuid,
             'clinic_id': clinicId,
+            'branch_id': t.branchId,
             'name': t.name,
             'category': t.category,
             'price': t.price,
@@ -902,6 +1130,7 @@ class SyncEngine {
               id: existing == null ? const Value.absent() : Value(existing.id),
               uuid: Value(r['uuid']),
               clinicId: Value(clinicId),
+              branchId: Value(r['branch_id']),
               name: Value(r['name'] ?? ''),
               category: Value(r['category'] ?? ''),
               price: Value(r['price'] ?? 0),
@@ -911,6 +1140,133 @@ class SyncEngine {
             ),
           );
       if (u.isAfter(pullSince)) await _setCur('pull_treatments', u);
+    }
+  }
+
+  Future<void> _syncMedicines(String clinicId) async {
+    final since = await _cur('push_medicines');
+    final changed = await (_db.select(
+      _db.medicines,
+    )..where((t) => t.updatedAt.isBiggerThanValue(since))).get();
+    if (changed.isNotEmpty) {
+      await _sb.from('medicines').upsert([
+        for (final m in changed)
+          {
+            'uuid': m.uuid,
+            'clinic_id': clinicId,
+            'name': m.name,
+            'form': m.form,
+            'default_dosage': m.defaultDosage,
+            'default_frequency': m.defaultFrequency,
+            'category': m.category,
+            'is_deleted': m.isDeleted,
+            'updated_at': _iso(m.updatedAt),
+          },
+      ], onConflict: 'uuid');
+      await _setCur('push_medicines', _max(changed.map((e) => e.updatedAt)));
+    }
+
+    final pullSince = await _cur('pull_medicines');
+    for (final r in await _pull('medicines', clinicId, pullSince)) {
+      final u = DateTime.parse(r['updated_at']);
+      final existing = await (_db.select(
+        _db.medicines,
+      )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
+      await _db
+          .into(_db.medicines)
+          .insertOnConflictUpdate(
+            MedicinesCompanion(
+              id: existing == null ? const Value.absent() : Value(existing.id),
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              name: Value(r['name'] ?? ''),
+              form: Value(r['form'] ?? ''),
+              defaultDosage: Value(r['default_dosage'] ?? ''),
+              defaultFrequency: Value(r['default_frequency'] ?? ''),
+              category: Value(r['category'] ?? ''),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(u),
+            ),
+          );
+      if (u.isAfter(pullSince)) await _setCur('pull_medicines', u);
+    }
+  }
+
+  Future<void> _syncPrecautionSets(String clinicId) async {
+    final since = await _cur('push_precaution_sets');
+    final changed = await (_db.select(
+      _db.precautionSets,
+    )..where((t) => t.updatedAt.isBiggerThanValue(since))).get();
+
+    if (changed.isNotEmpty) {
+      final rows = <Map<String, dynamic>>[];
+      for (final s in changed) {
+        final lines =
+            await (_db.select(_db.precautionLines)
+                  ..where((t) => t.setId.equals(s.id))
+                  ..orderBy([(t) => OrderingTerm.asc(t.position)]))
+                .get();
+        rows.add({
+          'uuid': s.uuid,
+          'clinic_id': clinicId,
+          'name': s.name,
+          'position': s.position,
+          'is_deleted': s.isDeleted,
+          'updated_at': _iso(s.updatedAt),
+          'lines': [
+            for (final l in lines)
+              {'position': l.position, 'urdu': l.urdu, 'english': l.english},
+          ],
+        });
+      }
+      await _sb.from('precaution_sets').upsert(rows, onConflict: 'uuid');
+      await _setCur(
+        'push_precaution_sets',
+        _max(changed.map((e) => e.updatedAt)),
+      );
+    }
+
+    final pullSince = await _cur('pull_precaution_sets');
+    for (final r in await _pull('precaution_sets', clinicId, pullSince)) {
+      final u = DateTime.parse(r['updated_at']);
+      final existing = await (_db.select(
+        _db.precautionSets,
+      )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
+
+      final setId = await _db
+          .into(_db.precautionSets)
+          .insertOnConflictUpdate(
+            PrecautionSetsCompanion(
+              id: existing == null ? const Value.absent() : Value(existing.id),
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              name: Value(r['name'] ?? ''),
+              position: Value(r['position'] ?? 0),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(u),
+            ),
+          );
+      final realId = existing?.id ?? setId;
+
+      // replace lines wholesale
+      await (_db.delete(
+        _db.precautionLines,
+      )..where((t) => t.setId.equals(realId))).go();
+      for (final l in (r['lines'] as List? ?? const [])) {
+        await _db
+            .into(_db.precautionLines)
+            .insert(
+              PrecautionLinesCompanion.insert(
+                setId: realId,
+                position: Value(l['position'] ?? 0),
+                urdu: Value(l['urdu'] ?? ''),
+                english: Value(l['english'] ?? ''),
+              ),
+            );
+      }
+      if (u.isAfter(pullSince)) await _setCur('pull_precaution_sets', u);
     }
   }
 
@@ -1035,6 +1391,49 @@ class SyncEngine {
             ),
           );
       if (u.isAfter(pullSince)) await _setCur('pull_users', u);
+    }
+  }
+
+  Future<void> _syncPermissions(String clinicId) async {
+    final since = await _cur('push_permissions');
+    final changed = await (_db.select(
+      _db.rolePermissions,
+    )..where((t) => t.updatedAt.isBiggerThanValue(since))).get();
+    if (changed.isNotEmpty) {
+      await _sb.from('role_permissions').upsert([
+        for (final p in changed)
+          {
+            'clinic_id': clinicId,
+            'role': p.role,
+            'key': p.key,
+            'allowed': p.allowed,
+            'updated_at': _iso(p.updatedAt),
+          },
+      ], onConflict: 'clinic_id,role,key');
+      await _setCur('push_permissions', _max(changed.map((e) => e.updatedAt)));
+    }
+
+    final pullSince = await _cur('pull_permissions');
+    for (final r in await _pull('role_permissions', clinicId, pullSince)) {
+      final u = DateTime.parse(r['updated_at']);
+      final existing =
+          await (_db.select(_db.rolePermissions)..where(
+                (t) => t.role.equals(r['role']) & t.key.equals(r['key']),
+              ))
+              .getSingleOrNull();
+      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
+      await _db
+          .into(_db.rolePermissions)
+          .insertOnConflictUpdate(
+            RolePermissionsCompanion.insert(
+              clinicId: clinicId,
+              role: r['role'],
+              key: r['key'],
+              allowed: Value(r['allowed'] ?? false),
+              updatedAt: Value(u),
+            ),
+          );
+      if (u.isAfter(pullSince)) await _setCur('pull_permissions', u);
     }
   }
 }

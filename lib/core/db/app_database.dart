@@ -5,6 +5,7 @@ import 'package:is_dental/features/offers/data/offer_tables.dart';
 import 'package:is_dental/features/prescriptions/data/prescription_tables.dart';
 import 'package:is_dental/features/requests/data/booking_request_tables.dart';
 import 'package:is_dental/features/patients/data/xray_tables.dart';
+import 'package:is_dental/features/settings/data/permission_tables.dart';
 
 import '../constants/views.dart';
 import 'database_connection.dart';
@@ -73,6 +74,7 @@ class Users extends Table {
     Prescriptions,
     PrescriptionItems,
     PrescriptionCare,
+    RolePermissions,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -442,6 +444,11 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(prescriptionCare);
         } catch (_) {}
       }
+      if (from < 21) {
+        try {
+          await m.createTable(rolePermissions);
+        } catch (_) {}
+      }
     },
   );
 
@@ -717,6 +724,13 @@ class AppDatabase extends _$AppDatabase {
     final q = select(appointments)
       ..where((t) => t.billed.equals(true) & t.isDeleted.equals(false));
     return q.watch().map((rows) => rows.map((r) => r.id).toSet());
+  }
+
+  /// Appointment ids that have at least one prescription attached.
+  Stream<Set<int>> watchPrescribedAppointmentIds() {
+    final q = select(prescriptions)
+      ..where((t) => t.isDeleted.equals(false) & t.appointmentId.isNotNull());
+    return q.watch().map((rows) => rows.map((r) => r.appointmentId!).toSet());
   }
 
   /// appointmentId → invoice status ('pending' | 'paid' | 'overdue')

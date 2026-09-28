@@ -13980,6 +13980,404 @@ class PrescriptionCareCompanion extends UpdateCompanion<PrescriptionCareRow> {
   }
 }
 
+class $RolePermissionsTable extends RolePermissions
+    with TableInfo<$RolePermissionsTable, PermissionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RolePermissionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _clinicIdMeta = const VerificationMeta(
+    'clinicId',
+  );
+  @override
+  late final GeneratedColumn<String> clinicId = GeneratedColumn<String>(
+    'clinic_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _allowedMeta = const VerificationMeta(
+    'allowed',
+  );
+  @override
+  late final GeneratedColumn<bool> allowed = GeneratedColumn<bool>(
+    'allowed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("allowed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    clinicId,
+    role,
+    key,
+    allowed,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'role_permissions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PermissionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('clinic_id')) {
+      context.handle(
+        _clinicIdMeta,
+        clinicId.isAcceptableOrUnknown(data['clinic_id']!, _clinicIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('allowed')) {
+      context.handle(
+        _allowedMeta,
+        allowed.isAcceptableOrUnknown(data['allowed']!, _allowedMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {clinicId, role, key},
+  ];
+  @override
+  PermissionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PermissionRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      clinicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clinic_id'],
+      )!,
+      role: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role'],
+      )!,
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      allowed: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}allowed'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RolePermissionsTable createAlias(String alias) {
+    return $RolePermissionsTable(attachedDatabase, alias);
+  }
+}
+
+class PermissionRow extends DataClass implements Insertable<PermissionRow> {
+  final int id;
+  final String clinicId;
+  final String role;
+  final String key;
+  final bool allowed;
+  final DateTime updatedAt;
+  const PermissionRow({
+    required this.id,
+    required this.clinicId,
+    required this.role,
+    required this.key,
+    required this.allowed,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['clinic_id'] = Variable<String>(clinicId);
+    map['role'] = Variable<String>(role);
+    map['key'] = Variable<String>(key);
+    map['allowed'] = Variable<bool>(allowed);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  RolePermissionsCompanion toCompanion(bool nullToAbsent) {
+    return RolePermissionsCompanion(
+      id: Value(id),
+      clinicId: Value(clinicId),
+      role: Value(role),
+      key: Value(key),
+      allowed: Value(allowed),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory PermissionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PermissionRow(
+      id: serializer.fromJson<int>(json['id']),
+      clinicId: serializer.fromJson<String>(json['clinicId']),
+      role: serializer.fromJson<String>(json['role']),
+      key: serializer.fromJson<String>(json['key']),
+      allowed: serializer.fromJson<bool>(json['allowed']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'clinicId': serializer.toJson<String>(clinicId),
+      'role': serializer.toJson<String>(role),
+      'key': serializer.toJson<String>(key),
+      'allowed': serializer.toJson<bool>(allowed),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  PermissionRow copyWith({
+    int? id,
+    String? clinicId,
+    String? role,
+    String? key,
+    bool? allowed,
+    DateTime? updatedAt,
+  }) => PermissionRow(
+    id: id ?? this.id,
+    clinicId: clinicId ?? this.clinicId,
+    role: role ?? this.role,
+    key: key ?? this.key,
+    allowed: allowed ?? this.allowed,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  PermissionRow copyWithCompanion(RolePermissionsCompanion data) {
+    return PermissionRow(
+      id: data.id.present ? data.id.value : this.id,
+      clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      role: data.role.present ? data.role.value : this.role,
+      key: data.key.present ? data.key.value : this.key,
+      allowed: data.allowed.present ? data.allowed.value : this.allowed,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PermissionRow(')
+          ..write('id: $id, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('role: $role, ')
+          ..write('key: $key, ')
+          ..write('allowed: $allowed, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, clinicId, role, key, allowed, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PermissionRow &&
+          other.id == this.id &&
+          other.clinicId == this.clinicId &&
+          other.role == this.role &&
+          other.key == this.key &&
+          other.allowed == this.allowed &&
+          other.updatedAt == this.updatedAt);
+}
+
+class RolePermissionsCompanion extends UpdateCompanion<PermissionRow> {
+  final Value<int> id;
+  final Value<String> clinicId;
+  final Value<String> role;
+  final Value<String> key;
+  final Value<bool> allowed;
+  final Value<DateTime> updatedAt;
+  const RolePermissionsCompanion({
+    this.id = const Value.absent(),
+    this.clinicId = const Value.absent(),
+    this.role = const Value.absent(),
+    this.key = const Value.absent(),
+    this.allowed = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  RolePermissionsCompanion.insert({
+    this.id = const Value.absent(),
+    required String clinicId,
+    required String role,
+    required String key,
+    this.allowed = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : clinicId = Value(clinicId),
+       role = Value(role),
+       key = Value(key);
+  static Insertable<PermissionRow> custom({
+    Expression<int>? id,
+    Expression<String>? clinicId,
+    Expression<String>? role,
+    Expression<String>? key,
+    Expression<bool>? allowed,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (clinicId != null) 'clinic_id': clinicId,
+      if (role != null) 'role': role,
+      if (key != null) 'key': key,
+      if (allowed != null) 'allowed': allowed,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  RolePermissionsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? clinicId,
+    Value<String>? role,
+    Value<String>? key,
+    Value<bool>? allowed,
+    Value<DateTime>? updatedAt,
+  }) {
+    return RolePermissionsCompanion(
+      id: id ?? this.id,
+      clinicId: clinicId ?? this.clinicId,
+      role: role ?? this.role,
+      key: key ?? this.key,
+      allowed: allowed ?? this.allowed,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (clinicId.present) {
+      map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (allowed.present) {
+      map['allowed'] = Variable<bool>(allowed.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RolePermissionsCompanion(')
+          ..write('id: $id, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('role: $role, ')
+          ..write('key: $key, ')
+          ..write('allowed: $allowed, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -14013,6 +14411,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PrescriptionCareTable prescriptionCare = $PrescriptionCareTable(
     this,
   );
+  late final $RolePermissionsTable rolePermissions = $RolePermissionsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -14041,6 +14442,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     prescriptions,
     prescriptionItems,
     prescriptionCare,
+    rolePermissions,
   ];
 }
 
@@ -22227,6 +22629,221 @@ typedef $$PrescriptionCareTableProcessedTableManager =
       PrescriptionCareRow,
       PrefetchHooks Function()
     >;
+typedef $$RolePermissionsTableCreateCompanionBuilder =
+    RolePermissionsCompanion Function({
+      Value<int> id,
+      required String clinicId,
+      required String role,
+      required String key,
+      Value<bool> allowed,
+      Value<DateTime> updatedAt,
+    });
+typedef $$RolePermissionsTableUpdateCompanionBuilder =
+    RolePermissionsCompanion Function({
+      Value<int> id,
+      Value<String> clinicId,
+      Value<String> role,
+      Value<String> key,
+      Value<bool> allowed,
+      Value<DateTime> updatedAt,
+    });
+
+class $$RolePermissionsTableFilterComposer
+    extends Composer<_$AppDatabase, $RolePermissionsTable> {
+  $$RolePermissionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get allowed => $composableBuilder(
+    column: $table.allowed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RolePermissionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RolePermissionsTable> {
+  $$RolePermissionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get allowed => $composableBuilder(
+    column: $table.allowed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RolePermissionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RolePermissionsTable> {
+  $$RolePermissionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get clinicId =>
+      $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<bool> get allowed =>
+      $composableBuilder(column: $table.allowed, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$RolePermissionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RolePermissionsTable,
+          PermissionRow,
+          $$RolePermissionsTableFilterComposer,
+          $$RolePermissionsTableOrderingComposer,
+          $$RolePermissionsTableAnnotationComposer,
+          $$RolePermissionsTableCreateCompanionBuilder,
+          $$RolePermissionsTableUpdateCompanionBuilder,
+          (
+            PermissionRow,
+            BaseReferences<_$AppDatabase, $RolePermissionsTable, PermissionRow>,
+          ),
+          PermissionRow,
+          PrefetchHooks Function()
+        > {
+  $$RolePermissionsTableTableManager(
+    _$AppDatabase db,
+    $RolePermissionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RolePermissionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RolePermissionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RolePermissionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> clinicId = const Value.absent(),
+                Value<String> role = const Value.absent(),
+                Value<String> key = const Value.absent(),
+                Value<bool> allowed = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => RolePermissionsCompanion(
+                id: id,
+                clinicId: clinicId,
+                role: role,
+                key: key,
+                allowed: allowed,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String clinicId,
+                required String role,
+                required String key,
+                Value<bool> allowed = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => RolePermissionsCompanion.insert(
+                id: id,
+                clinicId: clinicId,
+                role: role,
+                key: key,
+                allowed: allowed,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RolePermissionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RolePermissionsTable,
+      PermissionRow,
+      $$RolePermissionsTableFilterComposer,
+      $$RolePermissionsTableOrderingComposer,
+      $$RolePermissionsTableAnnotationComposer,
+      $$RolePermissionsTableCreateCompanionBuilder,
+      $$RolePermissionsTableUpdateCompanionBuilder,
+      (
+        PermissionRow,
+        BaseReferences<_$AppDatabase, $RolePermissionsTable, PermissionRow>,
+      ),
+      PermissionRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -22277,4 +22894,6 @@ class $AppDatabaseManager {
       $$PrescriptionItemsTableTableManager(_db, _db.prescriptionItems);
   $$PrescriptionCareTableTableManager get prescriptionCare =>
       $$PrescriptionCareTableTableManager(_db, _db.prescriptionCare);
+  $$RolePermissionsTableTableManager get rolePermissions =>
+      $$RolePermissionsTableTableManager(_db, _db.rolePermissions);
 }

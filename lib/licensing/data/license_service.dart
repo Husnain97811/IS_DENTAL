@@ -45,19 +45,84 @@ class LicenseService {
     );
   }
 
-  Future<({bool ok, String? error})> activate(String raw) async {
+  /// Validates a licence and returns it WITHOUT storing anything.
+  /// Used by the upgrade flow, which must talk to the cloud before committing.
+  Future<({License? license, String? error})> inspect(
+    String raw, {
+    String? expectedClinicId,
+  }) async {
+    License lic;
+    try {
+      lic = License.fromJson(jsonDecode(raw));
+    } catch (_) {
+      return (license: null, error: 'Invalid license format.');
+    }
+    if (!_verifier.verify(lic)) {
+      return (license: null, error: 'License signature is not valid.');
+    }
+    if (DateTime.now().isAfter(lic.expiresAt)) {
+      return (license: null, error: 'This license has already expired.');
+    }
+    if (expectedClinicId != null && lic.clinicId != expectedClinicId) {
+      return (
+        license: null,
+        error:
+            'This licence belongs to a different clinic '
+            '(${lic.clinicId}). Ask for one issued to $expectedClinicId.',
+      );
+    }
+    return (license: lic, error: null);
+  }
+
+  // / [expectedClinicId] — when re-activating on a live install, the new licence
+  /// must belong to the same clinic. A different id would leave the app
+  /// claiming to be a clinic whose data it doesn't hold.
+  Future<({bool ok, String? error})> activate(
+    String raw, {
+    String? expectedClinicId,
+  }) async {
     License lic;
     try {
       lic = License.fromJson(jsonDecode(raw));
     } catch (_) {
       return (ok: false, error: 'Invalid license format.');
     }
-    if (!_verifier.verify(lic))
+    if (!_verifier.verify(lic)) {
       return (ok: false, error: 'License signature is not valid.');
-    if (DateTime.now().isAfter(lic.expiresAt))
+    }
+    if (DateTime.now().isAfter(lic.expiresAt)) {
       return (ok: false, error: 'This license has already expired.');
+    }
+    if (expectedClinicId != null && lic.clinicId != expectedClinicId) {
+      return (
+        ok: false,
+        error:
+            'This licence belongs to a different clinic '
+            '(${lic.clinicId}). Ask for one issued to $expectedClinicId.',
+      );
+    }
+
+    // A verified licence cannot have been issued in the future, so a clock
+    // mark later than its issue date is wrong. Pull it back.
+    await _clock.healTo(lic.issuedAt);
+
     await _db.setSetting(_kLicense, jsonEncode(lic.toJson()));
     return (ok: true, error: null);
+  }
+
+  /// After re-activating, keep the stored clinic profile in step with the
+  /// new licence. Only the tier changes — name, branch and currency are
+  /// whatever the clinic set at setup.
+  Future<void> syncProfileTier(License lic) async {
+    final p = await _db.select(_db.clinicProfile).getSingleOrNull();
+    if (p == null) return;
+    await _db.saveProfile(
+      clinicId: lic.clinicId,
+      name: p.name,
+      branch: p.branch,
+      currency: p.currency,
+      tier: lic.tier.name,
+    );
   }
 
   Future<void> completeSetup({

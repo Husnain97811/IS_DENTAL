@@ -423,6 +423,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               //           ),
               //         ),
               // );
+              // days elapsed this week, Mon = 1 … Sun = 7
+              final daysElapsed = now.weekday;
+              final dailyAvg = (weekTotal / daysElapsed).round();
+              final peakDay = peak == null
+                  ? null
+                  : const [
+                      'Mon',
+                      'Tue',
+                      'Wed',
+                      'Thu',
+                      'Fri',
+                      'Sat',
+                      'Sun',
+                    ][peak];
+
               final right = DentPanel(
                 title: 'Weekly Revenue',
                 subtitle: 'Mon – Sun · collected',
@@ -432,44 +447,163 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   onTap: () => context.go(AppRoutes.reports),
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // ── hero ──
                     Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: MiniBarChart(
-                        values: chartValues,
-                        labels: const [
-                          'Mon',
-                          'Tue',
-                          'Wed',
-                          'Thu',
-                          'Fri',
-                          'Sat',
-                          'Sun',
+                      padding: const EdgeInsets.fromLTRB(18, 18, 18, 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'COLLECTED THIS WEEK',
+                                  style: TextStyle(
+                                    color: d.text4,
+                                    fontSize: 7.sp,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: .9,
+                                  ),
+                                ),
+                                const SizedBox(height: 5),
+                                Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.baseline,
+                                  textBaseline: TextBaseline.alphabetic,
+                                  children: [
+                                    Text(
+                                      'Rs ',
+                                      style: TextStyle(
+                                        color: d.text3,
+                                        fontSize: 11.sp,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Text(
+                                      _money(weekTotal),
+                                      style: TextStyle(
+                                        fontFamily: AppFonts.display,
+                                        color: d.text1,
+                                        fontSize: 19.sp,
+                                        fontWeight: FontWeight.w700,
+                                        height: 1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (peakDay != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: d.ok.withValues(alpha: .11),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.trending_up_rounded,
+                                    size: 11.sp,
+                                    color: d.ok,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'Peak $peakDay',
+                                    style: TextStyle(
+                                      color: d.ok,
+                                      fontSize: 8.5.sp,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
-                        peakIndex: peak,
                       ),
                     ),
+
+                    // ── chart ──
+                    if (weekTotal == 0)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 26, 18, 34),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.bar_chart_rounded,
+                              size: 26,
+                              color: d.text4,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Nothing collected yet this week',
+                              style: TextStyle(
+                                color: d.text3,
+                                fontSize: 10.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Paid invoices will appear here.',
+                              style: TextStyle(color: d.text4, fontSize: 8.sp),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                        child: MiniBarChart(
+                          values: chartValues,
+                          labels: const [
+                            'Mon',
+                            'Tue',
+                            'Wed',
+                            'Thu',
+                            'Fri',
+                            'Sat',
+                            'Sun',
+                          ],
+                          peakIndex: peak,
+                        ),
+                      ),
+
+                    // ── footer stats ──
                     Container(
-                      padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
                       decoration: BoxDecoration(
                         border: Border(top: BorderSide(color: d.line)),
                       ),
-                      child: Row(
-                        children: [
-                          _legendStat(
-                            context,
-                            'Rs ${_money(weekTotal)}',
-                            'This week',
-                            d.ok,
-                          ),
-                          const SizedBox(width: 24),
-                          _legendStat(
-                            context,
-                            'Rs ${_money((weekTotal / 7).round())}',
-                            'Daily average',
-                            d.text3,
-                          ),
-                        ],
+                      child: IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _revStat(
+                              d,
+                              'Rs ${_money(dailyAvg)}',
+                              'Daily average',
+                            ),
+                            VerticalDivider(width: 1, color: d.line),
+                            _revStat(
+                              d,
+                              peak == null ? '—' : 'Rs ${_money(maxT)}',
+                              peakDay == null
+                                  ? 'Best day'
+                                  : 'Best day · $peakDay',
+                            ),
+                            VerticalDivider(width: 1, color: d.line),
+                            _revStat(d, '$daysElapsed of 7', 'Days elapsed'),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -492,6 +626,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
     );
   }
+
+  Widget _revStat(DentColors d, String value, String label) => Expanded(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontFamily: AppFonts.display,
+            color: d.text1,
+            fontSize: 11.5.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: d.text4,
+            fontSize: 8.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
 
   String _greeting() {
     final h = DateTime.now().hour;

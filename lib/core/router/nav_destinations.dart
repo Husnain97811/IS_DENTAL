@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/views.dart';
 import 'app_routes.dart';
 
 enum DrawerKind { none, patient, booking, invoice }
@@ -128,3 +129,12 @@ const kNavDestinations = <NavDestination>[
     drawer: DrawerKind.none,
   ),
 ];
+
+/// Licence gate per route. Routes not listed are always allowed.
+///
+/// Single source of truth — consumed by the sidebar filter AND the router
+/// redirect. Add new gated screens here only, never in the widgets.
+bool navAllowed(String route, Entitlements ent) => switch (route) {
+  AppRoutes.whatsapp => ent.whatsapp,
+  _ => true,
+};

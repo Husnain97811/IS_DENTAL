@@ -30,9 +30,7 @@ class LicenseController extends AsyncNotifier<LicenseState> {
       return s;
     }
 
-    if (await _conn.withinWindow()) {
-      return s; // synced within 48h → full offline use
-    }
+    if (await _conn.withinWindow()) return s;
     final hb = await _conn.heartbeat(
       clinicId: s.license!.clinicId,
       licenseExpiry: s.license!.expiresAt,
@@ -94,6 +92,28 @@ class LicenseController extends AsyncNotifier<LicenseState> {
   }
 
   Future<void> reload() async => state = AsyncData(await _resolve());
+
+  /// Apply a new licence to an already-set-up install — an upgrade or renewal.
+  /// Nothing is deleted: the clinic id is unchanged, so patients, staff,
+  /// settings and cloud data all stay exactly as they are.
+  /// Apply a new licence to an already-set-up install.
+  ///
+  /// The cloud row is updated FIRST. If that fails nothing is stored locally,
+  /// so the licence and the cloud record can never drift apart — a stale
+  /// `clinics.expires_at` would otherwise lock the clinic out on heartbeat.
+  Future<({bool ok, String? error})> reactivate(String raw) async {
+    final current = state.value?.license;
+    final r = await _lic.activate(raw, expectedClinicId: current?.clinicId);
+    if (!r.ok) return r;
+
+    final fresh = (await _lic.resolveLicense()).license;
+    if (fresh != null) await _lic.syncProfileTier(fresh);
+
+    state = AsyncData(await _resolve());
+    return r;
+  }
+
+  /// Returns null on success, or a message describing the failure.
 }
 
 final licenseControllerProvider =

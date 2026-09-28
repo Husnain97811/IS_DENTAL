@@ -1,0 +1,121 @@
+[
+  {
+    "clinicId": "HUSNAIN-ISL-179286",
+    "clinicName": "Husnain Ahmed",
+    "city": "Islamabad",
+    "email": "hussnainahmed97@gmail.com",
+    "tier": "standard",
+    "cloudPackage": "cloud",
+    "maxBranches": 2,
+    "maxUsers": 4,
+    "firstIssuedAt": "2026-09-19T15:53:33.192763",
+    "lastIssuedAt": "2026-09-29T00:24:10.980443",
+    "expiresAt": "2027-09-29T00:24:10.980443",
+    "history": [
+      {
+        "issuedAt": "2026-09-29T00:24:10.980443",
+        "expiresAt": "2027-09-29T00:24:10.980443",
+        "tier": "standard",
+        "cloudPackage": "cloud",
+        "maxBranches": 2,
+        "maxUsers": 4,
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-09-25T18:51:33.556461",
+        "expiresAt": "2027-01-01T18:51:33.556461",
+        "tier": "basic",
+        "cloudPackage": "none",
+        "maxBranches": 2,
+        "maxUsers": 4,
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-09-25T11:56:19.497694",
+        "expiresAt": "2027-09-25T11:56:19.497694",
+        "tier": "standard",
+        "cloudPackage": "cloud",
+        "maxBranches": 2,
+        "maxUsers": 4,
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-09-21T20:58:51.377262",
+        "expiresAt": "2027-09-21T20:58:51.377262",
+        "tier": "basic",
+        "cloudPackage": "none",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-09-19T23:49:35.351561",
+        "expiresAt": "2026-09-20T23:49:35.351561",
+        "tier": "basic",
+        "cloudPackage": "none",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-09-19T23:41:16.428698",
+        "expiresAt": "2026-09-20T23:41:16.428698",
+        "tier": "basic",
+        "cloudPackage": "none",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-09-19T22:06:05.315719",
+        "expiresAt": "2027-09-19T22:06:05.315719",
+        "tier": "basic",
+        "cloudPackage": "none",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-09-19T16:21:18.902519",
+        "expiresAt": "2026-09-21T16:21:18.902519",
+        "tier": "premium",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-09-19T15:54:45.224182",
+        "expiresAt": "2026-09-20T15:54:45.224182",
+        "tier": "premium",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-09-19T15:53:33.192763",
+        "expiresAt": "2027-09-19T15:53:33.192763",
+        "tier": "premium",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "kind": "new"
+      }
+    ]
+  },
+  {
+    "clinicId": "SMILE-ISL-987463",
+    "clinicName": "Smile Craft Dental Clinic",
+    "city": "Islamabad",
+    "email": "",
+    "tier": "premium",
+    "cloudPackage": "cloud",
+    "maxBranches": 1,
+    "maxUsers": 2,
+    "firstIssuedAt": "2026-09-18T12:37:10.540",
+    "lastIssuedAt": "2026-09-18T12:37:10.540",
+    "expiresAt": "2026-10-18T12:37:10.540",
+    "history": []
+  }
+]

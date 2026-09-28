@@ -130,7 +130,7 @@ class _S extends ConsumerState<StaffEditorDialog> {
       setState(() => _error = 'Select a branch for this user.');
       return;
     }
-    if (email.isEmpty || !email.contains('@')) {
+    if (email.isEmpty) {
       setState(() => _error = 'Enter a valid email address.');
       return;
     }

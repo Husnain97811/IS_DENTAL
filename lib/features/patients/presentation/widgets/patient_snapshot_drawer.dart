@@ -7,6 +7,7 @@ import 'package:is_dental/features/patients/presentation/widgets/patient_editor.
 import 'package:is_dental/features/patients/presentation/widgets/patient_qr_dialog.dart';
 import 'package:is_dental/features/patients/presentation/widgets/xray_export_button.dart';
 import 'package:sizer/sizer.dart';
+import '../../../../core/constants/views.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dent_colors.dart';
@@ -23,6 +24,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final d = context.dent;
     final p = ref.watch(selectedPatientProvider);
+    final ent = ref.watch(entitlementsProvider);
     if (p == null) {
       return _wrap(
         context,
@@ -56,7 +58,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          _patientCard(context, p),
+          _patientCard(context, p, ent),
           _quickStats(context, p),
           _section(
             context,
@@ -104,72 +106,16 @@ class PatientSnapshotDrawer extends ConsumerWidget {
     );
   }
 
-  Widget _patientCard(BuildContext context, Patient p) {
+  Widget _patientCard(BuildContext context, Patient p, Entitlements ent) {
     final d = context.dent;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(8.sp),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: d.line)),
       ),
       child: Column(
         children: [
-          GestureDetector(
-            onTap: () => showPatientQrDialog(context, p),
-            child: Stack(
-              children: [
-                Container(
-                  width: 74,
-                  height: 74,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(22),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0EA5E9), Color(0xFF0D2640)],
-                    ),
-                  ),
-                  child: Text(
-                    p.initials,
-                    style: TextStyle(
-                      fontFamily: AppFonts.display,
-                      color: Colors.white,
-                      fontSize: 18.5.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 3,
-                  right: 3,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: d.ok,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: d.surface, width: 3),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 1,
-                  left: 1,
-                  child: Container(
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      color: d.ice,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: d.surface, width: 2),
-                    ),
-                    child: const Icon(
-                      Icons.qr_code_2_rounded,
-                      size: 10,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _avatar(context, p, ent),
           const SizedBox(height: 12),
           Text(p.fullName, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 3),
@@ -191,6 +137,74 @@ class PatientSnapshotDrawer extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _avatar(BuildContext context, Patient p, Entitlements ent) {
+    final d = context.dent;
+
+    final stack = Stack(
+      children: [
+        Container(
+          width: 74,
+          height: 74,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0EA5E9), Color(0xFF0D2640)],
+            ),
+          ),
+          child: Text(
+            p.initials,
+            style: TextStyle(
+              fontFamily: AppFonts.display,
+              color: Colors.white,
+              fontSize: 18.5.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 3,
+          right: 3,
+          child: Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: d.ok,
+              shape: BoxShape.circle,
+              border: Border.all(color: d.surface, width: 3),
+            ),
+          ),
+        ),
+        // QR badge only when the licence covers patient QR
+        if (ent.patientQr)
+          Positioned(
+            bottom: 1,
+            left: 1,
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: d.ice,
+                shape: BoxShape.circle,
+                border: Border.all(color: d.surface, width: 2),
+              ),
+              child: const Icon(
+                Icons.qr_code_2_rounded,
+                size: 10,
+                color: Colors.white,
+              ),
+            ),
+          ),
+      ],
+    );
+
+    if (!ent.patientQr) return stack;
+
+    return GestureDetector(
+      onTap: () => showPatientQrDialog(context, p),
+      child: stack,
     );
   }
 
@@ -292,16 +306,20 @@ class PatientSnapshotDrawer extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
       child: Column(
         children: [
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: d.text2,
-              side: BorderSide(color: d.line),
-              minimumSize: const Size.fromHeight(42),
+          if (ref.watch(entitlementsProvider).patientQr)
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: d.text2,
+                side: BorderSide(color: d.line),
+                minimumSize: const Size.fromHeight(42),
+              ),
+              onPressed: () => showPatientQrDialog(context, p),
+              icon: Icon(Icons.qr_code_2_rounded, size: 11.sp),
+              label: Text(
+                'Show Patient QR',
+                style: TextStyle(fontSize: 10.5.sp),
+              ),
             ),
-            onPressed: () => showPatientQrDialog(context, p),
-            icon: Icon(Icons.qr_code_2_rounded, size: 11.sp),
-            label: Text('Show Patient QR', style: TextStyle(fontSize: 10.5.sp)),
-          ),
           const SizedBox(height: 9),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(

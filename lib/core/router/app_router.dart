@@ -30,6 +30,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           final authed = ref.read(authControllerProvider) != null;
           const gate = {'/splash', '/setup', '/locked', '/reconnect'};
           if (!authed) return loc == '/login' ? null : '/login';
+
+          // ── licence gating ──
+          final lic = ls.license;
+          final cloud = lic?.cloudPackage == CloudPackage.cloud;
+          final std =
+              cloud &&
+              (lic!.tier == LicenseTier.standard ||
+                  lic.tier == LicenseTier.premium);
+          if (!std && loc.startsWith(AppRoutes.whatsapp)) {
+            return AppRoutes.dashboard;
+          }
+          if (!std && loc.startsWith('${AppRoutes.dashboard}/requests')) {
+            return AppRoutes.dashboard;
+          }
+
           return (loc == '/login' || gate.contains(loc))
               ? AppRoutes.dashboard
               : null;

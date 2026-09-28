@@ -76,34 +76,39 @@ class _S extends ConsumerState<PatientEditorDialog> {
         _code.text = code;
       }
     }
-
     final cnicDigits = _cnic.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (cnicDigits.length != 13) {
-      setState(() => _cnicError = 'CNIC must be 13 digits');
-      return;
-    }
-    if (!RegExp(r'^[1-7]').hasMatch(cnicDigits)) {
-      setState(() => _cnicError = 'Invalid CNIC (must start 1–7)');
-      return;
+
+    // CNIC is optional — only validate if something was entered.
+    if (cnicDigits.isNotEmpty) {
+      if (cnicDigits.length != 13) {
+        setState(() => _cnicError = 'CNIC must be 13 digits');
+        return;
+      }
+      if (!RegExp(r'^[1-7]').hasMatch(cnicDigits)) {
+        setState(() => _cnicError = 'Invalid CNIC (must start 1–7)');
+        return;
+      }
     }
     setState(() => _cnicError = null);
 
-    // Soft duplicate warning (same CNIC on another active patient)
-    final dup = await ref
-        .read(appDatabaseProvider)
-        .findPatientByCnic(cnicDigits, excludeId: widget.existing?.id);
-    if (dup != null && mounted) {
-      final proceed = await showDentDialog(
-        context,
-        kind: DentDialogKind.warning,
-        title: 'Duplicate CNIC',
-        message:
-            'This CNIC is already on "${dup.fullName}" (${dup.code}). '
-            'Save anyway?',
-        confirmLabel: 'Save anyway',
-        cancelLabel: 'Cancel',
-      );
-      if (proceed != true) return;
+    // Soft duplicate warning (same CNIC on another active patient) — skip if empty.
+    if (cnicDigits.isNotEmpty) {
+      final dup = await ref
+          .read(appDatabaseProvider)
+          .findPatientByCnic(cnicDigits, excludeId: widget.existing?.id);
+      if (dup != null && mounted) {
+        final proceed = await showDentDialog(
+          context,
+          kind: DentDialogKind.warning,
+          title: 'Duplicate CNIC',
+          message:
+              'This CNIC is already on "${dup.fullName}" (${dup.code}). '
+              'Save anyway?',
+          confirmLabel: 'Save anyway',
+          cancelLabel: 'Cancel',
+        );
+        if (proceed != true) return;
+      }
     }
     if (!mounted) return;
     setState(() => _busy = true);
@@ -299,7 +304,7 @@ class _S extends ConsumerState<PatientEditorDialog> {
           label.toUpperCase(),
           style: TextStyle(
             color: d.text4,
-            fontSize: 7.sp,
+            fontSize: 11.sp,
             fontWeight: FontWeight.w700,
             letterSpacing: .5,
           ),
@@ -323,7 +328,7 @@ class _S extends ConsumerState<PatientEditorDialog> {
                   value: i,
                   child: Text(
                     cap(name(i)),
-                    style: TextStyle(fontSize: 9.sp, color: d.text1),
+                    style: TextStyle(fontSize: 12.sp, color: d.text1),
                   ),
                 ),
             ],

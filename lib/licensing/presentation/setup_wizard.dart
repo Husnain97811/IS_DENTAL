@@ -3,9 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/cloud/data/cloud_registration.dart';
 import 'package:is_dental/core/shell/auth_shell.dart';
 import 'package:sizer/sizer.dart';
-
-import '../../core/theme/app_palette.dart';
-import '../../core/theme/app_typography.dart';
 import '../../core/theme/dent_colors.dart';
 import 'license_controller.dart';
 

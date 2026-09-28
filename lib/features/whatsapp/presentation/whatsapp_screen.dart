@@ -16,7 +16,42 @@ class WhatsAppScreen extends ConsumerWidget {
     final session = ref.watch(authControllerProvider);
     final role = session?.role;
     final isOwner = role == AppRole.owner;
-    final premium = ref.watch(isPremiumTierProvider);
+
+    // licence-backed entitlements — replaces isPremiumTierProvider
+    final ent = ref.watch(entitlementsProvider);
+
+    // Branch still exists in the shell; block it here until the router
+    // redirect is wired.
+    if (!ent.whatsapp) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.lock_outline_rounded, size: 28.sp, color: d.text4),
+              const SizedBox(height: 14),
+              Text(
+                'WhatsApp & Reminders',
+                style: TextStyle(
+                  color: d.text2,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Available on Standard and Premium. '
+                'This clinic is on ${ent.tierLabel}.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: d.text4, fontSize: 10.sp),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final branches =
         ref.watch(branchesStreamProvider).value ?? const <Branch>[];
     final visible = isOwner
@@ -28,16 +63,6 @@ class WhatsAppScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Text(
-          //   'WhatsApp & Reminders',
-          //   style: Theme.of(context).textTheme.displayLarge,
-          // ),
-          // const SizedBox(height: 4),
-          // Text(
-          //   'App notifications always send. WhatsApp is an optional extra channel.',
-          //   style: TextStyle(color: d.text3, fontSize: 9.sp),
-          // ),
-          // SizedBox(height: 2.4.h),
           if (visible.isEmpty)
             Padding(
               padding: const EdgeInsets.all(40),
@@ -48,17 +73,19 @@ class WhatsAppScreen extends ConsumerWidget {
                 ),
               ),
             )
-          else if (premium) ...[
-            _OffersSection(),
-            SizedBox(height: 2.4.h),
-            // ── Inbox (official API replies) ──
+          else ...[
+            // ── Offers — Premium only ──
+            if (ent.offers) ...[_OffersSection(), SizedBox(height: 2.4.h)],
+
+            // ── Inbox — official API replies only ──
             if (visible.any((b) => b.officialConnected)) ...[
-              SizedBox(height: 2.4.h),
               _InboxSection(),
+              SizedBox(height: 2.4.h),
             ],
-            SizedBox(height: 2.4.h),
           ],
-          for (final b in visible) _BranchWaCard(branch: b, premium: premium),
+
+          for (final b in visible)
+            _BranchWaCard(branch: b, premium: ent.offers),
         ],
       ),
     );

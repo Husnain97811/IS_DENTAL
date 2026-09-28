@@ -6,6 +6,7 @@ import 'package:is_dental/cloud/data/sync_engine.dart';
 import 'package:is_dental/core/utils/qr_payload.dart';
 import 'package:is_dental/features/patients/presentation/widgets/xray_export_button.dart';
 import 'package:is_dental/features/settings/data/clinic_qr_pdf.dart';
+import 'package:is_dental/features/settings/presentaion/widgets/license_panel.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:sizer/sizer.dart';
 import '../../../core/constants/views.dart';
@@ -336,6 +337,8 @@ class _S extends ConsumerState<SettingsScreen> {
 
               final right = Column(
                 children: [
+                  // Owner only: licence — upgrade, renew, clinic id
+
                   // Everyone except owner sees their own profile card
                   if (!isOwner) ...[
                     _myProfileCard(d, session),
@@ -357,6 +360,12 @@ class _S extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: 18),
 
                   _dataPanel(d),
+
+                  if (isOwner) ...[
+                    const SizedBox(height: 18),
+
+                    const LicencePanel(),
+                  ],
                 ],
               );
               if (c.maxWidth < 900)
@@ -756,6 +765,8 @@ class _S extends ConsumerState<SettingsScreen> {
   );
 
   Widget _patientAppPanel(DentColors d) {
+    final ent = ref.watch(entitlementsProvider);
+    if (!ent.clinicQr) return const SizedBox.shrink();
     final profile = ref.watch(clinicProfileProvider).value;
     final clinicCode = profile?.clinicId ?? '';
     return DentPanel(
@@ -928,14 +939,17 @@ class _S extends ConsumerState<SettingsScreen> {
 
   Widget _staffPanel(DentColors d) {
     final staff = ref.watch(staffProvider);
-    final premium = ref.watch(isPremiumProvider);
+    final ent = ref.watch(entitlementsProvider);
+    final premium = ent.tier == LicenseTier.premium;
     final maxUsers = ref.watch(maxUsersProvider);
     final count = ref.watch(totalStaffCountProvider).value ?? 0;
     final atLimit = count >= maxUsers;
     return DentPanel(
       title: 'Staff & Roles',
-      subtitle: premium ? '$count / $maxUsers seats used' : 'Single-user plan',
-      trailing: !premium
+      // subtitle: premium ? '$count / $maxUsers seats used' : 'Single-user plan',
+      subtitle: '$count / $maxUsers seats used',
+      // check if count is max means all seats used null else show button
+      trailing: atLimit
           ? null
           : OutlinedButton.icon(
               onPressed: atLimit ? null : () => showStaffEditor(context),
@@ -963,7 +977,7 @@ class _S extends ConsumerState<SettingsScreen> {
           return Column(
             children: [
               for (final u in rows) _staffRow(d, u),
-              if (premium && atLimit)
+              if (atLimit)
                 Padding(
                   padding: const EdgeInsets.all(14),
                   child: Text(
@@ -1128,187 +1142,209 @@ class _S extends ConsumerState<SettingsScreen> {
     ),
   );
 
-  Widget _dataPanel(DentColors d) => DentPanel(
-    title: 'Data & Backup',
-    child: Column(
-      children: [
-        _toggleRow(d, 'Auto Backup', 'Encrypted local backup', true, (_) {}),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: d.line)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Cloud Sync',
-                      style: TextStyle(
-                        color: d.text1,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      'Push all local data to Supabase',
-                      style: TextStyle(color: d.text3, fontSize: 8.sp),
-                    ),
-                  ],
-                ),
-              ),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: d.ice,
-                  foregroundColor: AppPalette.onAccent,
-                ),
-                onPressed: () async {
-                  final msg = await syncNow(ref);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(msg)));
-                  }
-                },
-                icon: const Icon(Icons.cloud_sync_rounded, size: 16),
-                label: const Text('Sync now'),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: d.line)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Restore / Export',
-                      style: TextStyle(
-                        color: d.text1,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      'Export reports PDF or patient data CSV',
-                      style: TextStyle(color: d.text3, fontSize: 8.sp),
-                    ),
-                  ],
-                ),
-              ),
-              OutlinedButton(
-                onPressed: () => _showManageSheet(d),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: d.text2,
-                  side: BorderSide(color: d.line),
-                ),
-                child: const Text('Manage'),
-              ),
-            ],
-          ),
-        ),
-        // ── Restore from Cloud (DESTRUCTIVE) ──
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: d.line)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Restore from Cloud',
-                      style: TextStyle(
-                        color: d.alert,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Overwrites ALL local data with the cloud version',
-                      style: TextStyle(color: d.text3, fontSize: 8.sp),
-                    ),
-                  ],
-                ),
-              ),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: d.alert,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () => _confirmRestore(d),
-                icon: const Icon(Icons.cloud_download_rounded, size: 16),
-                label: const Text('Restore'),
-              ),
-            ],
-          ),
-        ),
+  Widget _dataPanel(DentColors d) {
+    final ent = ref.watch(entitlementsProvider);
 
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: d.line)),
+    return DentPanel(
+      title: 'Data & Backup',
+      child: Column(
+        children: [
+          // ── Auto Backup — forced off on offline installs ──
+          _toggleRow(
+            d,
+            'Auto Backup',
+            ent.cloud
+                ? 'Encrypted local backup'
+                : 'Not available on offline installs',
+            ent.cloud,
+            (_) {},
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Sign Out',
-                      style: TextStyle(
-                        color: d.alert,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
+
+          // ── Cloud Sync ──
+          if (ent.cloud)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: d.line)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Cloud Sync',
+                          style: TextStyle(
+                            color: d.text1,
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Push all local data to Supabase',
+                          style: TextStyle(color: d.text3, fontSize: 8.sp),
+                        ),
+                      ],
+                    ),
+                  ),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: d.ice,
+                      foregroundColor: AppPalette.onAccent,
+                    ),
+                    onPressed: () async {
+                      final msg = await syncNow(ref);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(msg)));
+                      }
+                    },
+                    icon: const Icon(Icons.cloud_sync_rounded, size: 16),
+                    label: const Text('Sync now'),
+                  ),
+                ],
+              ),
+            ),
+
+          // ── Restore / Export ──
+          if (ent.cloud)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: d.line)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Restore / Export',
+                          style: TextStyle(
+                            color: d.text1,
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Export reports PDF or patient data CSV',
+                          style: TextStyle(color: d.text3, fontSize: 8.sp),
+                        ),
+                      ],
+                    ),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => _showManageSheet(d),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: d.text2,
+                      side: BorderSide(color: d.line),
+                    ),
+                    child: const Text('Manage'),
+                  ),
+                ],
+              ),
+            ),
+
+          // ── Restore from Cloud (DESTRUCTIVE) ──
+          if (ent.cloud)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: d.line)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Restore from Cloud',
+                          style: TextStyle(
+                            color: d.alert,
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Overwrites ALL local data with the cloud version',
+                          style: TextStyle(color: d.text3, fontSize: 8.sp),
+                        ),
+                      ],
+                    ),
+                  ),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: d.alert,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () => _confirmRestore(d),
+                    icon: const Icon(Icons.cloud_download_rounded, size: 16),
+                    label: const Text('Restore'),
+                  ),
+                ],
+              ),
+            ),
+
+          // ── Sign Out — always ──
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: d.line)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Sign Out',
+                        style: TextStyle(
+                          color: d.alert,
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Returns to the login screen',
-                      style: TextStyle(color: d.text3, fontSize: 8.sp),
-                    ),
-                  ],
+                      Text(
+                        'Returns to the login screen',
+                        style: TextStyle(color: d.text3, fontSize: 8.sp),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  final ok = await showDentDialog(
-                    context,
-                    kind: DentDialogKind.warning,
-                    title: 'Sign out?',
-                    message:
-                        'You will be returned to the login screen. Local data stays safe.',
-                    confirmLabel: 'Sign out',
-                    cancelLabel: 'Cancel',
-                  );
-                  if (ok == true && context.mounted) {
-                    ref.read(authControllerProvider.notifier).logout();
-                  }
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: d.alert,
-                  side: BorderSide(color: d.alert.withValues(alpha: .4)),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final ok = await showDentDialog(
+                      context,
+                      kind: DentDialogKind.warning,
+                      title: 'Sign out?',
+                      message:
+                          'You will be returned to the login screen. Local data stays safe.',
+                      confirmLabel: 'Sign out',
+                      cancelLabel: 'Cancel',
+                    );
+                    if (ok == true && context.mounted) {
+                      ref.read(authControllerProvider.notifier).logout();
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: d.alert,
+                    side: BorderSide(color: d.alert.withValues(alpha: .4)),
+                  ),
+                  icon: const Icon(Icons.logout_rounded, size: 16),
+                  label: const Text('Sign out'),
                 ),
-                icon: const Icon(Icons.logout_rounded, size: 16),
-                label: const Text('Sign out'),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 
   Future<void> _showManageSheet(DentColors d) async {
     await showModalBottomSheet(

@@ -14,6 +14,10 @@ final billedAppointmentIdsProvider = StreamProvider<Set<int>>((ref) {
   return ref.watch(appDatabaseProvider).watchBilledAppointmentIds();
 });
 
+final prescribedAppointmentIdsProvider = StreamProvider<Set<int>>((ref) {
+  return ref.watch(appDatabaseProvider).watchPrescribedAppointmentIds();
+});
+
 class AppointmentsScreen extends ConsumerStatefulWidget {
   const AppointmentsScreen({super.key});
   @override
@@ -277,27 +281,27 @@ class _ApptActions extends ConsumerWidget {
   const _ApptActions({required this.appt});
   final Appointment appt;
 
+  // ── mark arrived ──
   Future<void> _confirmArrived(BuildContext context, WidgetRef ref) async {
     final d = context.dent;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        // ← named
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: d.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Mark as arrived?'),
         content: Text('Confirm ${appt.patientName} has arrived at the clinic.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false), // ← use it
+            onPressed: () => Navigator.pop(dialogCtx, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: d.ice,
-              foregroundColor: AppPalette.onAccent,
+              backgroundColor: d.ok,
+              foregroundColor: Colors.white,
             ),
-            onPressed: () => Navigator.pop(dialogContext, true), // ← use it
+            onPressed: () => Navigator.pop(dialogCtx, true),
             child: const Text('Mark Arrived'),
           ),
         ],
@@ -310,6 +314,57 @@ class _ApptActions extends ConsumerWidget {
     }
   }
 
+  /// Arrived → Complete, or undo the arrival if nothing has been done yet.
+  Future<void> _stageAction(
+    BuildContext context,
+    WidgetRef ref,
+    bool canUndo,
+  ) async {
+    final d = context.dent;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: d.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Finish this visit?'),
+        content: Text(
+          canUndo
+              ? '${appt.patientName}\'s visit is finished — or undo the arrival '
+                    'if they were marked by mistake.'
+              : '${appt.patientName}\'s visit is finished.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, 'cancel'),
+            child: const Text('Cancel'),
+          ),
+          if (canUndo)
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: d.alert),
+              onPressed: () => Navigator.pop(dialogCtx, 'undo'),
+              child: const Text('Undo arrival'),
+            ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: d.ok,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, 'complete'),
+            child: const Text('Mark Completed'),
+          ),
+        ],
+      ),
+    );
+
+    final db = ref.read(appDatabaseProvider);
+    if (choice == 'complete') {
+      await db.setAppointmentStatus(appt.id, AppointmentStatus.completed.name);
+    } else if (choice == 'undo') {
+      await db.setAppointmentStatus(appt.id, AppointmentStatus.upcoming.name);
+    }
+  }
+
+  // ── bill ──
   Future<void> _bill(BuildContext context, WidgetRef ref) async {
     final created = await showInvoiceEditor(
       context,
@@ -317,10 +372,14 @@ class _ApptActions extends ConsumerWidget {
       procedure: appt.procedure,
     );
     if (created == true) {
-      await ref.read(appDatabaseProvider).setAppointmentBilled(appt.id);
+      final db = ref.read(appDatabaseProvider);
+      await db.setAppointmentBilled(appt.id);
+      // billing means the visit is done
+      await db.setAppointmentStatus(appt.id, AppointmentStatus.completed.name);
     }
   }
 
+  // ── prescribe ──
   Future<void> _prescribe(BuildContext context, WidgetRef ref) async {
     final db = ref.read(appDatabaseProvider);
     final p = await (db.select(
@@ -334,7 +393,6 @@ class _ApptActions extends ConsumerWidget {
       patientUuid: p.uuid,
       patientName: p.fullName,
       allergies: p.allergies,
-      // pre-link this visit so the doctor never has to pick it
       presetAppointmentId: appt.id,
       presetAppointmentLabel:
           '${appt.startsAt.day}/${appt.startsAt.month}/${appt.startsAt.year} · ${appt.procedure}',
@@ -345,75 +403,136 @@ class _ApptActions extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final d = context.dent;
-    final arrived = appt.status != AppointmentStatus.upcoming;
     final billed =
         ref.watch(billedAppointmentIdsProvider).value?.contains(appt.id) ??
         false;
+    final prescribed =
+        ref.watch(prescribedAppointmentIdsProvider).value?.contains(appt.id) ??
+        false;
+
+    final isDone = appt.status == AppointmentStatus.completed;
+    final hasArrived =
+        appt.status == AppointmentStatus.waiting ||
+        appt.status == AppointmentStatus.inChair;
+
+    // the visit has begun — no rescheduling or cancelling from here
+    final started = isDone || hasArrived || billed || prescribed;
+    // arrival can only be undone while nothing else has happened
+    final canUndoArrival = hasArrived && !billed && !prescribed;
+
+    final gap = const SizedBox(width: 8);
 
     return Row(
       children: [
+        // ── stage: Mark Arrived → Complete → Completed ──
         Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => showAppointmentActions(context, appt),
-            icon: const Icon(Icons.more_horiz_rounded, size: 15),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: d.text2,
-              side: BorderSide(color: d.line),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            label: Text(
-              'Manage',
-              style: TextStyle(fontSize: 9.5.sp, fontWeight: FontWeight.w600),
-            ),
-          ),
+          child: isDone
+              ? OutlinedButton.icon(
+                  onPressed: null,
+                  icon: const Icon(Icons.task_alt_rounded, size: 15),
+                  style: OutlinedButton.styleFrom(
+                    disabledForegroundColor: d.ok,
+                    side: BorderSide(color: d.line),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  label: Text(
+                    'Completed',
+                    style: TextStyle(
+                      fontSize: 9.5.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+              : hasArrived
+              ? FilledButton.icon(
+                  onPressed: () => _stageAction(context, ref, canUndoArrival),
+                  icon: const Icon(Icons.task_alt_rounded, size: 15),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: d.ok,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  label: Text(
+                    'Complete',
+                    style: TextStyle(
+                      fontSize: 9.5.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+              : OutlinedButton.icon(
+                  onPressed: () => _confirmArrived(context, ref),
+                  icon: const Icon(Icons.how_to_reg_rounded, size: 15),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: d.ok,
+                    side: BorderSide(color: d.ok),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  label: Text(
+                    'Mark Arrived',
+                    style: TextStyle(
+                      fontSize: 9.5.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
         ),
-        const SizedBox(width: 8),
 
+        gap,
+        // ── prescribe ──
         Expanded(
-          child: OutlinedButton.icon(
-            onPressed: arrived ? null : () => _confirmArrived(context, ref),
-            icon: Icon(
-              arrived ? Icons.check_circle_rounded : Icons.how_to_reg_rounded,
-              size: 15,
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: arrived ? d.text4 : d.ok,
-              disabledForegroundColor: d.ok,
-              side: BorderSide(color: arrived ? d.line : d.ok),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            label: Text(
-              arrived ? 'Arrived' : 'Mark Arrived',
-              style: TextStyle(fontSize: 9.5.sp, fontWeight: FontWeight.w600),
-            ),
-          ),
+          child: prescribed
+              ? OutlinedButton.icon(
+                  onPressed: null,
+                  icon: const Icon(Icons.check_circle_rounded, size: 15),
+                  style: OutlinedButton.styleFrom(
+                    disabledForegroundColor: d.tealDeep,
+                    side: BorderSide(color: d.line),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  label: Text(
+                    'Prescribed',
+                    style: TextStyle(
+                      fontSize: 9.5.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+              : OutlinedButton.icon(
+                  onPressed: () => _prescribe(context, ref),
+                  icon: const Icon(Icons.medication_rounded, size: 15),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: d.tealDeep,
+                    side: BorderSide(color: d.tealDeep.withValues(alpha: .55)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  label: Text(
+                    'Prescribe',
+                    style: TextStyle(
+                      fontSize: 9.5.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => _prescribe(context, ref),
-            icon: const Icon(Icons.medication_rounded, size: 15),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: d.tealDeep,
-              side: BorderSide(color: d.tealDeep.withValues(alpha: .55)),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            label: Text(
-              'Prescribe',
-              style: TextStyle(fontSize: 9.5.sp, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
+
+        gap,
+        // ── bill ──
         Expanded(
           child: billed
               ? OutlinedButton.icon(
@@ -455,6 +574,29 @@ class _ApptActions extends ConsumerWidget {
                   ),
                 ),
         ),
+
+        // ── manage: only before the visit begins ──
+        if (!started) ...[
+          gap,
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => showAppointmentActions(context, appt),
+              icon: const Icon(Icons.more_horiz_rounded, size: 15),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: d.text2,
+                side: BorderSide(color: d.line),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              label: Text(
+                'Manage',
+                style: TextStyle(fontSize: 9.5.sp, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

@@ -34,7 +34,7 @@ class DentField extends StatelessWidget {
           label.toUpperCase(),
           style: TextStyle(
             color: d.text4,
-            fontSize: 10.sp,
+            fontSize: 11.sp,
             fontWeight: FontWeight.w700,
             letterSpacing: .5,
           ),
@@ -48,17 +48,15 @@ class DentField extends StatelessWidget {
           inputFormatters: inputFormatters, // ← add
           readOnly: readonly, // ← add
 
-          style: TextStyle(fontSize: 9.5.sp, color: d.text1),
+          style: TextStyle(fontSize: 12.sp, color: d.text1),
           decoration: InputDecoration(
             hintText: hint,
             isDense: true,
             filled: true,
             fillColor: d.surface2,
             hintStyle: TextStyle(color: d.text4, fontSize: 9.sp),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 13,
-              vertical: 12,
-            ),
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(11),
               borderSide: BorderSide(color: d.line),

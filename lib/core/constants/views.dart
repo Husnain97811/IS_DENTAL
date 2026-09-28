@@ -70,3 +70,4 @@ export 'package:is_dental/features/prescriptions/data/domain/prescription.dart';
 export 'package:is_dental/features/prescriptions/presentation/prescriptions_screen.dart';
 export 'package:is_dental/features/requests/presentation/requests_screen.dart';
 export 'package:is_dental/features/whatsapp/presentation/whatsapp_screen.dart';
+export 'package:is_dental/features/settings/domain/entitlements.dart';

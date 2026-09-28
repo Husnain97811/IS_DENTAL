@@ -1,12 +1,12 @@
 {
-  "clinicId": "RENEW-MUX-987463",
-  "clinicName": "RENEW SKIN & DENTAL CLINIC",
-  "tier": "premium",
+  "clinicId": "HUSNAIN-ISL-179286",
+  "clinicName": "Husnain Ahmed",
+  "tier": "standard",
   "cloudPackage": "cloud",
-  "maxBranches": 1,
-  "maxUsers": 3,
-  "issuedAt": "2026-09-12T15:33:25.028091Z",
-  "expiresAt": "2026-09-15T15:33:25.028197Z",
+  "maxBranches": 2,
+  "maxUsers": 4,
+  "issuedAt": "2026-09-28T19:24:10.980443Z",
+  "expiresAt": "2027-09-28T19:24:10.980443Z",
   "machineFingerprint": "ANY",
-  "signature": "S4UQBzwPF3nVTzhfeN8RIBVNy8n7PG9UXoehJ4TpyeTA+pORk75tz51ucqhk2C1QlcVKuu4HYrWf/qpgv1syr+C6WqBbPSI9QTWn+LRsQ79wqCvepE0BXoFMXUEl55g7sXIJDw8o+XQRpGUyPUZUY9KjDSaY8a4OdtrNeKfs089pkCylJbI5QnrbC12nVC/iLIi/SMW77hof/N3wZWLV8iWbNw9XdfbrGbQ1fpzwYCiqhQcC0lQX0VAiK/IW6qzYESW8I02ZNGoomwyhfn8zNqbUQWOXpn0939GRkHZOVpBS0Pf5nc21tvISWL4+xT8v9diY8iQfQNWTQS7i62MQow=="
+  "signature": "VdzyPA6lSPbCytpx30UoO+3M97ngfXijVJyp/4aPBJWQqXtaCfnJkKtEdKzdiNWytc2NUnvkwf1WPskqEdDgnrRCz/awDdFSsRIiYlcnw1HwsAh7mpGgQclD8xPd4ZGTivyM5Iv3MLIQEkIMAPOrMnyGaymcpIZJHLPa5TVH0diGjDFoE64UfaHMxVSR51O2gVhY7iuncpVUsvmTEqxB5dhsL+hUtTaguQ+tFEICUVR3Sas0C6RFys2OOJ94SRNDps8l9oxk00WcgWdflE68IjMfyYrLI5Wh5IcE2yakV2uNNZJECZ1FUS40DigdtcMV99uE3dUkpueDguvUjZPiYA=="
 }

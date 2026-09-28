@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../constants/views.dart';
 import '../../router/nav_destinations.dart';
-import '../../theme/app_palette.dart';
-import '../../theme/app_typography.dart';
-import '../../theme/dent_colors.dart';
 
 class AppSidebar extends ConsumerWidget {
   const AppSidebar({
@@ -27,6 +25,8 @@ class AppSidebar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final d = context.dent;
+    final ent = ref.watch(entitlementsProvider);
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 260),
       curve: Curves.easeOutCubic,
@@ -43,7 +43,7 @@ class AppSidebar extends ConsumerWidget {
             child: ListView(
               padding: EdgeInsets.symmetric(vertical: 1.h),
               children: [
-                for (final g in NavGroup.values) ..._group(context, g),
+                for (final g in NavGroup.values) ..._group(context, g, ent),
               ],
             ),
           ),
@@ -107,7 +107,21 @@ class AppSidebar extends ConsumerWidget {
     ),
   );
 
-  List<Widget> _group(BuildContext context, NavGroup group) {
+  List<Widget> _group(BuildContext context, NavGroup group, Entitlements ent) {
+    // Collect allowed indices first. `i` is the ORIGINAL position in
+    // kNavDestinations — it must stay that way, it is the shell branch index.
+    final indices = <int>[];
+    for (var i = 0; i < kNavDestinations.length; i++) {
+      final dest = kNavDestinations[i];
+      if (dest.group != group) continue;
+      if (!navAllowed(dest.route, ent)) continue;
+      indices.add(i);
+    }
+
+    // Every item in this group is gated away — drop the header too,
+    // otherwise you get a floating "OPERATIONS" label over nothing.
+    if (indices.isEmpty) return const [];
+
     final items = <Widget>[];
     if (!collapsed) {
       items.add(
@@ -127,8 +141,9 @@ class AppSidebar extends ConsumerWidget {
     } else {
       items.add(SizedBox(height: 1.4.h));
     }
-    for (var i = 0; i < kNavDestinations.length; i++) {
-      if (kNavDestinations[i].group == group) items.add(_navItem(context, i));
+
+    for (final i in indices) {
+      items.add(_navItem(context, i));
     }
     return items;
   }

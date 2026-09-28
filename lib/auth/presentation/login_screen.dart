@@ -113,7 +113,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Expanded(
                     child: Text(
                       'Too many attempts — locked',
-                      style: TextStyle(color: d.text2, fontSize: 8.5.sp),
+                      style: TextStyle(color: d.text2, fontSize: 9.5.sp),
                     ),
                   ),
                   Text(
