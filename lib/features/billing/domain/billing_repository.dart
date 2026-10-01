@@ -5,6 +5,8 @@ abstract interface class BillingRepository {
   Stream<Invoice?> watchInvoice(int id);
   Future<void> markPaid(int id);
   Future<void> seedDemoInvoicesIfEmpty();
+  Future<void> cancelInvoice(int id, {required String by});
+  Stream<List<Invoice>> watchCancelled({String? branchId});
   Future<void> createInvoice({
     required int patientId,
     required String invoiceNo,

@@ -4990,6 +4990,28 @@ class $InvoicesTable extends Invoices
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _cancelledByMeta = const VerificationMeta(
+    'cancelledBy',
+  );
+  @override
+  late final GeneratedColumn<String> cancelledBy = GeneratedColumn<String>(
+    'cancelled_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cancelledAtMeta = const VerificationMeta(
+    'cancelledAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cancelledAt = GeneratedColumn<DateTime>(
+    'cancelled_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5007,6 +5029,8 @@ class $InvoicesTable extends Invoices
     total,
     isDeleted,
     updatedAt,
+    cancelledBy,
+    cancelledAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5120,6 +5144,24 @@ class $InvoicesTable extends Invoices
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('cancelled_by')) {
+      context.handle(
+        _cancelledByMeta,
+        cancelledBy.isAcceptableOrUnknown(
+          data['cancelled_by']!,
+          _cancelledByMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cancelled_at')) {
+      context.handle(
+        _cancelledAtMeta,
+        cancelledAt.isAcceptableOrUnknown(
+          data['cancelled_at']!,
+          _cancelledAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -5189,6 +5231,14 @@ class $InvoicesTable extends Invoices
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      cancelledBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cancelled_by'],
+      ),
+      cancelledAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cancelled_at'],
+      ),
     );
   }
 
@@ -5214,6 +5264,8 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
   final int total;
   final bool isDeleted;
   final DateTime updatedAt;
+  final String? cancelledBy;
+  final DateTime? cancelledAt;
   const InvoiceRow({
     required this.id,
     required this.uuid,
@@ -5230,6 +5282,8 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     required this.total,
     required this.isDeleted,
     required this.updatedAt,
+    this.cancelledBy,
+    this.cancelledAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5253,6 +5307,12 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     map['total'] = Variable<int>(total);
     map['is_deleted'] = Variable<bool>(isDeleted);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || cancelledBy != null) {
+      map['cancelled_by'] = Variable<String>(cancelledBy);
+    }
+    if (!nullToAbsent || cancelledAt != null) {
+      map['cancelled_at'] = Variable<DateTime>(cancelledAt);
+    }
     return map;
   }
 
@@ -5277,6 +5337,12 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       total: Value(total),
       isDeleted: Value(isDeleted),
       updatedAt: Value(updatedAt),
+      cancelledBy: cancelledBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cancelledBy),
+      cancelledAt: cancelledAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cancelledAt),
     );
   }
 
@@ -5301,6 +5367,8 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       total: serializer.fromJson<int>(json['total']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      cancelledBy: serializer.fromJson<String?>(json['cancelledBy']),
+      cancelledAt: serializer.fromJson<DateTime?>(json['cancelledAt']),
     );
   }
   @override
@@ -5322,6 +5390,8 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       'total': serializer.toJson<int>(total),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'cancelledBy': serializer.toJson<String?>(cancelledBy),
+      'cancelledAt': serializer.toJson<DateTime?>(cancelledAt),
     };
   }
 
@@ -5341,6 +5411,8 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     int? total,
     bool? isDeleted,
     DateTime? updatedAt,
+    Value<String?> cancelledBy = const Value.absent(),
+    Value<DateTime?> cancelledAt = const Value.absent(),
   }) => InvoiceRow(
     id: id ?? this.id,
     uuid: uuid ?? this.uuid,
@@ -5359,6 +5431,8 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     total: total ?? this.total,
     isDeleted: isDeleted ?? this.isDeleted,
     updatedAt: updatedAt ?? this.updatedAt,
+    cancelledBy: cancelledBy.present ? cancelledBy.value : this.cancelledBy,
+    cancelledAt: cancelledAt.present ? cancelledAt.value : this.cancelledAt,
   );
   InvoiceRow copyWithCompanion(InvoicesCompanion data) {
     return InvoiceRow(
@@ -5381,6 +5455,12 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       total: data.total.present ? data.total.value : this.total,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      cancelledBy: data.cancelledBy.present
+          ? data.cancelledBy.value
+          : this.cancelledBy,
+      cancelledAt: data.cancelledAt.present
+          ? data.cancelledAt.value
+          : this.cancelledAt,
     );
   }
 
@@ -5401,7 +5481,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
           ..write('adjustment: $adjustment, ')
           ..write('total: $total, ')
           ..write('isDeleted: $isDeleted, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('cancelledBy: $cancelledBy, ')
+          ..write('cancelledAt: $cancelledAt')
           ..write(')'))
         .toString();
   }
@@ -5423,6 +5505,8 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     total,
     isDeleted,
     updatedAt,
+    cancelledBy,
+    cancelledAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -5442,7 +5526,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
           other.adjustment == this.adjustment &&
           other.total == this.total &&
           other.isDeleted == this.isDeleted &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.cancelledBy == this.cancelledBy &&
+          other.cancelledAt == this.cancelledAt);
 }
 
 class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
@@ -5461,6 +5547,8 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
   final Value<int> total;
   final Value<bool> isDeleted;
   final Value<DateTime> updatedAt;
+  final Value<String?> cancelledBy;
+  final Value<DateTime?> cancelledAt;
   const InvoicesCompanion({
     this.id = const Value.absent(),
     this.uuid = const Value.absent(),
@@ -5477,6 +5565,8 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     this.total = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.cancelledBy = const Value.absent(),
+    this.cancelledAt = const Value.absent(),
   });
   InvoicesCompanion.insert({
     this.id = const Value.absent(),
@@ -5494,6 +5584,8 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     this.total = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.cancelledBy = const Value.absent(),
+    this.cancelledAt = const Value.absent(),
   }) : uuid = Value(uuid),
        clinicId = Value(clinicId),
        patientId = Value(patientId),
@@ -5515,6 +5607,8 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     Expression<int>? total,
     Expression<bool>? isDeleted,
     Expression<DateTime>? updatedAt,
+    Expression<String>? cancelledBy,
+    Expression<DateTime>? cancelledAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -5532,6 +5626,8 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
       if (total != null) 'total': total,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (cancelledBy != null) 'cancelled_by': cancelledBy,
+      if (cancelledAt != null) 'cancelled_at': cancelledAt,
     });
   }
 
@@ -5551,6 +5647,8 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     Value<int>? total,
     Value<bool>? isDeleted,
     Value<DateTime>? updatedAt,
+    Value<String?>? cancelledBy,
+    Value<DateTime?>? cancelledAt,
   }) {
     return InvoicesCompanion(
       id: id ?? this.id,
@@ -5568,6 +5666,8 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
       total: total ?? this.total,
       isDeleted: isDeleted ?? this.isDeleted,
       updatedAt: updatedAt ?? this.updatedAt,
+      cancelledBy: cancelledBy ?? this.cancelledBy,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
     );
   }
 
@@ -5619,6 +5719,12 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (cancelledBy.present) {
+      map['cancelled_by'] = Variable<String>(cancelledBy.value);
+    }
+    if (cancelledAt.present) {
+      map['cancelled_at'] = Variable<DateTime>(cancelledAt.value);
+    }
     return map;
   }
 
@@ -5639,7 +5745,9 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
           ..write('adjustment: $adjustment, ')
           ..write('total: $total, ')
           ..write('isDeleted: $isDeleted, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('cancelledBy: $cancelledBy, ')
+          ..write('cancelledAt: $cancelledAt')
           ..write(')'))
         .toString();
   }
@@ -17863,6 +17971,8 @@ typedef $$InvoicesTableCreateCompanionBuilder =
       Value<int> total,
       Value<bool> isDeleted,
       Value<DateTime> updatedAt,
+      Value<String?> cancelledBy,
+      Value<DateTime?> cancelledAt,
     });
 typedef $$InvoicesTableUpdateCompanionBuilder =
     InvoicesCompanion Function({
@@ -17881,6 +17991,8 @@ typedef $$InvoicesTableUpdateCompanionBuilder =
       Value<int> total,
       Value<bool> isDeleted,
       Value<DateTime> updatedAt,
+      Value<String?> cancelledBy,
+      Value<DateTime?> cancelledAt,
     });
 
 final class $$InvoicesTableReferences
@@ -17999,6 +18111,16 @@ class $$InvoicesTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cancelledBy => $composableBuilder(
+    column: $table.cancelledBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18130,6 +18252,16 @@ class $$InvoicesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get cancelledBy => $composableBuilder(
+    column: $table.cancelledBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$PatientsTableOrderingComposer get patientId {
     final $$PatientsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -18208,6 +18340,16 @@ class $$InvoicesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get cancelledBy => $composableBuilder(
+    column: $table.cancelledBy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => column,
+  );
 
   $$PatientsTableAnnotationComposer get patientId {
     final $$PatientsTableAnnotationComposer composer = $composerBuilder(
@@ -18301,6 +18443,8 @@ class $$InvoicesTableTableManager
                 Value<int> total = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<String?> cancelledBy = const Value.absent(),
+                Value<DateTime?> cancelledAt = const Value.absent(),
               }) => InvoicesCompanion(
                 id: id,
                 uuid: uuid,
@@ -18317,6 +18461,8 @@ class $$InvoicesTableTableManager
                 total: total,
                 isDeleted: isDeleted,
                 updatedAt: updatedAt,
+                cancelledBy: cancelledBy,
+                cancelledAt: cancelledAt,
               ),
           createCompanionCallback:
               ({
@@ -18335,6 +18481,8 @@ class $$InvoicesTableTableManager
                 Value<int> total = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<String?> cancelledBy = const Value.absent(),
+                Value<DateTime?> cancelledAt = const Value.absent(),
               }) => InvoicesCompanion.insert(
                 id: id,
                 uuid: uuid,
@@ -18351,6 +18499,8 @@ class $$InvoicesTableTableManager
                 total: total,
                 isDeleted: isDeleted,
                 updatedAt: updatedAt,
+                cancelledBy: cancelledBy,
+                cancelledAt: cancelledAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(

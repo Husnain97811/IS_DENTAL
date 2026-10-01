@@ -118,6 +118,11 @@ String _amountInWords(int amount) {
         bg: PdfColor.fromInt(0xFFFDE7EC),
         fg: PdfColor.fromInt(0xFFBE123C),
       ),
+      InvoiceStatus.cancelled => (
+        label: 'CANCELLED',
+        bg: PdfColor.fromInt(0xFFF1F5F9),
+        fg: PdfColor.fromInt(0xFF64748B),
+      ),
     };
 
 // Brand accents

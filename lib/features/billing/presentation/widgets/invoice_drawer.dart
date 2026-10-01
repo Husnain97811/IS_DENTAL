@@ -109,6 +109,7 @@ class InvoiceDrawer extends ConsumerWidget {
                               InvoiceStatus.paid => ChipKind.done,
                               InvoiceStatus.pending => ChipKind.waiting,
                               InvoiceStatus.overdue => ChipKind.overdue,
+                              InvoiceStatus.cancelled => ChipKind.overdue,
                             },
                           ),
                         ],
@@ -200,7 +201,9 @@ class InvoiceDrawer extends ConsumerWidget {
                           side: BorderSide(color: d.line),
                           minimumSize: const Size.fromHeight(42),
                         ),
-                        onPressed: inv.status == InvoiceStatus.paid
+                        onPressed:
+                            (inv.status == InvoiceStatus.paid ||
+                                inv.status == InvoiceStatus.cancelled)
                             ? null
                             : () => ref
                                   .read(billingRepositoryProvider)

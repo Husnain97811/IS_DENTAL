@@ -10,6 +10,7 @@ import 'package:is_dental/core/theme/dent_colors.dart';
 import 'package:is_dental/core/widgets/dent_avatar.dart';
 import 'package:is_dental/core/widgets/dent_panel.dart';
 import 'package:is_dental/core/widgets/status_chip.dart';
+import '../../../core/constants/views.dart';
 import '../domain/patient.dart';
 import '../domain/tooth_record.dart';
 import '../domain/treatment_plan.dart';
@@ -85,7 +86,7 @@ class PatientDetailScreen extends ConsumerWidget {
           _header(context, d, patient),
           SizedBox(height: 2.h),
 
-          _quickStats(context, d, patient, last),
+          _quickStats(context, ref, d, patient, last),
           _DentalChartCard(
             patientId: patientId,
             states: toothStates,
@@ -108,8 +109,10 @@ class PatientDetailScreen extends ConsumerWidget {
                     patientName: patient.fullName,
                     allergies: patient.allergies,
                   ),
-                  const SizedBox(height: 18),
-                  _invoicesCard(context, d, invoices),
+                  if (ref.watch(canProvider(Perm.viewFinancials))) ...[
+                    const SizedBox(height: 18),
+                    _invoicesCard(context, d, invoices),
+                  ],
                 ],
               );
               final rightCol = Column(
@@ -211,29 +214,41 @@ class PatientDetailScreen extends ConsumerWidget {
   // ---- quick stats ----
   Widget _quickStats(
     BuildContext context,
+    WidgetRef ref,
     DentColors d,
     Patient p,
     Appointment? last,
-  ) => Row(
-    children: [
-      _stat(d, 'Total Visits', '${p.visitCount}'),
-      const SizedBox(width: 14),
-      _stat(
-        d,
-        'Balance',
-        'Rs ${_money(p.balance)}',
-        color: p.balance > 0 ? d.alert : null,
-      ),
-      const SizedBox(width: 14),
-      _stat(
-        d,
-        'Last Visit',
-        last != null
-            ? _fmtDate(last.startsAt)
-            : (p.lastVisit != null ? _fmtDate(p.lastVisit!) : '—'),
-      ),
-    ],
-  );
+  ) {
+    final canStats = ref.watch(canProvider(Perm.viewPatientStats));
+    final canFin = ref.watch(canProvider(Perm.viewFinancials));
+    if (!canStats && !canFin) return const SizedBox.shrink();
+
+    return Row(
+      children: [
+        if (canStats) ...[
+          _stat(d, 'Total Visits', '${p.visitCount}'),
+          const SizedBox(width: 14),
+        ],
+        if (canFin) ...[
+          _stat(
+            d,
+            'Balance',
+            'Rs ${_money(p.balance)}',
+            color: p.balance > 0 ? d.alert : null,
+          ),
+          const SizedBox(width: 14),
+        ],
+        if (canStats)
+          _stat(
+            d,
+            'Last Visit',
+            last != null
+                ? _fmtDate(last.startsAt)
+                : (p.lastVisit != null ? _fmtDate(p.lastVisit!) : '—'),
+          ),
+      ],
+    );
+  }
 
   Widget _stat(DentColors d, String label, String value, {Color? color}) =>
       Expanded(
@@ -803,6 +818,7 @@ class PatientDetailScreen extends ConsumerWidget {
     InvoiceStatus.paid => ChipKind.done,
     InvoiceStatus.pending => ChipKind.waiting,
     InvoiceStatus.overdue => ChipKind.overdue,
+    InvoiceStatus.cancelled => ChipKind.overdue,
   };
 }
 

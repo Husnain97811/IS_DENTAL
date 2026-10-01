@@ -19,6 +19,8 @@ class Invoices extends Table {
   IntColumn get total => integer().withDefault(const Constant(0))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  TextColumn get cancelledBy => text().nullable()();
+  DateTimeColumn get cancelledAt => dateTime().nullable()();
 }
 
 @DataClassName('InvoiceItemRow')

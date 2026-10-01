@@ -6,6 +6,7 @@ import 'package:is_dental/features/appointments/presentation/widgets/appointment
 import 'package:is_dental/features/patients/presentation/widgets/patient_editor.dart';
 import 'package:is_dental/features/patients/presentation/widgets/patient_qr_dialog.dart';
 import 'package:is_dental/features/patients/presentation/widgets/xray_export_button.dart';
+import 'package:is_dental/features/settings/domain/permissions.dart';
 import 'package:sizer/sizer.dart';
 import '../../../../core/constants/views.dart';
 import '../../../../core/theme/app_palette.dart';
@@ -59,7 +60,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
         padding: EdgeInsets.zero,
         children: [
           _patientCard(context, p, ent),
-          _quickStats(context, p),
+          _quickStats(context, ref, p),
           _section(
             context,
             'Dental Chart',
@@ -208,8 +209,14 @@ class PatientSnapshotDrawer extends ConsumerWidget {
     );
   }
 
-  Widget _quickStats(BuildContext context, Patient p) {
+  Widget _quickStats(BuildContext context, WidgetRef ref, Patient p) {
     final d = context.dent;
+    final canStats = ref.watch(canProvider(Perm.viewPatientStats));
+    final canFin = ref.watch(canProvider(Perm.viewFinancials));
+
+    // nothing to show for this role — skip the strip entirely
+    if (!canStats && !canFin) return const SizedBox.shrink();
+
     Widget cell(String label, String value, {Color? color}) => Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -238,21 +245,25 @@ class PatientSnapshotDrawer extends ConsumerWidget {
         ),
       ),
     );
+
     return Container(
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: d.line)),
       ),
       child: Row(
         children: [
-          cell('Last Visit', p.lastVisit == null ? '—' : _fmt(p.lastVisit!)),
-          Container(width: 1, height: 44, color: d.line),
-          cell('Visits', '${p.visitCount}'),
-          Container(width: 1, height: 44, color: d.line),
-          cell(
-            'Balance',
-            p.balance == 0 ? 'Rs 0' : 'Rs ${_grp(p.balance)}',
-            color: p.balance > 0 ? d.alert : null,
-          ),
+          if (canStats) ...[
+            cell('Last Visit', p.lastVisit == null ? '—' : _fmt(p.lastVisit!)),
+            Container(width: 1, height: 44, color: d.line),
+            cell('Visits', '${p.visitCount}'),
+            if (canFin) Container(width: 1, height: 44, color: d.line),
+          ],
+          if (canFin)
+            cell(
+              'Balance',
+              p.balance == 0 ? 'Rs 0' : 'Rs ${_grp(p.balance)}',
+              color: p.balance > 0 ? d.alert : null,
+            ),
         ],
       ),
     );

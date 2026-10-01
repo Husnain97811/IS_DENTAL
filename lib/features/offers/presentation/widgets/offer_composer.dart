@@ -388,7 +388,7 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
                                   Text(
                                     'Send to all branches',
                                     style: TextStyle(
-                                      fontSize: 8.5.sp,
+                                      fontSize: _sp(9),
                                       color: d.text1,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -398,7 +398,7 @@ class _OfferComposerState extends ConsumerState<_OfferComposer> {
                                         ? 'Every patient of this clinic'
                                         : 'Only this branch\'s patients',
                                     style: TextStyle(
-                                      fontSize: 7.sp,
+                                      fontSize: _sp(7),
                                       color: d.text4,
                                     ),
                                   ),

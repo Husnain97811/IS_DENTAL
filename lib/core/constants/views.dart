@@ -71,3 +71,6 @@ export 'package:is_dental/features/prescriptions/presentation/prescriptions_scre
 export 'package:is_dental/features/requests/presentation/requests_screen.dart';
 export 'package:is_dental/features/whatsapp/presentation/whatsapp_screen.dart';
 export 'package:is_dental/features/settings/domain/entitlements.dart';
+export 'package:is_dental/features/branches/presentation/widgets/branch_switcher.dart';
+export 'package:is_dental/features/requests/presentation/widgets/booking_requests_card.dart';
+export 'package:is_dental/features/settings/domain/permissions.dart';

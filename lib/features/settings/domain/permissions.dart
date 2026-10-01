@@ -9,6 +9,7 @@ class Perm {
   static const exportXrays = 'exportXrays';
   static const manageBackup = 'manageBackup';
   static const manageStaff = 'manageStaff';
+  static const cancelInvoices = 'cancelInvoices';
 
   static const all = [
     viewFinancials,
@@ -16,6 +17,7 @@ class Perm {
     exportXrays,
     manageBackup,
     manageStaff,
+    cancelInvoices,
   ];
 
   static String label(String key) => switch (key) {
@@ -24,6 +26,8 @@ class Perm {
     exportXrays => 'Export X-rays',
     manageBackup => 'Manage backup & restore',
     manageStaff => 'Manage staff',
+    cancelInvoices => 'Cancel invoices',
+
     _ => key,
   };
 
@@ -33,6 +37,7 @@ class Perm {
     exportXrays => 'Download all X-rays as a ZIP',
     manageBackup => 'Backup, restore from cloud, and data export',
     manageStaff => 'Add, edit and remove staff logins',
+    cancelInvoices => 'Mark an invoice cancelled. Owner can always do this.',
     _ => '',
   };
 }
@@ -40,7 +45,7 @@ class Perm {
 /// Sensible starting point when a clinic has never configured anything.
 bool defaultFor(AppRole role, String key) => switch (role) {
   AppRole.owner => true,
-  AppRole.admin => key != Perm.manageBackup,
+  AppRole.admin => key != Perm.manageBackup && key != Perm.cancelInvoices,
   AppRole.clinician => key == Perm.viewPatientStats || key == Perm.exportXrays,
   AppRole.receptionist => false,
 };

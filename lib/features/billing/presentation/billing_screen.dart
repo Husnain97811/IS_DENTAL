@@ -2,8 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/constants/app_flags.dart';
+import 'package:is_dental/features/settings/domain/permissions.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../core/constants/views.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/dent_colors.dart';
 import '../../../core/widgets/dent_panel.dart';
@@ -39,11 +41,61 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
     InvoiceStatus.paid => (ChipKind.done, 'Paid'),
     InvoiceStatus.pending => (ChipKind.waiting, 'Pending'),
     InvoiceStatus.overdue => (ChipKind.overdue, 'Overdue'),
+    InvoiceStatus.cancelled => (ChipKind.overdue, 'Cancelled'),
   };
+
+  Future<void> _cancel(Invoice inv) async {
+    final d = context.dent;
+    final reason = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: d.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Cancel this invoice?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '#${inv.invoiceNo} · ${inv.patientName} · Rs ${_m(inv.total)}',
+              style: TextStyle(color: d.text2, fontSize: 11.sp),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'The invoice is kept for your records and excluded from totals. '
+              'Only the owner can see cancelled invoices.',
+              style: TextStyle(color: d.text4, fontSize: 9.5.sp),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep it'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: d.alert,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Cancel invoice'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    final who = ref.read(authControllerProvider)?.username ?? 'unknown';
+    await ref.read(billingRepositoryProvider).cancelInvoice(inv.id, by: who);
+  }
 
   @override
   Widget build(BuildContext context) {
     final d = context.dent;
+    final canFin = ref.watch(canProvider(Perm.viewFinancials));
+    final canCancel = ref.watch(canProvider(Perm.cancelInvoices));
+    final isOwner = ref.watch(authControllerProvider)?.role == AppRole.owner;
     final async = ref.watch(invoicesStreamProvider);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(26, 24, 26, 40),
@@ -71,43 +123,29 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
-                    children: [
-                      for (final c in [
-                        (
-                          'Collected',
-                          'Rs ${_m(paidMtd)}',
-                          KpiTone.teal,
-                          // Icons.payments_rounded,
-                        ),
-                        (
-                          'Pending',
-                          'Rs ${_m(pending)}',
-                          KpiTone.amber,
-                          // Icons.schedule_rounded,
-                        ),
-                        (
-                          'Invoices',
-                          '${list.length}',
-                          KpiTone.blue,
-                          // Icons.receipt_long_rounded,
-                        ),
-                        (
-                          'Avg. Invoice',
-                          'Rs ${_m(avg)}',
-                          KpiTone.slate,
-                          // Icons.trending_up_rounded,
-                        ),
-                      ])
-                        SizedBox(
-                          width: 12.w,
-                          child: KpiCard(tone: c.$3, label: c.$1, value: c.$2),
-                        ),
-                    ],
-                  ),
-                  SizedBox(height: 2.2.h),
+                  if (canFin) ...[
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        for (final c in [
+                          ('Collected', 'Rs ${_m(paidMtd)}', KpiTone.teal),
+                          ('Pending', 'Rs ${_m(pending)}', KpiTone.amber),
+                          ('Invoices', '${list.length}', KpiTone.blue),
+                          ('Avg. Invoice', 'Rs ${_m(avg)}', KpiTone.slate),
+                        ])
+                          SizedBox(
+                            width: 12.w,
+                            child: KpiCard(
+                              tone: c.$3,
+                              label: c.$1,
+                              value: c.$2,
+                            ),
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 2.2.h),
+                  ],
                   DentPanel(
                     title: 'Recent Invoices',
                     subtitle: 'Click to preview',
@@ -122,10 +160,12 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                               style: TextStyle(color: d.text4),
                             ),
                           ),
-                        for (final inv in list) _row(d, inv),
+                        for (final inv in list) _row(d, inv, canCancel),
                       ],
                     ),
                   ),
+
+                  if (isOwner) ...[SizedBox(height: 2.2.h), _cancelledPanel(d)],
                 ],
               );
             },
@@ -155,12 +195,13 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
           // Expanded(flex: 3, child: Text('PROCEDURE', style: h())),
           Expanded(flex: 2, child: Text('AMOUNT', style: h())),
           Expanded(flex: 1, child: Text('STATUS', style: h())),
+          const SizedBox(width: 40),
         ],
       ),
     );
   }
 
-  Widget _row(DentColors d, Invoice inv) {
+  Widget _row(DentColors d, Invoice inv, bool canCancel) {
     final selected = ref.watch(selectedInvoiceIdProvider) == inv.id;
     final (chip, label) = _st(inv.status);
     return InkWell(
@@ -224,8 +265,76 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                 child: StatusChip(label, kind: chip),
               ),
             ),
+            SizedBox(
+              width: 40,
+              child: canCancel && inv.status != InvoiceStatus.cancelled
+                  ? IconButton(
+                      tooltip: 'Cancel invoice',
+                      icon: Icon(Icons.block_rounded, size: 16, color: d.text4),
+                      onPressed: () => _cancel(inv),
+                    )
+                  : null,
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _cancelledPanel(DentColors d) {
+    final async = ref.watch(cancelledInvoicesProvider);
+    final list = async.value ?? const <Invoice>[];
+    if (list.isEmpty) return const SizedBox.shrink();
+
+    return DentPanel(
+      title: 'Cancelled Invoices',
+      subtitle: 'Visible to the owner only · excluded from all totals',
+      child: Column(
+        children: [
+          for (final inv in list)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: d.line)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      '#${inv.invoiceNo}',
+                      style: AppTypography.mono(
+                        size: 11.sp,
+                        color: d.text3,
+                      ).copyWith(decoration: TextDecoration.lineThrough),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      inv.patientName,
+                      style: TextStyle(color: d.text3, fontSize: 11.sp),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      'Rs ${_m(inv.total)}',
+                      style: AppTypography.mono(size: 11.sp, color: d.text3),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      'by ${inv.cancelledBy ?? "—"}'
+                      '${inv.cancelledAt == null ? "" : " · ${inv.cancelledAt!.day}/${inv.cancelledAt!.month}/${inv.cancelledAt!.year}"}',
+                      style: TextStyle(color: d.text4, fontSize: 9.5.sp),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

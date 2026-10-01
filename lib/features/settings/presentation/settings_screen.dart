@@ -6,7 +6,9 @@ import 'package:is_dental/cloud/data/sync_engine.dart';
 import 'package:is_dental/core/utils/qr_payload.dart';
 import 'package:is_dental/features/patients/presentation/widgets/xray_export_button.dart';
 import 'package:is_dental/features/settings/data/clinic_qr_pdf.dart';
+import 'package:is_dental/features/settings/domain/permissions.dart';
 import 'package:is_dental/features/settings/presentaion/widgets/license_panel.dart';
+import 'package:is_dental/features/settings/presentation/widgets/permissions_panel.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:sizer/sizer.dart';
 import '../../../core/constants/views.dart';
@@ -39,39 +41,9 @@ class _S extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    // WidgetsBinding.instance.addPostFrameCallback((_) async {
-    //   final db = ref.read(appDatabaseProvider);
-    //   await db.customStatement(
-    //     "DELETE FROM appointments WHERE branch_id IS NULL OR branch_id = ''",
-    //   );
-    //   await db.customStatement(
-    //     "DELETE FROM patients WHERE branch_id IS NULL OR branch_id = ''",
-    //   );
-    //   await db.customStatement(
-    //     "DELETE FROM invoices WHERE branch_id IS NULL OR branch_id = ''",
-    //   );
-    //   await db.customStatement(
-    //     "DELETE FROM inventory_items WHERE branch_id IS NULL OR branch_id = ''",
-    //   );
-    //   await db.customStatement(
-    //     "DELETE FROM treatments WHERE branch_id IS NULL OR branch_id = ''",
-    //   );
-    //   debugPrint('Deleted null-branch rows');
-    // });
-    //   WidgetsBinding.instance.addPostFrameCallback((_) async {
-    //     final db = ref.read(appDatabaseProvider);
-    //     await db.backfillUserUuids(); // stamp any missing uuids (clinician)
-    //     await db.setSetting(
-    //       'sync_push_users',
-    //       '',
-    //     ); // reset cursor → re-push ALL users
-    //     debugPrint('Reset users sync; uuids backfilled');
-    //   });
-    // TEMP — run once to stamp legacy rows, then remove
-    // WidgetsBinding.instance.addPostFrameCallback((_) async {
-    //   final n = await ref.read(appDatabaseProvider).backfillBranchIds();
-    //   debugPrint('Backfilled $n rows with branch');
-    // });
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ref.read(permissionRepositoryProvider).seedIfEmpty();
+    });
   }
 
   Widget _myProfileCard(DentColors d, AuthSession? session) {
@@ -298,6 +270,7 @@ class _S extends ConsumerState<SettingsScreen> {
     final d = context.dent;
     final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
     final premium = ref.watch(isPremiumProvider);
+    final basic = ref.watch(isBasicProvider);
     ref.watch(clinicProfileProvider).whenData((p) {
       if (!_loaded && p != null) {
         _name.text = p.name;
@@ -320,20 +293,25 @@ class _S extends ConsumerState<SettingsScreen> {
           SizedBox(height: 2.2.h),
           LayoutBuilder(
             builder: (context, c) {
-              final left = Column(
-                children: [
-                  _profilePanel(d),
-                  const SizedBox(height: 18),
-                  _patientAppPanel(d),
-                  const SizedBox(height: 18),
-                  _appearancePanel(d, isDark),
-                ],
-              );
               final session = ref.watch(authControllerProvider);
               final role = session?.role;
               final isOwner = role == AppRole.owner;
               final isAdmin = role == AppRole.admin;
               final canManageStaff = isOwner || isAdmin;
+              final left = Column(
+                children: [
+                  _profilePanel(d),
+                  const SizedBox(height: 18),
+                  _patientAppPanel(d),
+                  // Owner only: what each role may see
+                  if (isOwner) ...[
+                    const PermissionsPanel(),
+                    const SizedBox(height: 18),
+                  ],
+                  const SizedBox(height: 18),
+                  _appearancePanel(d, isDark),
+                ],
+              );
 
               final right = Column(
                 children: [
@@ -345,12 +323,15 @@ class _S extends ConsumerState<SettingsScreen> {
                     const SizedBox(height: 18),
                   ],
                   // Owner/admin: staff management
+
+                  // Owner/admin: staff management
                   if (canManageStaff) ...[
                     _staffPanel(d),
                     const SizedBox(height: 18),
                   ],
+
                   // Owner only: branches
-                  if (premium && isOwner) ...[
+                  if (!basic && isOwner) ...[
                     _branchesPanel(d),
 
                     const SizedBox(height: 18),
@@ -1144,6 +1125,7 @@ class _S extends ConsumerState<SettingsScreen> {
 
   Widget _dataPanel(DentColors d) {
     final ent = ref.watch(entitlementsProvider);
+    final canBackup = ref.watch(canProvider(Perm.manageBackup));
 
     return DentPanel(
       title: 'Data & Backup',
@@ -1161,7 +1143,7 @@ class _S extends ConsumerState<SettingsScreen> {
           ),
 
           // ── Cloud Sync ──
-          if (ent.cloud)
+          if (ent.cloud && canBackup)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               decoration: BoxDecoration(
@@ -1209,7 +1191,7 @@ class _S extends ConsumerState<SettingsScreen> {
             ),
 
           // ── Restore / Export ──
-          if (ent.cloud)
+          if (ent.cloud && canBackup)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               decoration: BoxDecoration(
@@ -1249,7 +1231,7 @@ class _S extends ConsumerState<SettingsScreen> {
             ),
 
           // ── Restore from Cloud (DESTRUCTIVE) ──
-          if (ent.cloud)
+          if (ent.cloud && canBackup)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               decoration: BoxDecoration(

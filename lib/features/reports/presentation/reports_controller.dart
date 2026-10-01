@@ -59,11 +59,13 @@ final reportsSummaryProvider = FutureProvider.autoDispose<ReportsSummary>((
       await (db.select(db.invoices)..where(
             (t) =>
                 t.isDeleted.equals(false) &
+                t.status.equals('cancelled').not() &
                 (branchId == null
                     ? const Constant(true)
                     : t.branchId.equals(branchId)),
           ))
           .get();
+
   final patients =
       await (db.select(db.patients)..where(
             (t) =>
@@ -169,6 +171,7 @@ final reportsSummaryRangeProvider = FutureProvider.autoDispose
           await (db.select(db.invoices)..where(
                 (t) =>
                     t.isDeleted.equals(false) &
+                    t.status.equals('cancelled').not() &
                     (branchId == null
                         ? const Constant(true)
                         : t.branchId.equals(branchId)),

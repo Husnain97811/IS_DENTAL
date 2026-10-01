@@ -1,6 +1,4 @@
 import 'package:drift/drift.dart';
-import '../../../core/db/app_database.dart';
-import '../domain/permissions.dart';
 import '../../../core/constants/views.dart';
 
 class PermissionRepository {
@@ -19,17 +17,32 @@ class PermissionRepository {
     required bool allowed,
   }) async {
     final clinicId = await _db.currentClinicId() ?? '';
-    await _db
-        .into(_db.rolePermissions)
-        .insertOnConflictUpdate(
-          RolePermissionsCompanion.insert(
-            clinicId: clinicId,
-            role: role.name,
-            key: key,
-            allowed: Value(allowed),
-            updatedAt: Value(DateTime.now()),
-          ),
-        );
+    final existing =
+        await (_db.select(_db.rolePermissions)
+              ..where((t) => t.role.equals(role.name) & t.key.equals(key)))
+            .getSingleOrNull();
+
+    if (existing == null) {
+      await _db
+          .into(_db.rolePermissions)
+          .insert(
+            RolePermissionsCompanion.insert(
+              clinicId: clinicId,
+              role: role.name,
+              key: key,
+              allowed: Value(allowed),
+            ),
+          );
+    } else {
+      await (_db.update(
+        _db.rolePermissions,
+      )..where((t) => t.id.equals(existing.id))).write(
+        RolePermissionsCompanion(
+          allowed: Value(allowed),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    }
   }
 
   /// Write the defaults once, so the settings screen reflects reality.

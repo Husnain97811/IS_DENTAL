@@ -82,7 +82,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 22;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -447,6 +447,19 @@ class AppDatabase extends _$AppDatabase {
       if (from < 21) {
         try {
           await m.createTable(rolePermissions);
+        } catch (_) {}
+      }
+      if (from < 22) {
+        // appointmentId was added to the table definition without a migration,
+        // so databases created before then are missing it.
+        try {
+          await m.addColumn(invoices, invoices.appointmentId);
+        } catch (_) {}
+        try {
+          await m.addColumn(invoices, invoices.cancelledBy);
+        } catch (_) {}
+        try {
+          await m.addColumn(invoices, invoices.cancelledAt);
         } catch (_) {}
       }
     },

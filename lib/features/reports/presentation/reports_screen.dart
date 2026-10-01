@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/settings/domain/permissions.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/theme/app_typography.dart';
@@ -122,6 +123,32 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final d = context.dent;
+
+    // Reports are financial data — gated per role by the owner.
+    if (!ref.watch(canProvider(Perm.viewFinancials))) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.lock_outline_rounded, size: 34, color: d.text4),
+              const SizedBox(height: 14),
+              Text(
+                'Reports are not available for your role.',
+                style: TextStyle(color: d.text3, fontSize: 11.sp),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Ask the clinic owner if you need access.',
+                style: TextStyle(color: d.text4, fontSize: 9.5.sp),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final async = ref.watch(reportsSummaryProvider);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(26, 24, 26, 40),

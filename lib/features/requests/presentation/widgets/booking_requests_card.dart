@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:is_dental/features/settings/domain/entitlements.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../../core/constants/views.dart';
 import '../../../../core/router/app_routes.dart';
-import '../../domain/booking_request.dart';
 import '../requests_controller.dart';
 
 class BookingRequestsCard extends ConsumerWidget {

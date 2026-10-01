@@ -1,6 +1,7 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/settings/domain/permissions.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../../core/constants/views.dart';
@@ -20,13 +21,10 @@ class _XrayExportButtonState extends ConsumerState<XrayExportButton> {
   @override
   Widget build(BuildContext context) {
     final d = context.dent;
-    final session = ref.watch(authControllerProvider);
-    final role = session?.role;
-
-    // ── ROLE GATE: owner + admin only ──
-    final allowed = role == AppRole.owner || role == AppRole.admin;
-    // final allowed = role != AppRole.admin;
-    if (!allowed) return const SizedBox.shrink();
+    // ── PERMISSION GATE — owner always; others as configured ──
+    if (!ref.watch(canProvider(Perm.exportXrays))) {
+      return const SizedBox.shrink();
+    }
 
     return OutlinedButton.icon(
       onPressed: _busy ? null : _export,

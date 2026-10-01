@@ -8,6 +8,12 @@ final currentLicenseProvider = Provider<License?>(
 final isPremiumProvider = Provider<bool>(
   (ref) => ref.watch(currentLicenseProvider)?.tier == LicenseTier.premium,
 );
+final isStandardProvider = Provider<bool>(
+  (ref) => ref.watch(currentLicenseProvider)?.tier == LicenseTier.standard,
+);
+final isBasicProvider = Provider<bool>(
+  (ref) => ref.watch(currentLicenseProvider)?.tier == LicenseTier.basic,
+);
 final maxBranchesProvider = Provider<int>(
   (ref) => ref.watch(currentLicenseProvider)?.maxBranches ?? 1,
 );

@@ -1,7 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 part 'invoice.freezed.dart';
 
-enum InvoiceStatus { paid, pending, overdue }
+enum InvoiceStatus { paid, pending, overdue, cancelled }
 
 @freezed
 abstract class InvoiceItem with _$InvoiceItem {
@@ -28,5 +28,7 @@ abstract class Invoice with _$Invoice {
     @Default(0) int adjustment,
     @Default(0) int total,
     @Default([]) List<InvoiceItem> items,
+    String? cancelledBy,
+    DateTime? cancelledAt,
   }) = _Invoice;
 }

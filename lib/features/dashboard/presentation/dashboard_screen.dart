@@ -1,25 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:is_dental/features/branches/presentation/branch_controller.dart';
-import 'package:is_dental/features/branches/presentation/widgets/branch_switcher.dart';
-import 'package:is_dental/features/requests/presentation/widgets/booking_requests_card.dart';
 import 'package:sizer/sizer.dart';
-
-import '../../../core/db/app_database.dart';
+import '../../../core/constants/views.dart';
 import '../../../core/router/app_routes.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/theme/dent_colors.dart';
-import '../../../core/widgets/dent_panel.dart';
 import '../../../core/widgets/kpi_card.dart';
 import '../../../core/widgets/mini_bar_chart.dart';
-import '../../../core/widgets/segmented_control.dart';
 import '../../../core/widgets/stat_bar.dart';
-import '../../appointments/domain/appointment.dart';
-import '../../appointments/presentation/appointments_controller.dart';
 import '../../appointments/presentation/widgets/appointment_tile.dart';
-import '../../inventory/domain/inventory_item.dart';
-import '../../inventory/presentation/inventory_controller.dart';
 
 typedef _Range = ({DateTime start, DateTime end});
 
@@ -146,6 +134,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final inventory =
         ref.watch(inventoryStreamProvider).value ?? const <InventoryItem>[];
     final clinic = ref.watch(_clinicNameProvider).value ?? 'your clinic';
+    final canFin = ref.watch(canProvider(Perm.viewFinancials));
+    final canStats = ref.watch(canProvider(Perm.viewPatientStats));
 
     bool sameDay(DateTime a, DateTime b) =>
         a.year == b.year && a.month == b.month && a.day == b.day;
@@ -240,6 +230,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           // KPIs
           LayoutBuilder(
             builder: (context, c) {
+              final ent = ref.watch(entitlementsProvider);
+
+              final premium = ent.tier == LicenseTier.premium;
+
               final cols = c.maxWidth < 720 ? 2 : 4;
               const gap = 16.0;
               final w = (c.maxWidth - gap * (cols - 1)) / cols;
@@ -250,26 +244,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   label: "$periodWord's Appointments",
                   value: '$apptCount',
                 ),
-                KpiCard(
-                  icon: Icons.attach_money_rounded,
-                  tone: KpiTone.teal,
-                  label: 'Revenue ($periodWord)',
-                  value: 'Rs ${_money(revenue)}',
-                ),
-                KpiCard(
-                  icon: Icons.schedule_rounded,
-                  tone: KpiTone.amber,
-                  label: 'Pending Payments',
-                  value: 'Rs ${_money(unpaid.sum)}',
-                  delta: '${unpaid.count} outstanding',
-                  deltaUp: false,
-                ),
-                KpiCard(
-                  icon: Icons.people_alt_rounded,
-                  tone: KpiTone.slate,
-                  label: 'Total Patients',
-                  value: '$patientCount',
-                ),
+                if (canFin)
+                  KpiCard(
+                    icon: Icons.attach_money_rounded,
+                    tone: KpiTone.teal,
+                    label: 'Revenue ($periodWord)',
+                    value: 'Rs ${_money(revenue)}',
+                  ),
+                if (canFin)
+                  KpiCard(
+                    icon: Icons.schedule_rounded,
+                    tone: KpiTone.amber,
+                    label: 'Pending Payments',
+                    value: 'Rs ${_money(unpaid.sum)}',
+                    delta: '${unpaid.count} outstanding',
+                    deltaUp: false,
+                  ),
+                if (canStats)
+                  KpiCard(
+                    icon: Icons.people_alt_rounded,
+                    tone: KpiTone.slate,
+                    label: 'Total Patients',
+                    value: '$patientCount',
+                  ),
               ];
               return Wrap(
                 spacing: gap,
@@ -280,7 +277,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               );
             },
           ),
-          const BookingRequestsCard(),
+          if (ref.watch(entitlementsProvider).bookingRequests)
+            SizedBox(height: 2.2.h),
+
+          if (ref.watch(entitlementsProvider).bookingRequests)
+            const BookingRequestsCard(),
 
           SizedBox(height: 2.2.h),
 
@@ -344,12 +345,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 subtitle: 'Real-time operations',
                 child: Column(
                   children: [
-                    StatBarRow(
-                      label: '🦷  Total Patients',
-                      fraction: 0,
-                      trailing: '$patientCount',
-                      showTrack: false,
-                    ),
+                    if (canStats)
+                      StatBarRow(
+                        label: '🦷  Total Patients',
+                        fraction: 0,
+                        trailing: '$patientCount',
+                        showTrack: false,
+                      ),
                     StatBarRow(
                       label: '📅  Appointments Today',
                       fraction: 0,
@@ -362,12 +364,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       trailing: '$inTreatment',
                       showTrack: false,
                     ),
-                    StatBarRow(
-                      label: '🧾  Unpaid Invoices',
-                      fraction: 0,
-                      trailing: '${unpaid.count}',
-                      showTrack: false,
-                    ),
+                    if (canFin)
+                      StatBarRow(
+                        label: '🧾  Unpaid Invoices',
+                        fraction: 0,
+                        trailing: '${unpaid.count}',
+                        showTrack: false,
+                      ),
                     StatBarRow(
                       label: '📦  Low Stock Alerts',
                       fraction: 0,
@@ -391,8 +394,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             },
           ),
 
-          SizedBox(height: 2.2.h),
-
+          if (canFin) SizedBox(height: 2.2.h),
           // schedule + revenue
           LayoutBuilder(
             builder: (context, c) {
@@ -609,16 +611,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ],
                 ),
               );
+              if (!canFin) return const SizedBox.shrink();
               return stack
                   ? Column(children: [right])
-                  // ? Column(children: [left, const SizedBox(height: 18), right])
                   : Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Expanded(flex: 155, child: left),
-                        // const SizedBox(width: 18),
-                        Expanded(flex: 100, child: right),
-                      ],
+                      children: [Expanded(flex: 100, child: right)],
                     );
             },
           ),

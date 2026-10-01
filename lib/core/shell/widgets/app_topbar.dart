@@ -352,9 +352,10 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
               //remove switcher so no all screns need switcher
               // const BranchSwitcher(),
               // SizedBox(width: 2.w),
-              _RefreshButton(destination: widget.destination),
-
-              const SizedBox(width: 10),
+              //         if (ref.watch(entitlementsProvider).sync) ...[
+              //   _RefreshButton(destination: widget.destination),
+              //   const SizedBox(width: 10),
+              // ],
               _iconBtn(
                 context,
                 isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
@@ -364,7 +365,7 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
               _notificationBell(context, notifs),
               const SizedBox(width: 10),
               _DbStatusButton(destination: widget.destination),
-              if (widget.destination.route != AppRoutes.settings) ...[
+              if (_showPrimary(ref)) ...[
                 const SizedBox(width: 10),
                 _primaryButton(context, ref),
               ],
@@ -644,6 +645,19 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
     );
   }
 
+  /// Whether the topbar's primary action applies to this screen and this user.
+  bool _showPrimary(WidgetRef ref) {
+    final r = widget.destination.route;
+    if (r == AppRoutes.settings) return false;
+    // "+ New Offer" — Premium only
+    if (r == AppRoutes.whatsapp) return ref.watch(entitlementsProvider).offers;
+    // "Export Report" — financial data
+    if (r == AppRoutes.reports) {
+      return ref.watch(canProvider(Perm.viewFinancials));
+    }
+    return true;
+  }
+
   Widget _primaryButton(BuildContext context, WidgetRef ref) {
     final d = context.dent;
     return Material(
@@ -701,12 +715,21 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
       case AppRoutes.appointments:
         showAppointmentEditor(context);
       case AppRoutes.whatsapp:
-        showOfferComposer(context);
+        if (ref.read(entitlementsProvider).offers) {
+          showOfferComposer(context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Offers are available on the Premium plan.'),
+            ),
+          );
+        }
       case AppRoutes.treatments:
         showTreatmentEditor(context);
       case AppRoutes.prescriptions:
         showMedicineEditor(context);
       case AppRoutes.reports:
+        if (!ref.read(canProvider(Perm.viewFinancials))) return;
         showPdfOutput(
           context,
           build: () async {
@@ -973,86 +996,86 @@ class _DbStatusButton extends ConsumerWidget {
   }
 }
 
-class _RefreshButton extends ConsumerStatefulWidget {
-  const _RefreshButton({required this.destination});
-  final NavDestination destination;
-  @override
-  ConsumerState<_RefreshButton> createState() => _RefreshButtonState();
-}
+// class _RefreshButton extends ConsumerStatefulWidget {
+//   const _RefreshButton({required this.destination});
+//   final NavDestination destination;
+//   @override
+//   ConsumerState<_RefreshButton> createState() => _RefreshButtonState();
+// }
 
-class _RefreshButtonState extends ConsumerState<_RefreshButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _spin = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 700),
-  );
-  bool _busy = false;
+// class _RefreshButtonState extends ConsumerState<_RefreshButton>
+//     with SingleTickerProviderStateMixin {
+//   late final AnimationController _spin = AnimationController(
+//     vsync: this,
+//     duration: const Duration(milliseconds: 700),
+//   );
+//   bool _busy = false;
 
-  @override
-  void dispose() {
-    _spin.dispose();
-    super.dispose();
-  }
+//   @override
+//   void dispose() {
+//     _spin.dispose();
+//     super.dispose();
+//   }
 
   /// Invalidate the providers the current screen depends on, so it re-reads
   /// fresh local data. Also fires a cloud sync so the newest data is pulled.
-  Future<void> _refresh() async {
-    if (_busy) return;
-    setState(() => _busy = true);
-    _spin.repeat();
+  // Future<void> _refresh() async {
+  //   if (_busy) return;
+  //   setState(() => _busy = true);
+  //   _spin.repeat();
 
-    // 1. sync (pull latest from cloud) — non-fatal if offline
-    try {
-      await syncNow(ref);
-    } catch (_) {}
+  //   // 1. sync (pull latest from cloud) — non-fatal if offline
+  //   try {
+  //     await syncNow(ref);
+  //   } catch (_) {}
 
-    // 2. invalidate providers so every screen re-reads fresh local data
-    ref.invalidate(patientsStreamProvider);
-    ref.invalidate(invoicesStreamProvider);
-    ref.invalidate(inventoryStreamProvider);
-    ref.invalidate(treatmentsStreamProvider);
-    ref.invalidate(appointmentsForDayProvider);
-    // month appts for the currently viewed month
-    final vm = ref.read(viewedMonthProvider);
-    ref.invalidate(
-      appointmentsForMonthProvider((year: vm.year, month: vm.month)),
-    );
+  //   // 2. invalidate providers so every screen re-reads fresh local data
+  //   ref.invalidate(patientsStreamProvider);
+  //   ref.invalidate(invoicesStreamProvider);
+  //   ref.invalidate(inventoryStreamProvider);
+  //   ref.invalidate(treatmentsStreamProvider);
+  //   ref.invalidate(appointmentsForDayProvider);
+  //   // month appts for the currently viewed month
+  //   final vm = ref.read(viewedMonthProvider);
+  //   ref.invalidate(
+  //     appointmentsForMonthProvider((year: vm.year, month: vm.month)),
+  //   );
 
-    _spin.stop();
-    _spin.reset();
-    if (mounted) {
-      setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Refreshed ${widget.destination.title.toLowerCase()}'),
-          duration: const Duration(seconds: 1),
-        ),
-      );
-    }
-  }
+  //   _spin.stop();
+  //   _spin.reset();
+  //   if (mounted) {
+  //     setState(() => _busy = false);
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('Refreshed ${widget.destination.title.toLowerCase()}'),
+  //         duration: const Duration(seconds: 1),
+  //       ),
+  //     );
+  //   }
+  // }
 
-  @override
-  Widget build(BuildContext context) {
-    final d = context.dent;
-    return Material(
-      color: d.surface,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: _refresh,
-        child: Container(
-          width: 20.sp,
-          height: 20.sp,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: d.line),
-          ),
-          child: RotationTransition(
-            turns: _spin,
-            child: Icon(Icons.refresh_rounded, size: 14.sp, color: d.text3),
-          ),
-        ),
-      ),
-    );
-  }
-}
+  // @override
+  // Widget build(BuildContext context) {
+  //   final d = context.dent;
+  //   return Material(
+  //     color: d.surface,
+  //     borderRadius: BorderRadius.circular(12),
+  //     child: InkWell(
+  //       borderRadius: BorderRadius.circular(12),
+  //       onTap: _refresh,
+  //       child: Container(
+  //         width: 20.sp,
+  //         height: 20.sp,
+  //         decoration: BoxDecoration(
+  //           borderRadius: BorderRadius.circular(12),
+  //           border: Border.all(color: d.line),
+  //         ),
+  //         child: RotationTransition(
+  //           turns: _spin,
+  //           child: Icon(Icons.refresh_rounded, size: 14.sp, color: d.text3),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
+// }

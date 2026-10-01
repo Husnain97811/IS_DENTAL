@@ -19,6 +19,7 @@ class BillingRepositoryImpl implements BillingRepository {
           ])
           ..where(
             _db.invoices.isDeleted.equals(false) &
+                _db.invoices.status.equals('cancelled').not() &
                 (branchId == null
                     ? const Constant(true)
                     : _db.invoices.branchId.equals(branchId)),
@@ -89,6 +90,57 @@ class BillingRepositoryImpl implements BillingRepository {
   }
 
   @override
+  Stream<List<Invoice>> watchCancelled({String? branchId}) {
+    final q =
+        _db.select(_db.invoices).join([
+            innerJoin(
+              _db.patients,
+              _db.patients.id.equalsExp(_db.invoices.patientId),
+            ),
+          ])
+          ..where(
+            _db.invoices.isDeleted.equals(false) &
+                _db.invoices.status.equals('cancelled') &
+                (branchId == null
+                    ? const Constant(true)
+                    : _db.invoices.branchId.equals(branchId)),
+          )
+          ..orderBy([OrderingTerm.desc(_db.invoices.cancelledAt)]);
+    return q.watch().map(
+      (rows) => rows.map((r) {
+        final i = r.readTable(_db.invoices);
+        final p = r.readTable(_db.patients);
+        return Invoice(
+          id: i.id,
+          uuid: i.uuid,
+          patientId: i.patientId,
+          patientName: p.fullName,
+          invoiceNo: i.invoiceNo,
+          issuedAt: i.issuedAt,
+          status: InvoiceStatus.values.byName(i.status),
+          summary: i.summary,
+          subtotal: i.subtotal,
+          adjustment: i.adjustment,
+          total: i.total,
+          cancelledBy: i.cancelledBy,
+          cancelledAt: i.cancelledAt,
+        );
+      }).toList(),
+    );
+  }
+
+  @override
+  Future<void> cancelInvoice(int id, {required String by}) =>
+      (_db.update(_db.invoices)..where((t) => t.id.equals(id))).write(
+        InvoicesCompanion(
+          status: const Value('cancelled'),
+          cancelledBy: Value(by),
+          cancelledAt: Value(DateTime.now()),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  @override
   Stream<Invoice?> watchInvoice(int id) {
     return (_db.select(
       _db.invoiceItems,
@@ -129,16 +181,13 @@ class BillingRepositoryImpl implements BillingRepository {
   }
 
   @override
-  Future<void> markPaid(int id) => (_db.update(
-    _db.invoices,
-  )..where((t) => t.id.equals(id))).write(InvoiceItemsCompanionFix(id));
-
-  // (helper below avoids a long inline companion)
-  InvoicesCompanion InvoiceItemsCompanionFix(int id) => InvoicesCompanion(
-    status: const Value('paid'),
-    updatedAt: Value(DateTime.now()),
-  );
-
+  Future<void> markPaid(int id) =>
+      (_db.update(_db.invoices)..where((t) => t.id.equals(id))).write(
+        InvoicesCompanion(
+          status: const Value('paid'),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
   @override
   Future<void> seedDemoInvoicesIfEmpty() async {
     final clinicId = await _db.currentClinicId();

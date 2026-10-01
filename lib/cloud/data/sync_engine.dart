@@ -45,6 +45,7 @@ class SyncEngine {
     await step('appointments', () => _syncAppointments(clinicId));
     await step('booking_requests', () => _syncBookingRequests(clinicId));
     await step('permissions', () => _syncPermissions(clinicId));
+    await step('offers', () => _syncOffers(clinicId));
 
     await step('invoices', () => _syncInvoices(clinicId));
 
@@ -77,6 +78,8 @@ class SyncEngine {
       await _db.delete(_db.precautionLines).go();
       await _db.delete(_db.precautionSets).go();
       await _db.delete(_db.medicines).go();
+      await _db.delete(_db.offers).go();
+      await _db.delete(_db.rolePermissions).go();
       //comment for personal reference
       // ⚠ DO NOT wipe patientXrays — X-rays are LOCAL-ONLY and not in the
       // cloud. Deleting them here would destroy them permanently.
@@ -88,6 +91,11 @@ class SyncEngine {
       'push_patients',
       'pull_appointments',
       'push_appointments',
+      'pull_offers',
+      'push_offers',
+      'pull_permissions',
+      'push_permissions',
+
       'pull_medicines',
       'push_medicines',
       'pull_precaution_sets',
@@ -112,14 +120,16 @@ class SyncEngine {
     // 3. pull everything fresh from cloud (parents before children)
     await _restoreBranches(clinicId);
     await _restoreUsers(clinicId);
-    await _restorePatients(clinicId); // brings tooth records + plans
+    await _restorePatients(clinicId);
     await _restoreTreatments(clinicId);
     await _restoreInventory(clinicId);
     await _restoreAppointments(clinicId);
     await _restoreMedicines(clinicId);
     await _restorePrecautionSets(clinicId);
     await _restoreBookingRequests(clinicId);
-    await _restoreInvoices(clinicId); // brings invoice items
+    await _restoreInvoices(clinicId);
+    await _restorePermissions(clinicId);
+    await _restoreOffers(clinicId);
   }
 
   Future<List<Map<String, dynamic>>> _pullAll(
@@ -339,6 +349,12 @@ class SyncEngine {
               invoiceNo: Value(r['invoice_no'] ?? ''),
               issuedAt: Value(DateTime.parse(r['issued_at'])),
               status: Value(r['status'] ?? 'pending'),
+              cancelledBy: Value(r['cancelled_by']),
+              cancelledAt: Value(
+                r['cancelled_at'] == null
+                    ? null
+                    : DateTime.parse(r['cancelled_at']),
+              ),
               summary: Value(r['summary'] ?? ''),
               subtotal: Value(r['subtotal'] ?? 0),
               adjustment: Value(r['adjustment'] ?? 0),
@@ -418,6 +434,38 @@ class SyncEngine {
               ),
             );
       }
+    }
+  }
+
+  Future<void> _restoreOffers(String clinicId) async {
+    for (final r in await _pullAll('offers', clinicId)) {
+      await _db
+          .into(_db.offers)
+          .insert(
+            OffersCompanion(
+              uuid: Value(r['id']),
+              clinicId: Value(clinicId),
+              branchId: Value(r['branch_id']),
+              title: Value(r['title'] ?? ''),
+              body: Value(r['body'] ?? ''),
+              imageUrl: Value(r['image_url']),
+              startsAt: Value(
+                r['starts_at'] == null ? null : DateTime.parse(r['starts_at']),
+              ),
+              expiresAt: Value(
+                r['expires_at'] == null
+                    ? null
+                    : DateTime.parse(r['expires_at']),
+              ),
+              sentCount: Value(r['sent_count'] ?? 0),
+              sentApp: Value(r['sent_app'] ?? true),
+              sentWhatsApp: Value(r['sent_whats_app'] ?? false),
+              createdBy: Value(r['created_by']),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
     }
   }
 
@@ -1006,6 +1054,12 @@ class SyncEngine {
               issuedAt: Value(DateTime.parse(r['issued_at'])),
               status: Value(r['status'] ?? 'pending'),
               summary: Value(r['summary'] ?? ''),
+              cancelledBy: Value(r['cancelled_by']),
+              cancelledAt: Value(
+                r['cancelled_at'] == null
+                    ? null
+                    : DateTime.parse(r['cancelled_at']),
+              ),
               subtotal: Value(r['subtotal'] ?? 0),
               adjustment: Value(r['adjustment'] ?? 0),
               total: Value(r['total'] ?? 0),
@@ -1140,6 +1194,72 @@ class SyncEngine {
             ),
           );
       if (u.isAfter(pullSince)) await _setCur('pull_treatments', u);
+    }
+  }
+
+  Future<void> _syncOffers(String clinicId) async {
+    final since = await _cur('push_offers');
+    final changed = await (_db.select(
+      _db.offers,
+    )..where((t) => t.updatedAt.isBiggerThanValue(since))).get();
+    if (changed.isNotEmpty) {
+      await _sb.from('offers').upsert([
+        for (final o in changed)
+          {
+            'id': o.uuid, // Supabase PK is `id`, like booking_requests
+            'clinic_id': clinicId,
+            'branch_id': o.branchId,
+            'title': o.title,
+            'body': o.body,
+            'image_url': o.imageUrl,
+            'starts_at': _iso(o.startsAt),
+            'expires_at': _iso(o.expiresAt),
+            'sent_count': o.sentCount,
+            'sent_app': o.sentApp,
+            'sent_whats_app': o.sentWhatsApp,
+            'created_by': o.createdBy,
+            'is_deleted': o.isDeleted,
+            'updated_at': _iso(o.updatedAt),
+          },
+      ], onConflict: 'id');
+      await _setCur('push_offers', _max(changed.map((e) => e.updatedAt)));
+    }
+
+    final pullSince = await _cur('pull_offers');
+    for (final r in await _pull('offers', clinicId, pullSince)) {
+      final u = DateTime.parse(r['updated_at']);
+      final existing = await (_db.select(
+        _db.offers,
+      )..where((t) => t.uuid.equals(r['id']))).getSingleOrNull();
+      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
+      await _db
+          .into(_db.offers)
+          .insertOnConflictUpdate(
+            OffersCompanion(
+              id: existing == null ? const Value.absent() : Value(existing.id),
+              uuid: Value(r['id']),
+              clinicId: Value(clinicId),
+              branchId: Value(r['branch_id']),
+              title: Value(r['title'] ?? ''),
+              body: Value(r['body'] ?? ''),
+              imageUrl: Value(r['image_url']),
+              startsAt: Value(
+                r['starts_at'] == null ? null : DateTime.parse(r['starts_at']),
+              ),
+              expiresAt: Value(
+                r['expires_at'] == null
+                    ? null
+                    : DateTime.parse(r['expires_at']),
+              ),
+              sentCount: Value(r['sent_count'] ?? 0),
+              sentApp: Value(r['sent_app'] ?? true),
+              sentWhatsApp: Value(r['sent_whats_app'] ?? false),
+              createdBy: Value(r['created_by']),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(u),
+            ),
+          );
+      if (u.isAfter(pullSince)) await _setCur('pull_offers', u);
     }
   }
 

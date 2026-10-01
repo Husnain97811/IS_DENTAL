@@ -14,6 +14,12 @@ final invoicesStreamProvider = StreamProvider.autoDispose<List<Invoice>>(
       .watch(billingRepositoryProvider)
       .watchInvoices(branchId: ref.watch(activeBranchProvider)),
 );
+final cancelledInvoicesProvider = StreamProvider<List<Invoice>>((ref) {
+  final branchId = ref.watch(activeBranchProvider);
+  return ref
+      .watch(billingRepositoryProvider)
+      .watchCancelled(branchId: branchId);
+});
 final selectedInvoiceIdProvider = StateProvider<int?>((_) => null);
 final clinicNameProvider = FutureProvider<String>(
   (ref) async =>
