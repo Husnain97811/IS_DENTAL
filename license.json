@@ -1,12 +1,12 @@
 {
-  "clinicId": "HUSNAIN-ISL-179286",
-  "clinicName": "Husnain Ahmed",
-  "tier": "standard",
+  "clinicId": "MI-ISL-359249",
+  "clinicName": "MI MEDICAL DENTAL & AESTHETICS",
+  "tier": "basic",
   "cloudPackage": "cloud",
   "maxBranches": 2,
-  "maxUsers": 4,
-  "issuedAt": "2026-09-29T11:32:23.920412Z",
-  "expiresAt": "2027-09-29T11:32:23.920412Z",
+  "maxUsers": 3,
+  "issuedAt": "2026-10-03T19:00:27.639086Z",
+  "expiresAt": "2026-11-02T19:00:27.639086Z",
   "machineFingerprint": "ANY",
-  "signature": "CE7uD99YdrqJfrtMtwdW6lq4ul8NtmEx9rxkkMZViFp12wGDyY1MWl8usSjy2ipvK3Bvvqp3A3o5CRNWCFdOfnwmUjDOJBZjWGox/+rVBqJRgqcfzSJdUZbeAZmBM6RSB25L1OBJmpjBC8f0IQhP1js87/ZhJT+GmfvBaEipaeQR8m9MpgwN4RVXUZpLCzSQ3qhGxxXT2pK6csfh6kdP7b0A9Z5nunm4l6dJi8ws1Kq0VV8nEfiXNNxRT77tlZKYOK+p39SCHqGbj8yIm7qf1R4GN1LgLpVAcRJtKbxXPMqCg2ppEYjucJ/XwjdXTwtKBBXsVOtoUooT/vn+b9Nz4A=="
+  "signature": "WApAwWwLa7DGl2qrHE3sMBT8+ZSiaNqAkUV9j94LTMZ86849uCaiPtpI/3zZbyAzUVuuXuPqLSuLUWyf282KHzODY+oDLbkMJDg3b5WeeJ70jwBdwd0y1p6nirgxjUruo3SzzZ20QtuvrXNjxd4qjSnhRi9YMJlPWnsc1WMKhzU1CX+HCjTxEIddm6V/N1XyJe4rJdRoGamj4VxhhFa1T1BhU7FK5+PWk1ikghc0CGGsa9PhXpuLyqfITogb8kItQm5MJwrgfGZOsmjIO6a3HaO7SBpODUP7buX86zebLEVcKFHjWw6dsOZuxJbLZUtl81nMcR/Fu434ddt3y3U5Bg=="
 }

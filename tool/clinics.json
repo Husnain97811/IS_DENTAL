@@ -1,5 +1,47 @@
 [
   {
+    "clinicId": "MI-ISL-359249",
+    "clinicName": "MI MEDICAL DENTAL & AESTHETICS",
+    "city": "Islamabad",
+    "email": "heye.muqeet.dev@gmail.com",
+    "tier": "basic",
+    "cloudPackage": "cloud",
+    "maxBranches": 2,
+    "maxUsers": 3,
+    "firstIssuedAt": "2026-10-03T23:06:44.888140",
+    "lastIssuedAt": "2026-10-04T00:00:27.639086",
+    "expiresAt": "2026-11-03T00:00:27.639086",
+    "history": [
+      {
+        "issuedAt": "2026-10-04T00:00:27.639086",
+        "expiresAt": "2026-11-03T00:00:27.639086",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 2,
+        "maxUsers": 3,
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-10-04T00:00:12.637103",
+        "expiresAt": "2026-11-03T00:00:12.637103",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 3,
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-10-03T23:06:44.888140",
+        "expiresAt": "2026-11-02T23:06:44.888140",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "kind": "new"
+      }
+    ]
+  },
+  {
     "clinicId": "HUSNAIN-ISL-179286",
     "clinicName": "Husnain Ahmed",
     "city": "Islamabad",

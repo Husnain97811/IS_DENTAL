@@ -244,7 +244,7 @@ class AuthField extends StatelessWidget {
           Text(
             label.toUpperCase(),
             style: TextStyle(
-              color: d.text4,
+              color: d.text2,
               fontSize: 9.8.sp,
               fontWeight: FontWeight.w700,
               letterSpacing: .5,

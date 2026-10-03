@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:is_dental/features/licensing/domain/reset_token.dart';
 import 'package:pointycastle/export.dart';
 import '../domain/license.dart';
 
@@ -29,4 +30,25 @@ class LicenseVerifier {
       return false;
     }
   }
+
+  /// Verifies a vendor-signed owner-reset token. Same key, same algorithm —
+  /// only the payload differs, so a licence can never be used as a reset
+  /// token or vice versa.
+  bool verifyReset(ResetToken t) {
+    try {
+      final signer = RSASigner(SHA256Digest(), '0609608648016503040201')
+        ..init(
+          false,
+          PublicKeyParameter<RSAPublicKey>(RSAPublicKey(_modulus, _exponent)),
+        );
+      final msg = Uint8List.fromList(utf8.encode(t.canonicalPayload()));
+      return signer.verifySignature(
+        msg,
+        RSASignature(base64.decode(t.signature)),
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
 }

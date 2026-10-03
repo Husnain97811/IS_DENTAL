@@ -319,6 +319,8 @@ Future<void> main() async {
           _json(req, {'ok': true, 'clinics': _loadRecord()});
         case 'POST /api/mint':
           await _handleMint(req);
+        case 'POST /api/reset':
+          await _handleReset(req);
         default:
           req.response.statusCode = 404;
           await req.response.close();
@@ -447,6 +449,50 @@ Future<void> _handleMint(HttpRequest req) async {
     'cloudUpdated': cloudPackage == 'cloud' && cloudNote == null,
     'clinics': _loadRecord(),
   });
+}
+
+Future<void> _handleReset(HttpRequest req) async {
+  final body =
+      jsonDecode(await utf8.decoder.bind(req).join()) as Map<String, dynamic>;
+  final clinicId = (body['clinicId'] ?? '').toString().trim();
+  final hours = int.tryParse('${body['validHours']}') ?? 24;
+  if (clinicId.isEmpty) {
+    return _json(req, {'ok': false, 'error': 'Select a clinic.'});
+  }
+
+  final rnd = Random.secure();
+  final nonce = List.generate(
+    16,
+    (_) => rnd.nextInt(256),
+  ).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  final issuedAt = DateTime.now();
+  final expiresAt = issuedAt.add(Duration(hours: hours));
+
+  // field order must match ResetToken.canonicalPayload() exactly
+  final payload = jsonEncode({
+    'action': 'ownerReset',
+    'clinicId': clinicId,
+    'nonce': nonce,
+    'issuedAt': issuedAt.toUtc().toIso8601String(),
+    'expiresAt': expiresAt.toUtc().toIso8601String(),
+  });
+
+  final pair = _loadOrCreateKeys();
+  final priv = pair.privateKey as RSAPrivateKey;
+  final signer = RSASigner(SHA256Digest(), '0609608648016503040201')
+    ..init(true, PrivateKeyParameter<RSAPrivateKey>(priv));
+  final sig = signer.generateSignature(
+    Uint8List.fromList(utf8.encode(payload)),
+  );
+
+  final token = {
+    ...jsonDecode(payload) as Map<String, dynamic>,
+    'signature': base64.encode(sig.bytes),
+  };
+  final pretty = const JsonEncoder.withIndent('  ').convert(token);
+
+  stdout.writeln('RESET  $clinicId  ·  expires ${expiresAt.toIso8601String()}');
+  _json(req, {'ok': true, 'token': pretty, 'clinicId': clinicId});
 }
 
 void _send(HttpRequest req, String body, {String type = 'text/plain'}) {
@@ -657,6 +703,27 @@ const _html = r'''
       <div class="list" id="list"></div>
     </div>
   </div>
+        <div class="list" id="list"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <div class="ch"><div><h2>Owner password reset</h2>
+      <div class="s">Verify who you are speaking to before issuing one</div></div></div>
+    <div class="body">
+      <div class="note n-warn">A reset code lets someone set a new owner
+        password, which is full access to that clinic's patient records.
+        Confirm the caller's identity first — call back on the number you
+        have on file.</div>
+      <label>Clinic</label>
+      <select id="rsClinic"><option value="">— select —</option></select>
+      <label>Valid for (hours)</label>
+      <input id="rsHours" type="number" min="1" value="24">
+      <button class="btn" onclick="genReset()">Generate reset code</button>
+      <div id="rsOut"></div>
+    </div>
+  </div>
+</div>
 </div>
 
 <!-- confirmation modal -->
@@ -679,8 +746,44 @@ const $ = id => document.getElementById(id);
 
 async function load(){
   const r = await fetch('/api/clinics'); const j = await r.json();
-  clinics = j.clinics || []; fillExisting(); render();
+  clinics = j.clinics || [];
+  fillExisting();
+  fillResetClinics();     // ← ADD
+  render();
 }
+
+
+async function genReset(){
+  const clinicId = document.getElementById('rsClinic').value;
+  if(!clinicId){ alert('Select the clinic.'); return; }
+  const hours = document.getElementById('rsHours').value;
+  const out = document.getElementById('rsOut');
+  out.innerHTML = '<div class="note n-ice" style="margin-top:14px">Signing…</div>';
+  try{
+    const r = await fetch('/api/reset', {
+      method:'POST',
+      body: JSON.stringify({ clinicId: clinicId, validHours: hours })
+    });
+    const j = await r.json();
+    if(!j.ok){
+      out.innerHTML = '<div class="note n-alert" style="margin-top:14px">' + esc(j.error) + '</div>';
+      return;
+    }
+    window._lastResetToken = j.token;
+    out.innerHTML =
+      '<div class="note n-ok" style="margin-top:14px">Reset code for <b>' +
+      esc(j.clinicId) + '</b> — send it to the clinic.</div>' +
+      '<div style="margin:10px 0"><button class="copy" onclick="copyReset()">Copy reset code</button></div>' +
+      '<pre>' + esc(j.token) + '</pre>';
+  }catch(e){
+    out.innerHTML = '<div class="note n-alert" style="margin-top:14px">' + e + '</div>';
+  }
+}
+
+function copyReset(){
+  navigator.clipboard.writeText(window._lastResetToken || '');
+}
+
 
 function setMode(m){
   mode = m;
@@ -827,6 +930,12 @@ function preflight(){
   }
   mint();
 }
+function fillResetClinics(){
+  const s = document.getElementById('rsClinic');
+  if(!s) return;
+  s.innerHTML = '<option value="">— select —</option>' +
+    clinics.map(c=>`<option value="${c.clinicId}">${esc(c.clinicName)} · ${c.clinicId}</option>`).join('');
+}
 
 async function mint(){
   const btn = $('mintBtn');
@@ -848,8 +957,8 @@ async function mint(){
     const j = await r.json();
     if(!j.ok){ $('result').innerHTML = `<div class="note n-alert">${esc(j.error)}</div>`; }
            else{
-      clinics = j.clinics || clinics; fillExisting(); render();
-      const cloudLine = j.cloudUpdated
+      clinics = j.clinics || clinics; fillExisting(); fillResetClinics(); render();
+            const cloudLine = j.cloudUpdated
         ? '<br>Supabase clinic row updated.'
         : (j.cloudNote ? `<br><span style="color:#92400e">${esc(j.cloudNote)}</span>` : '');
       $('result').innerHTML = `

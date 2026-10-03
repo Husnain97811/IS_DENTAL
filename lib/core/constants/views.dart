@@ -74,3 +74,5 @@ export 'package:is_dental/features/settings/domain/entitlements.dart';
 export 'package:is_dental/features/branches/presentation/widgets/branch_switcher.dart';
 export 'package:is_dental/features/requests/presentation/widgets/booking_requests_card.dart';
 export 'package:is_dental/features/settings/domain/permissions.dart';
+export 'package:is_dental/core/shell/auth_shell.dart';
+export 'package:is_dental/features/auth/presentation/widgets/owner_reset_dialog.dart';

@@ -1,11 +1,15 @@
 import 'dart:convert';
 import 'package:bcrypt/bcrypt.dart';
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/licensing/domain/reset_token.dart';
 
 import '../../core/db/app_database.dart';
 import '../../core/utils/monotonic_clock.dart';
 import '../domain/license.dart';
 import 'license_verifier.dart';
+
+
 
 class LicenseService {
   LicenseService(this._db, this._clock);
@@ -124,6 +128,77 @@ class LicenseService {
       tier: lic.tier.name,
     );
   }
+
+
+  static const _kUsedNonces = 'used_reset_nonces';
+
+  /// Consume a vendor reset token and set a new owner password.
+  ///
+  /// Fully offline: the signature is checked against the compiled-in modulus.
+  /// Single-use — the nonce is recorded locally and refused thereafter.
+  Future<({bool ok, String? error})> redeemOwnerReset({
+    required String raw,
+    required String newPassword,
+  }) async {
+    ResetToken t;
+    try {
+      t = ResetToken.fromJson(jsonDecode(raw));
+    } catch (_) {
+      return (ok: false, error: 'That does not look like a reset code.');
+    }
+
+    if (!_verifier.verifyReset(t)) {
+      return (ok: false, error: 'This reset code is not valid.');
+    }
+
+    final clinicId = await _db.currentClinicId();
+    if (clinicId == null || t.clinicId != clinicId) {
+      return (ok: false, error: 'This reset code is for a different clinic.');
+    }
+
+    // monotonic clock — rolling the system date back cannot revive it
+    final now = await _clock.now();
+    if (now.isAfter(t.expiresAt)) {
+      return (
+        ok: false,
+        error: 'This reset code has expired. Please request a new one.'
+      );
+    }
+
+    final used = (await _db.getSetting(_kUsedNonces) ?? '').split(',');
+    if (used.contains(t.nonce)) {
+      return (ok: false, error: 'This reset code has already been used.');
+    }
+
+    if (newPassword.length < 6) {
+      return (ok: false, error: 'Choose a password of at least 6 characters.');
+    }
+
+    final owner = await (_db.select(_db.users)
+          ..where((u) => u.role.equals('owner') & u.isDeleted.equals(false))
+          ..limit(1))
+        .getSingleOrNull();
+    if (owner == null) {
+      return (ok: false, error: 'No owner account found on this device.');
+    }
+
+    await (_db.update(_db.users)..where((u) => u.id.equals(owner.id))).write(
+      UsersCompanion(
+        passwordHash: Value(BCrypt.hashpw(newPassword, BCrypt.gensalt())),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+
+    // burn the nonce — keep the last 20 so the list stays bounded
+    final next = [...used.where((e) => e.isNotEmpty), t.nonce];
+    await _db.setSetting(
+      _kUsedNonces,
+      next.sublist(next.length > 20 ? next.length - 20 : 0).join(','),
+    );
+
+    return (ok: true, error: null);
+  }
+
 
   Future<void> completeSetup({
     required License lic,

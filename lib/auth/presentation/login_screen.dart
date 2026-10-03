@@ -1,14 +1,9 @@
 import 'dart:async';
 import 'package:bcrypt/bcrypt.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:is_dental/core/shell/auth_shell.dart';
 import 'package:sizer/sizer.dart';
-
-import '../../core/db/app_database.dart';
-import '../../core/theme/dent_colors.dart';
-import 'auth_controller.dart';
+import '../../core/constants/views.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -113,7 +108,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Expanded(
                     child: Text(
                       'Too many attempts — locked',
-                      style: TextStyle(color: d.text2, fontSize: 9.5.sp),
+                      style: TextStyle(color: d.text2, fontSize: 10.5.sp),
                     ),
                   ),
                   Text(
@@ -122,7 +117,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       fontFamily: 'JetBrains Mono',
                       fontSize: 10.sp,
                       fontWeight: FontWeight.w700,
-                      color: d.warn,
+                      color: d.text2,
                     ),
                   ),
                 ],
@@ -141,6 +136,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             label: locked ? 'Locked' : 'Sign in',
             busy: _busy,
             onPressed: locked ? null : _submit,
+          ),
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.center,
+            child: TextButton(
+              onPressed: () => showOwnerResetDialog(context),
+              child: Text(
+                'Forgot owner password?',
+                style: TextStyle(fontSize: 9.5.sp, color: d.text4),
+              ),
+            ),
           ),
           // if (kDebugMode) ...[
           //   const SizedBox(height: 8),
