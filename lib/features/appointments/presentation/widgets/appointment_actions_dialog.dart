@@ -539,7 +539,9 @@ class _ReState extends ConsumerState<_RescheduleDialog> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Moved to ${_fmtFull(_slot!)} — showing that day.'),
+          content: Text(
+            'Rescheduled to ${_fmtFull(_slot!)} — showing that day.',
+          ),
         ),
       );
     } catch (e) {
