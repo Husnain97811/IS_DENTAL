@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/cloud/data/quick_sync.dart';
 import 'package:is_dental/features/settings/domain/entitlements.dart';
+import 'package:is_dental/features/whatsapp/presentation/wa_language_provider.dart';
 
 import 'package:sizer/sizer.dart';
 
@@ -100,7 +102,10 @@ class _BranchWaCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final d = context.dent;
-    final b = branch;
+    // Re-read the LIVE row so toggles (language, WA switch, connections)
+    // rebuild this card the moment the DB changes.
+    final b = (ref.watch(branchesStreamProvider).value ?? const <Branch>[])
+        .firstWhere((x) => x.id == branch.id, orElse: () => branch);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -175,6 +180,11 @@ class _BranchWaCard extends ConsumerWidget {
           ),
           Divider(height: 1, color: d.line),
 
+          if (b.qrConnected) ...[
+            _languageRow(context, ref, d, b),
+            Divider(height: 1, color: d.line),
+          ],
+
           // QR connection row
           _connectionRow(
             context,
@@ -216,6 +226,90 @@ class _BranchWaCard extends ConsumerWidget {
     'official' => 'WhatsApp (Official API)',
     _ => 'Notifications only',
   };
+
+  Widget _languageRow(
+    BuildContext context,
+    WidgetRef ref,
+    DentColors d,
+    Branch b,
+  ) {
+    Widget chip(String code, String label) {
+      final current =
+          ref.watch(branchWaLanguageProvider(b.id)).value ?? b.waLanguage;
+      final on = current == code;
+
+      return Expanded(
+        child: GestureDetector(
+          onTap: on
+              ? null
+              : () async {
+                  await ref
+                      .read(appDatabaseProvider)
+                      .setBranchWaLanguage(b.id, code);
+                  pushBranchLanguage(b.uuid, code);
+                },
+          child: Container(
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: on ? d.ice.withValues(alpha: .14) : d.surface2,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: on ? d.ice : d.line),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: on ? d.ice : d.text2,
+                fontSize: 10.5.sp,
+                fontWeight: FontWeight.w700,
+                fontFamily: code == 'ur' ? 'NotoNaskhArabic' : null,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      child: Row(
+        children: [
+          Icon(Icons.translate_rounded, size: 13.sp, color: d.text4),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Reminder language',
+                  style: TextStyle(
+                    color: d.text1,
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  'Language of the WhatsApp reminders sent from this branch',
+                  style: TextStyle(color: d.text3, fontSize: 9.5.sp),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Row(
+              children: [
+                chip('en', 'English'),
+                const SizedBox(width: 8),
+                chip('ur', 'اردو'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _connectionRow(
     BuildContext context,
@@ -382,6 +476,14 @@ class _OffersSection extends ConsumerWidget {
 
     //here check if user has premium tier then show this offer container
     if (ent.tier == LicenseTier.premium) {
+      if (!ref.watch(canProvider(Perm.manageWhatsapp))) {
+        return Center(
+          child: Text(
+            'You don\'t have access to this screen.',
+            style: TextStyle(color: d.text4, fontSize: 10.sp),
+          ),
+        );
+      }
       return Container(
         decoration: BoxDecoration(
           color: d.surface,

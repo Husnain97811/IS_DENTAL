@@ -23,6 +23,7 @@ class AppSidebar extends ConsumerWidget {
   };
 
   @override
+  @override
   Widget build(BuildContext context, WidgetRef ref) {
     final d = context.dent;
     final ent = ref.watch(entitlementsProvider);
@@ -43,11 +44,11 @@ class AppSidebar extends ConsumerWidget {
             child: ListView(
               padding: EdgeInsets.symmetric(vertical: 1.h),
               children: [
-                for (final g in NavGroup.values) ..._group(context, g, ent),
+                for (final g in NavGroup.values)
+                  ..._group(context, ref, g, ent),
               ],
             ),
           ),
-          // _docCard(context),
         ],
       ),
     );
@@ -107,14 +108,22 @@ class AppSidebar extends ConsumerWidget {
     ),
   );
 
-  List<Widget> _group(BuildContext context, NavGroup group, Entitlements ent) {
+  List<Widget> _group(
+    BuildContext context,
+    WidgetRef ref,
+    NavGroup group,
+    Entitlements ent,
+  ) {
     // Collect allowed indices first. `i` is the ORIGINAL position in
     // kNavDestinations — it must stay that way, it is the shell branch index.
     final indices = <int>[];
     for (var i = 0; i < kNavDestinations.length; i++) {
       final dest = kNavDestinations[i];
       if (dest.group != group) continue;
-      if (!navAllowed(dest.route, ent)) continue;
+      // licence + role permission, both in one place
+      if (!navAllowed(dest.route, ent, (k) => ref.watch(canProvider(k)))) {
+        continue;
+      }
       indices.add(i);
     }
 

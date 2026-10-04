@@ -6,6 +6,8 @@ class Branches extends Table {
   TextColumn get uuid => text().unique()();
   TextColumn get clinicId => text()();
   TextColumn get name => text()();
+  TextColumn get waLanguage =>
+      text().withDefault(const Constant('en'))(); // 'ur' | 'en'
   TextColumn get location => text().withDefault(const Constant(''))();
   BoolColumn get isPrimary => boolean().withDefault(const Constant(false))();
   IntColumn get openMinutes =>

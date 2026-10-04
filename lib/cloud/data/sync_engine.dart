@@ -163,6 +163,7 @@ class SyncEngine {
               waSessionStatus: Value(r['wa_session_status']),
               waQrStatus: Value(r['wa_qr_status']),
               waReminderChannel: Value(r['wa_reminder_channel'] ?? 'none'),
+              waLanguage: Value(r['wa_language'] ?? 'en'),
             ),
             mode: InsertMode.insertOrReplace,
           );
@@ -1418,6 +1419,7 @@ class SyncEngine {
             'wa_session_status': b.waSessionStatus,
             'wa_qr_status': b.waQrStatus,
             'wa_reminder_channel': b.waReminderChannel,
+            'wa_language': b.waLanguage,
           },
       ], onConflict: 'uuid');
       await _setCur('push_branches', _max(changed.map((e) => e.updatedAt)));
@@ -1445,6 +1447,15 @@ class SyncEngine {
               closedDays: Value(r['closed_days'] ?? ''),
               isDeleted: Value(r['is_deleted'] ?? false),
               updatedAt: Value(u),
+              waEnabled: Value(r['wa_enabled'] ?? false),
+              waMethod: Value(r['wa_method'] ?? 'official'),
+              waPhone: Value(r['wa_phone']),
+              waApiToken: Value(r['wa_api_token']),
+              waPhoneId: Value(r['wa_phone_id']),
+              waSessionStatus: Value(r['wa_session_status']),
+              waQrStatus: Value(r['wa_qr_status']),
+              waReminderChannel: Value(r['wa_reminder_channel'] ?? 'none'),
+              waLanguage: Value(r['wa_language'] ?? 'en'),
             ),
           );
       if (u.isAfter(pullSince)) await _setCur('pull_branches', u);

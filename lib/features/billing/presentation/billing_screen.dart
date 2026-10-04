@@ -2,18 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/constants/app_flags.dart';
-import 'package:is_dental/features/settings/domain/permissions.dart';
 import 'package:sizer/sizer.dart';
-
 import '../../../core/constants/views.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/theme/dent_colors.dart';
-import '../../../core/widgets/dent_panel.dart';
 import '../../../core/widgets/kpi_card.dart';
-import '../../../core/widgets/status_chip.dart';
-import '../../patients/presentation/patients_controller.dart';
-import '../domain/invoice.dart';
-import 'billing_controller.dart';
 
 class BillingScreen extends ConsumerStatefulWidget {
   const BillingScreen({super.key});
@@ -93,6 +84,17 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
   @override
   Widget build(BuildContext context) {
     final d = context.dent;
+
+    // No billing access → nothing on this screen renders.
+    if (!ref.watch(canProvider(Perm.accessBilling))) {
+      return Center(
+        child: Text(
+          'You don\'t have access to this screen.',
+          style: TextStyle(color: d.text4, fontSize: 10.sp),
+        ),
+      );
+    }
+
     final canFin = ref.watch(canProvider(Perm.viewFinancials));
     final canCancel = ref.watch(canProvider(Perm.cancelInvoices));
     final isOwner = ref.watch(authControllerProvider)?.role == AppRole.owner;

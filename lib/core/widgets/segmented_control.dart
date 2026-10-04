@@ -55,7 +55,7 @@ class SegmentedControl extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     color: i == selected
                         ? (dark ? AppPalette.onAccent : Colors.white)
-                        : d.text3,
+                        : d.text1,
                   ),
                 ),
               ),

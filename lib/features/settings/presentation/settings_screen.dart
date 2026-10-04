@@ -4,13 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/cloud/data/cloud_service.dart';
 import 'package:is_dental/cloud/data/sync_engine.dart';
 import 'package:is_dental/core/utils/qr_payload.dart';
-import 'package:is_dental/features/patients/presentation/widgets/xray_export_button.dart';
 import 'package:is_dental/features/settings/data/clinic_qr_pdf.dart';
-import 'package:is_dental/features/settings/domain/permissions.dart';
 import 'package:is_dental/features/settings/presentaion/widgets/license_panel.dart';
 import 'package:is_dental/features/settings/presentation/widgets/permissions_panel.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:sizer/sizer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import '../../../core/constants/views.dart';
 import '../../../licensing/presentation/license_providers.dart';
 import 'widgets/staff_editor.dart';
@@ -1708,6 +1707,25 @@ class _SheetTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Push only the reminder language of one branch to the cloud.
+/// Fire-and-forget. If it fails (offline), the scheduled sync
+/// catches up later because the local row's updatedAt was bumped.
+void pushBranchLanguage(String branchUuid, String lang) {
+  Future(() async {
+    try {
+      debugPrint('SYNC: reminder language updating…');
+
+      await Supabase.instance.client
+          .from('branches')
+          .update({
+            'wa_language': lang,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('uuid', branchUuid);
+    } catch (_) {}
+  });
 }
 
 Future<String> syncNow(WidgetRef ref) async {

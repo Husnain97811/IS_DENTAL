@@ -82,7 +82,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 23;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -462,6 +462,11 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(invoices, invoices.cancelledAt);
         } catch (_) {}
       }
+      if (from < 23) {
+        try {
+          await m.addColumn(branches, branches.waLanguage);
+        } catch (_) {}
+      }
     },
   );
 
@@ -477,6 +482,14 @@ class AppDatabase extends _$AppDatabase {
       );
     }
   }
+
+  Future<void> setBranchWaLanguage(int id, String lang) =>
+      (update(branches)..where((t) => t.id.equals(id))).write(
+        BranchesCompanion(
+          waLanguage: Value(lang),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
 
   Future<String?> currentBranchId() async {
     final v = await getSetting('active_branch');

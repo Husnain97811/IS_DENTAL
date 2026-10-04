@@ -401,6 +401,7 @@ class _ApptActions extends ConsumerWidget {
   }
 
   @override
+  @override
   Widget build(BuildContext context, WidgetRef ref) {
     final d = context.dent;
     final billed =
@@ -409,6 +410,10 @@ class _ApptActions extends ConsumerWidget {
     final prescribed =
         ref.watch(prescribedAppointmentIdsProvider).value?.contains(appt.id) ??
         false;
+
+    // role permissions
+    final canBill = ref.watch(canProvider(Perm.billAppointments));
+    final canPrescribe = ref.watch(canProvider(Perm.prescribe));
 
     final isDone = appt.status == AppointmentStatus.completed;
     final hasArrived =
@@ -420,182 +425,124 @@ class _ApptActions extends ConsumerWidget {
     // arrival can only be undone while nothing else has happened
     final canUndoArrival = hasArrived && !billed && !prescribed;
 
-    final gap = const SizedBox(width: 8);
+    final labelStyle = TextStyle(fontSize: 9.5.sp, fontWeight: FontWeight.w600);
+    final pad = const EdgeInsets.symmetric(vertical: 10);
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    );
+
+    // ── stage: Mark Arrived → Complete → Completed ──
+    final Widget stage = isDone
+        ? OutlinedButton.icon(
+            onPressed: null,
+            icon: const Icon(Icons.task_alt_rounded, size: 15),
+            style: OutlinedButton.styleFrom(
+              disabledForegroundColor: d.ok,
+              side: BorderSide(color: d.line),
+              padding: pad,
+              shape: shape,
+            ),
+            label: Text('Completed', style: labelStyle),
+          )
+        : hasArrived
+        ? FilledButton.icon(
+            onPressed: () => _stageAction(context, ref, canUndoArrival),
+            icon: const Icon(Icons.task_alt_rounded, size: 15),
+            style: FilledButton.styleFrom(
+              backgroundColor: d.ok,
+              foregroundColor: Colors.white,
+              padding: pad,
+              shape: shape,
+            ),
+            label: Text('Complete', style: labelStyle),
+          )
+        : OutlinedButton.icon(
+            onPressed: () => _confirmArrived(context, ref),
+            icon: const Icon(Icons.how_to_reg_rounded, size: 15),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: d.ok,
+              side: BorderSide(color: d.ok),
+              padding: pad,
+              shape: shape,
+            ),
+            label: Text('Mark Arrived', style: labelStyle),
+          );
+
+    // ── prescribe ──
+    final Widget prescribedDone = OutlinedButton.icon(
+      onPressed: null,
+      icon: const Icon(Icons.check_circle_rounded, size: 15),
+      style: OutlinedButton.styleFrom(
+        disabledForegroundColor: d.tealDeep,
+        side: BorderSide(color: d.line),
+        padding: pad,
+        shape: shape,
+      ),
+      label: Text('Prescribed', style: labelStyle),
+    );
+    final Widget prescribeBtn = OutlinedButton.icon(
+      onPressed: () => _prescribe(context, ref),
+      icon: const Icon(Icons.medication_rounded, size: 15),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: d.tealDeep,
+        side: BorderSide(color: d.tealDeep.withValues(alpha: .55)),
+        padding: pad,
+        shape: shape,
+      ),
+      label: Text('Prescribe', style: labelStyle),
+    );
+
+    // ── bill ──
+    final Widget billedDone = OutlinedButton.icon(
+      onPressed: null,
+      icon: const Icon(Icons.check_circle_rounded, size: 15),
+      style: OutlinedButton.styleFrom(
+        disabledForegroundColor: d.ok,
+        side: BorderSide(color: d.line),
+        padding: pad,
+        shape: shape,
+      ),
+      label: Text('Billed', style: labelStyle),
+    );
+    final Widget billBtn = FilledButton.icon(
+      onPressed: () => _bill(context, ref),
+      icon: const Icon(Icons.receipt_long_rounded, size: 15),
+      style: FilledButton.styleFrom(
+        backgroundColor: d.ice,
+        foregroundColor: AppPalette.onAccent,
+        padding: pad,
+        shape: shape,
+      ),
+      label: Text('Bill', style: labelStyle),
+    );
+
+    // ── manage: only before the visit begins ──
+    final Widget manage = OutlinedButton.icon(
+      onPressed: () => showAppointmentActions(context, appt),
+      icon: const Icon(Icons.more_horiz_rounded, size: 15),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: d.text2,
+        side: BorderSide(color: d.line),
+        padding: pad,
+        shape: shape,
+      ),
+      label: Text('Manage', style: labelStyle),
+    );
+
+    // Done states always show (staff can see what happened);
+    // action buttons only show with permission.
+    final buttons = <Widget>[
+      stage,
+      if (prescribed) prescribedDone else if (canPrescribe) prescribeBtn,
+      if (billed) billedDone else if (canBill) billBtn,
+      if (!started) manage,
+    ];
 
     return Row(
       children: [
-        // ── stage: Mark Arrived → Complete → Completed ──
-        Expanded(
-          child: isDone
-              ? OutlinedButton.icon(
-                  onPressed: null,
-                  icon: const Icon(Icons.task_alt_rounded, size: 15),
-                  style: OutlinedButton.styleFrom(
-                    disabledForegroundColor: d.ok,
-                    side: BorderSide(color: d.line),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  label: Text(
-                    'Completed',
-                    style: TextStyle(
-                      fontSize: 9.5.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                )
-              : hasArrived
-              ? FilledButton.icon(
-                  onPressed: () => _stageAction(context, ref, canUndoArrival),
-                  icon: const Icon(Icons.task_alt_rounded, size: 15),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: d.ok,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  label: Text(
-                    'Complete',
-                    style: TextStyle(
-                      fontSize: 9.5.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                )
-              : OutlinedButton.icon(
-                  onPressed: () => _confirmArrived(context, ref),
-                  icon: const Icon(Icons.how_to_reg_rounded, size: 15),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: d.ok,
-                    side: BorderSide(color: d.ok),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  label: Text(
-                    'Mark Arrived',
-                    style: TextStyle(
-                      fontSize: 9.5.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-        ),
-
-        gap,
-        // ── prescribe ──
-        Expanded(
-          child: prescribed
-              ? OutlinedButton.icon(
-                  onPressed: null,
-                  icon: const Icon(Icons.check_circle_rounded, size: 15),
-                  style: OutlinedButton.styleFrom(
-                    disabledForegroundColor: d.tealDeep,
-                    side: BorderSide(color: d.line),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  label: Text(
-                    'Prescribed',
-                    style: TextStyle(
-                      fontSize: 9.5.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                )
-              : OutlinedButton.icon(
-                  onPressed: () => _prescribe(context, ref),
-                  icon: const Icon(Icons.medication_rounded, size: 15),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: d.tealDeep,
-                    side: BorderSide(color: d.tealDeep.withValues(alpha: .55)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  label: Text(
-                    'Prescribe',
-                    style: TextStyle(
-                      fontSize: 9.5.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-        ),
-
-        gap,
-        // ── bill ──
-        Expanded(
-          child: billed
-              ? OutlinedButton.icon(
-                  onPressed: null,
-                  icon: const Icon(Icons.check_circle_rounded, size: 15),
-                  style: OutlinedButton.styleFrom(
-                    disabledForegroundColor: d.ok,
-                    side: BorderSide(color: d.line),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  label: Text(
-                    'Billed',
-                    style: TextStyle(
-                      fontSize: 9.5.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                )
-              : FilledButton.icon(
-                  onPressed: () => _bill(context, ref),
-                  icon: const Icon(Icons.receipt_long_rounded, size: 15),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: d.ice,
-                    foregroundColor: AppPalette.onAccent,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  label: Text(
-                    'Bill',
-                    style: TextStyle(
-                      fontSize: 9.5.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-        ),
-
-        // ── manage: only before the visit begins ──
-        if (!started) ...[
-          gap,
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => showAppointmentActions(context, appt),
-              icon: const Icon(Icons.more_horiz_rounded, size: 15),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: d.text2,
-                side: BorderSide(color: d.line),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              label: Text(
-                'Manage',
-                style: TextStyle(fontSize: 9.5.sp, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
+        for (var i = 0; i < buttons.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(child: buttons[i]),
         ],
       ],
     );

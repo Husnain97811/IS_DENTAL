@@ -20,8 +20,9 @@ abstract class Branch with _$Branch {
     String? waApiToken,
     String? waPhoneId,
     String? waSessionStatus,
-     String? waQrStatus,                     // NEW
-    @Default('none') String waReminderChannel, // NEW
+    String? waQrStatus,
+    @Default('none') String waReminderChannel,
+    @Default('en') String waLanguage,
   }) = _Branch;
 
   const Branch._();
@@ -31,5 +32,4 @@ abstract class Branch with _$Branch {
   bool get officialConnected =>
       (waApiToken?.isNotEmpty ?? false) && (waPhoneId?.isNotEmpty ?? false);
   bool get anyWhatsApp => qrConnected || officialConnected;
-
 }

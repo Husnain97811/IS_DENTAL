@@ -7427,6 +7427,18 @@ class $BranchesTable extends Branches
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _waLanguageMeta = const VerificationMeta(
+    'waLanguage',
+  );
+  @override
+  late final GeneratedColumn<String> waLanguage = GeneratedColumn<String>(
+    'wa_language',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('en'),
+  );
   static const VerificationMeta _locationMeta = const VerificationMeta(
     'location',
   );
@@ -7630,6 +7642,7 @@ class $BranchesTable extends Branches
     uuid,
     clinicId,
     name,
+    waLanguage,
     location,
     isPrimary,
     openMinutes,
@@ -7685,6 +7698,12 @@ class $BranchesTable extends Branches
       );
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('wa_language')) {
+      context.handle(
+        _waLanguageMeta,
+        waLanguage.isAcceptableOrUnknown(data['wa_language']!, _waLanguageMeta),
+      );
     }
     if (data.containsKey('location')) {
       context.handle(
@@ -7828,6 +7847,10 @@ class $BranchesTable extends Branches
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
+      waLanguage: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wa_language'],
+      )!,
       location: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}location'],
@@ -7906,6 +7929,7 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
   final String uuid;
   final String clinicId;
   final String name;
+  final String waLanguage;
   final String location;
   final bool isPrimary;
   final int openMinutes;
@@ -7927,6 +7951,7 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     required this.uuid,
     required this.clinicId,
     required this.name,
+    required this.waLanguage,
     required this.location,
     required this.isPrimary,
     required this.openMinutes,
@@ -7951,6 +7976,7 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     map['uuid'] = Variable<String>(uuid);
     map['clinic_id'] = Variable<String>(clinicId);
     map['name'] = Variable<String>(name);
+    map['wa_language'] = Variable<String>(waLanguage);
     map['location'] = Variable<String>(location);
     map['is_primary'] = Variable<bool>(isPrimary);
     map['open_minutes'] = Variable<int>(openMinutes);
@@ -7986,6 +8012,7 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       uuid: Value(uuid),
       clinicId: Value(clinicId),
       name: Value(name),
+      waLanguage: Value(waLanguage),
       location: Value(location),
       isPrimary: Value(isPrimary),
       openMinutes: Value(openMinutes),
@@ -8025,6 +8052,7 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       uuid: serializer.fromJson<String>(json['uuid']),
       clinicId: serializer.fromJson<String>(json['clinicId']),
       name: serializer.fromJson<String>(json['name']),
+      waLanguage: serializer.fromJson<String>(json['waLanguage']),
       location: serializer.fromJson<String>(json['location']),
       isPrimary: serializer.fromJson<bool>(json['isPrimary']),
       openMinutes: serializer.fromJson<int>(json['openMinutes']),
@@ -8051,6 +8079,7 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       'uuid': serializer.toJson<String>(uuid),
       'clinicId': serializer.toJson<String>(clinicId),
       'name': serializer.toJson<String>(name),
+      'waLanguage': serializer.toJson<String>(waLanguage),
       'location': serializer.toJson<String>(location),
       'isPrimary': serializer.toJson<bool>(isPrimary),
       'openMinutes': serializer.toJson<int>(openMinutes),
@@ -8075,6 +8104,7 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     String? uuid,
     String? clinicId,
     String? name,
+    String? waLanguage,
     String? location,
     bool? isPrimary,
     int? openMinutes,
@@ -8096,6 +8126,7 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     uuid: uuid ?? this.uuid,
     clinicId: clinicId ?? this.clinicId,
     name: name ?? this.name,
+    waLanguage: waLanguage ?? this.waLanguage,
     location: location ?? this.location,
     isPrimary: isPrimary ?? this.isPrimary,
     openMinutes: openMinutes ?? this.openMinutes,
@@ -8121,6 +8152,9 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
       uuid: data.uuid.present ? data.uuid.value : this.uuid,
       clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
       name: data.name.present ? data.name.value : this.name,
+      waLanguage: data.waLanguage.present
+          ? data.waLanguage.value
+          : this.waLanguage,
       location: data.location.present ? data.location.value : this.location,
       isPrimary: data.isPrimary.present ? data.isPrimary.value : this.isPrimary,
       openMinutes: data.openMinutes.present
@@ -8163,6 +8197,7 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
           ..write('uuid: $uuid, ')
           ..write('clinicId: $clinicId, ')
           ..write('name: $name, ')
+          ..write('waLanguage: $waLanguage, ')
           ..write('location: $location, ')
           ..write('isPrimary: $isPrimary, ')
           ..write('openMinutes: $openMinutes, ')
@@ -8184,11 +8219,12 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     uuid,
     clinicId,
     name,
+    waLanguage,
     location,
     isPrimary,
     openMinutes,
@@ -8205,7 +8241,7 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
     waApiToken,
     waPhoneId,
     waSessionStatus,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -8214,6 +8250,7 @@ class BranchRow extends DataClass implements Insertable<BranchRow> {
           other.uuid == this.uuid &&
           other.clinicId == this.clinicId &&
           other.name == this.name &&
+          other.waLanguage == this.waLanguage &&
           other.location == this.location &&
           other.isPrimary == this.isPrimary &&
           other.openMinutes == this.openMinutes &&
@@ -8237,6 +8274,7 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
   final Value<String> uuid;
   final Value<String> clinicId;
   final Value<String> name;
+  final Value<String> waLanguage;
   final Value<String> location;
   final Value<bool> isPrimary;
   final Value<int> openMinutes;
@@ -8258,6 +8296,7 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     this.uuid = const Value.absent(),
     this.clinicId = const Value.absent(),
     this.name = const Value.absent(),
+    this.waLanguage = const Value.absent(),
     this.location = const Value.absent(),
     this.isPrimary = const Value.absent(),
     this.openMinutes = const Value.absent(),
@@ -8280,6 +8319,7 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     required String uuid,
     required String clinicId,
     required String name,
+    this.waLanguage = const Value.absent(),
     this.location = const Value.absent(),
     this.isPrimary = const Value.absent(),
     this.openMinutes = const Value.absent(),
@@ -8304,6 +8344,7 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     Expression<String>? uuid,
     Expression<String>? clinicId,
     Expression<String>? name,
+    Expression<String>? waLanguage,
     Expression<String>? location,
     Expression<bool>? isPrimary,
     Expression<int>? openMinutes,
@@ -8326,6 +8367,7 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
       if (uuid != null) 'uuid': uuid,
       if (clinicId != null) 'clinic_id': clinicId,
       if (name != null) 'name': name,
+      if (waLanguage != null) 'wa_language': waLanguage,
       if (location != null) 'location': location,
       if (isPrimary != null) 'is_primary': isPrimary,
       if (openMinutes != null) 'open_minutes': openMinutes,
@@ -8350,6 +8392,7 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     Value<String>? uuid,
     Value<String>? clinicId,
     Value<String>? name,
+    Value<String>? waLanguage,
     Value<String>? location,
     Value<bool>? isPrimary,
     Value<int>? openMinutes,
@@ -8372,6 +8415,7 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
       uuid: uuid ?? this.uuid,
       clinicId: clinicId ?? this.clinicId,
       name: name ?? this.name,
+      waLanguage: waLanguage ?? this.waLanguage,
       location: location ?? this.location,
       isPrimary: isPrimary ?? this.isPrimary,
       openMinutes: openMinutes ?? this.openMinutes,
@@ -8405,6 +8449,9 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
+    }
+    if (waLanguage.present) {
+      map['wa_language'] = Variable<String>(waLanguage.value);
     }
     if (location.present) {
       map['location'] = Variable<String>(location.value);
@@ -8464,6 +8511,7 @@ class BranchesCompanion extends UpdateCompanion<BranchRow> {
           ..write('uuid: $uuid, ')
           ..write('clinicId: $clinicId, ')
           ..write('name: $name, ')
+          ..write('waLanguage: $waLanguage, ')
           ..write('location: $location, ')
           ..write('isPrimary: $isPrimary, ')
           ..write('openMinutes: $openMinutes, ')
@@ -19537,6 +19585,7 @@ typedef $$BranchesTableCreateCompanionBuilder =
       required String uuid,
       required String clinicId,
       required String name,
+      Value<String> waLanguage,
       Value<String> location,
       Value<bool> isPrimary,
       Value<int> openMinutes,
@@ -19560,6 +19609,7 @@ typedef $$BranchesTableUpdateCompanionBuilder =
       Value<String> uuid,
       Value<String> clinicId,
       Value<String> name,
+      Value<String> waLanguage,
       Value<String> location,
       Value<bool> isPrimary,
       Value<int> openMinutes,
@@ -19604,6 +19654,11 @@ class $$BranchesTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get waLanguage => $composableBuilder(
+    column: $table.waLanguage,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -19717,6 +19772,11 @@ class $$BranchesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get waLanguage => $composableBuilder(
+    column: $table.waLanguage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get location => $composableBuilder(
     column: $table.location,
     builder: (column) => ColumnOrderings(column),
@@ -19819,6 +19879,11 @@ class $$BranchesTableAnnotationComposer
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
+  GeneratedColumn<String> get waLanguage => $composableBuilder(
+    column: $table.waLanguage,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get location =>
       $composableBuilder(column: $table.location, builder: (column) => column);
 
@@ -19916,6 +19981,7 @@ class $$BranchesTableTableManager
                 Value<String> uuid = const Value.absent(),
                 Value<String> clinicId = const Value.absent(),
                 Value<String> name = const Value.absent(),
+                Value<String> waLanguage = const Value.absent(),
                 Value<String> location = const Value.absent(),
                 Value<bool> isPrimary = const Value.absent(),
                 Value<int> openMinutes = const Value.absent(),
@@ -19937,6 +20003,7 @@ class $$BranchesTableTableManager
                 uuid: uuid,
                 clinicId: clinicId,
                 name: name,
+                waLanguage: waLanguage,
                 location: location,
                 isPrimary: isPrimary,
                 openMinutes: openMinutes,
@@ -19960,6 +20027,7 @@ class $$BranchesTableTableManager
                 required String uuid,
                 required String clinicId,
                 required String name,
+                Value<String> waLanguage = const Value.absent(),
                 Value<String> location = const Value.absent(),
                 Value<bool> isPrimary = const Value.absent(),
                 Value<int> openMinutes = const Value.absent(),
@@ -19981,6 +20049,7 @@ class $$BranchesTableTableManager
                 uuid: uuid,
                 clinicId: clinicId,
                 name: name,
+                waLanguage: waLanguage,
                 location: location,
                 isPrimary: isPrimary,
                 openMinutes: openMinutes,

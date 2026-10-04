@@ -4,7 +4,6 @@ import 'package:sizer/sizer.dart';
 
 import '../../../../core/constants/views.dart';
 import '../../../../cloud/data/quick_sync.dart';
-import '../../domain/permissions.dart';
 
 /// Owner-only. Controls what each role may see and do.
 /// The owner is never listed — the owner can always do everything.
@@ -55,8 +54,8 @@ class PermissionsPanel extends ConsumerWidget {
                       roleLabel(r),
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: d.text3,
-                        fontSize: 9.sp,
+                        color: d.text2,
+                        fontSize: 10.5.sp,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -82,13 +81,13 @@ class PermissionsPanel extends ConsumerWidget {
                           Perm.label(key),
                           style: TextStyle(
                             color: d.text1,
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 11.5.sp,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         Text(
                           Perm.describe(key),
-                          style: TextStyle(color: d.text3, fontSize: 8.5.sp),
+                          style: TextStyle(color: d.text2, fontSize: 9.5.sp),
                         ),
                       ],
                     ),

@@ -134,7 +134,23 @@ const kNavDestinations = <NavDestination>[
 ///
 /// Single source of truth — consumed by the sidebar filter AND the router
 /// redirect. Add new gated screens here only, never in the widgets.
-bool navAllowed(String route, Entitlements ent) => switch (route) {
-  AppRoutes.whatsapp => ent.whatsapp,
-  _ => true,
+/// Role permission needed per route. Routes not listed need none.
+const kRoutePerm = <String, String>{
+  AppRoutes.whatsapp: Perm.manageWhatsapp,
+  AppRoutes.billing: Perm.accessBilling,
+  AppRoutes.reports: Perm.viewFinancials,
 };
+
+/// Licence gate + role permission per route.
+/// Single source of truth — used by the sidebar filter AND the router
+/// redirect. Add new gated screens here only, never in the widgets.
+bool navAllowed(String route, Entitlements ent, bool Function(String) can) {
+  final licensed = switch (route) {
+    AppRoutes.whatsapp => ent.whatsapp,
+    _ => true,
+  };
+  if (!licensed) return false;
+
+  final perm = kRoutePerm[route];
+  return perm == null || can(perm);
+}
