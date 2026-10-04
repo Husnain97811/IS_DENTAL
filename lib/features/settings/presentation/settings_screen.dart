@@ -331,7 +331,7 @@ class _S extends ConsumerState<SettingsScreen> {
                   ],
 
                   // Owner only: branches
-                  if (!basic && isOwner) ...[
+                  if (isOwner) ...[
                     _branchesPanel(d),
 
                     const SizedBox(height: 18),
@@ -1132,15 +1132,15 @@ class _S extends ConsumerState<SettingsScreen> {
       child: Column(
         children: [
           // ── Auto Backup — forced off on offline installs ──
-          _toggleRow(
-            d,
-            'Auto Backup',
-            ent.cloud
-                ? 'Encrypted local backup'
-                : 'Not available on offline installs',
-            ent.cloud,
-            (_) {},
-          ),
+          // _toggleRow(
+          //   d,
+          //   'Auto Backup',
+          //   ent.cloud
+          //       ? 'Encrypted local backup'
+          //       : 'Not available on offline installs',
+          //   ent.cloud,
+          //   (_) {},
+          // ),
 
           // ── Cloud Sync ──
           if (ent.cloud && canBackup)
@@ -1164,8 +1164,8 @@ class _S extends ConsumerState<SettingsScreen> {
                           ),
                         ),
                         Text(
-                          'Push all local data to Supabase',
-                          style: TextStyle(color: d.text3, fontSize: 8.sp),
+                          'Push all local data to Cloud',
+                          style: TextStyle(color: d.text3, fontSize: 9.sp),
                         ),
                       ],
                     ),
