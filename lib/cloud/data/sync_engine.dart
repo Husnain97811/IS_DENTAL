@@ -27,6 +27,7 @@ class SyncEngine {
   }
 
   Future<void> syncAll(String clinicId) async {
+    _skipped.clear();
     Future<void> step(String name, Future<void> Function() f) async {
       try {
         await f();
@@ -48,9 +49,24 @@ class SyncEngine {
     await step('offers', () => _syncOffers(clinicId));
 
     await step('invoices', () => _syncInvoices(clinicId));
-
+    // payments AFTER invoices — a payment needs its invoice to exist locally
+    await step('payments', () => _syncPayments(clinicId));
+    await step('lookups', () => _syncLookups(clinicId));
+    await step('devices', () => _syncDevices(clinicId));
+    await step('expenses', () => _syncExpenses(clinicId));
     // housekeeping — remove decided requests older than 30 days
     await step('purge_requests', () => _db.purgeOldDecidedRequests());
+
+    // Mark this computer alive, so the owner can spot a dead machine.
+    await step('device_seen', () => _db.touchThisDevice());
+
+    // A skipped row used to vanish into a debugPrint. Store it so the
+    // owner can see that something didn't come through.
+    await _db.setSetting('sync_skipped', _skipped.take(50).join(','));
+    await _db.setSetting('sync_skipped_count', '${_skipped.length}');
+    if (_skipped.isNotEmpty) {
+      debugPrint('SYNC: ${_skipped.length} row(s) skipped: $_skipped');
+    }
   }
 
   /// DESTRUCTIVE: wipes ALL local data and re-downloads everything fresh from
@@ -58,9 +74,15 @@ class SyncEngine {
   /// Any local changes not yet pushed are LOST. Use only to recover from a
   /// bad local state by restoring the last cloud version.
   Future<void> restoreFromCloud(String clinicId) async {
+    // Everything below is about to be emptied and refilled from the cloud.
+    // From this point on this install must never create factory defaults —
+    // an empty table means "not pulled yet", not "new clinic".
+    await _db.setSeedAllowed(false);
+
     // 1. wipe local tables (children before parents to respect FKs)
     await _db.transaction(() async {
       await _db.delete(_db.invoiceItems).go();
+      await _db.delete(_db.invoicePayments).go();
       await _db.delete(_db.treatmentSteps).go();
       await _db.delete(_db.treatmentPlans).go();
       await _db.delete(_db.toothRecords).go();
@@ -80,7 +102,9 @@ class SyncEngine {
       await _db.delete(_db.medicines).go();
       await _db.delete(_db.offers).go();
       await _db.delete(_db.rolePermissions).go();
-      //comment for personal reference
+      await _db.delete(_db.expenses).go();
+      await _db.delete(_db.lookupLists).go();
+      await _db.delete(_db.devices).go();
       // ⚠ DO NOT wipe patientXrays — X-rays are LOCAL-ONLY and not in the
       // cloud. Deleting them here would destroy them permanently.
     });
@@ -112,24 +136,53 @@ class SyncEngine {
       'push_users',
       'pull_booking_requests',
       'push_booking_requests',
+      'pull_payments',
+      'push_payments',
+      'pull_lookups',
+      'push_lookups',
+      'pull_expenses',
+      'push_expenses',
+      'pull_devices',
+      'push_devices',
     ];
     for (final k in cursorKeys) {
       await _db.setSetting('sync_$k', '');
     }
 
     // 3. pull everything fresh from cloud (parents before children)
-    await _restoreBranches(clinicId);
-    await _restoreUsers(clinicId);
-    await _restorePatients(clinicId);
-    await _restoreTreatments(clinicId);
-    await _restoreInventory(clinicId);
-    await _restoreAppointments(clinicId);
-    await _restoreMedicines(clinicId);
-    await _restorePrecautionSets(clinicId);
-    await _restoreBookingRequests(clinicId);
-    await _restoreInvoices(clinicId);
-    await _restorePermissions(clinicId);
-    await _restoreOffers(clinicId);
+    _skipped.clear();
+    Future<void> part(String name, Future<void> Function() f) async {
+      try {
+        await f();
+      } catch (e) {
+        _skipped.add(name);
+        debugPrint('RESTORE[$name] failed: $e');
+      }
+    }
+
+    await part('branches', () => _restoreBranches(clinicId));
+    await part('users', () => _restoreUsers(clinicId));
+    await part('patients', () => _restorePatients(clinicId));
+    await part('treatments', () => _restoreTreatments(clinicId));
+    await part('inventory', () => _restoreInventory(clinicId));
+    await part('appointments', () => _restoreAppointments(clinicId));
+    await part('medicines', () => _restoreMedicines(clinicId));
+    await part('precaution_sets', () => _restorePrecautionSets(clinicId));
+    await part('booking_requests', () => _restoreBookingRequests(clinicId));
+    await part('invoices', () => _restoreInvoices(clinicId));
+    await part('permissions', () => _restorePermissions(clinicId));
+    await part('offers', () => _restoreOffers(clinicId));
+    await part('lookups', () => _restoreLookups(clinicId));
+    await part('devices', () => _restoreDevices(clinicId));
+    await part('expenses', () => _restoreExpenses(clinicId));
+    await part('payments', () => _restorePayments(clinicId)); // after invoices
+    // amountPaid and patients.balance are CACHES. The restored values came
+    // from whichever machine pushed last; rebuild them from the payments
+    // that actually landed here.
+    await _db.recalcAllPaidAndBalances();
+
+    await _db.setSetting('sync_skipped', _skipped.take(50).join(','));
+    await _db.setSetting('sync_skipped_count', '${_skipped.length}');
   }
 
   Future<List<Map<String, dynamic>>> _pullAll(
@@ -360,6 +413,7 @@ class SyncEngine {
               subtotal: Value(r['subtotal'] ?? 0),
               adjustment: Value(r['adjustment'] ?? 0),
               total: Value(r['total'] ?? 0),
+              amountPaid: Value(r['amount_paid'] ?? 0),
               isDeleted: Value(r['is_deleted'] ?? false),
               updatedAt: Value(DateTime.parse(r['updated_at'])),
             ),
@@ -470,6 +524,137 @@ class SyncEngine {
     }
   }
 
+  Future<void> _restoreLookups(String clinicId) async {
+    for (final r in await _pullAll('lookup_lists', clinicId)) {
+      await _db
+          .into(_db.lookupLists)
+          .insert(
+            LookupListsCompanion(
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              kind: Value(r['kind'] ?? ''),
+              name: Value(r['name'] ?? ''),
+              sortOrder: Value(r['sort_order'] ?? 0),
+              isSystem: Value(r['is_system'] ?? false),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+    }
+  }
+
+  Future<void> _restoreDevices(String clinicId) async {
+    for (final r in await _pullAll('devices', clinicId)) {
+      await _db
+          .into(_db.devices)
+          .insert(
+            DevicesCompanion(
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              letter: Value(r['letter'] ?? 'A'),
+              name: Value(r['name'] ?? ''),
+              platform: Value(r['platform'] ?? ''),
+              joinedByName: Value(r['joined_by_name'] ?? ''),
+              joinedAt: Value(
+                r['joined_at'] == null
+                    ? DateTime.now()
+                    : DateTime.parse(r['joined_at']),
+              ),
+              lastSeenAt: Value(
+                r['last_seen_at'] == null
+                    ? null
+                    : DateTime.parse(r['last_seen_at']),
+              ),
+              isActive: Value(r['is_active'] ?? true),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+    }
+  }
+
+  Future<void> _restoreExpenses(String clinicId) async {
+    for (final r in await _pullAll('expenses', clinicId)) {
+      await _db
+          .into(_db.expenses)
+          .insert(
+            ExpensesCompanion(
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              branchId: Value(r['branch_id'] ?? ''),
+              categoryUuid: Value(r['category_uuid'] ?? ''),
+              amount: Value(r['amount'] ?? 0),
+              paidAt: Value(DateTime.parse(r['paid_at'])),
+              description: Value(r['description'] ?? ''),
+              vendor: Value(r['vendor']),
+              method: Value(r['method'] ?? 'Cash'),
+              methodDetail: Value(r['method_detail']),
+              reference: Value(r['reference']),
+              recordedByName: Value(r['recorded_by_name'] ?? ''),
+              updatedByName: Value(r['updated_by_name']),
+              sourceType: Value(r['source_type']),
+              sourceUuid: Value(r['source_uuid']),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              deletedByName: Value(r['deleted_by_name']),
+              deletedAt: Value(
+                r['deleted_at'] == null
+                    ? null
+                    : DateTime.parse(r['deleted_at']),
+              ),
+              deleteReason: Value(r['delete_reason']),
+              createdAt: Value(
+                r['created_at'] == null
+                    ? DateTime.now()
+                    : DateTime.parse(r['created_at']),
+              ),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+    }
+  }
+
+  Future<void> _restorePayments(String clinicId) async {
+    for (final r in await _pullAll('invoice_payments', clinicId)) {
+      final invId = await _invoiceId(r['invoice_uuid']);
+      if (invId == null) continue; // invoice gone or cancelled upstream
+      await _db
+          .into(_db.invoicePayments)
+          .insert(
+            InvoicePaymentsCompanion(
+              uuid: Value(r['uuid']),
+              clinicId: Value(clinicId),
+              branchId: Value(r['branch_id']),
+              invoiceId: Value(invId),
+              invoiceUuid: Value(r['invoice_uuid']),
+              amount: Value(r['amount'] ?? 0),
+              paidAt: Value(DateTime.parse(r['paid_at'])),
+              method: Value(r['method'] ?? 'Cash'),
+              methodDetail: Value(r['method_detail']),
+              reference: Value(r['reference']),
+              receivedByName: Value(r['received_by_name'] ?? ''),
+              note: Value(r['note'] ?? ''),
+              isDeleted: Value(r['is_deleted'] ?? false),
+              deletedByName: Value(r['deleted_by_name']),
+              deletedAt: Value(
+                r['deleted_at'] == null
+                    ? null
+                    : DateTime.parse(r['deleted_at']),
+              ),
+              createdAt: Value(
+                r['created_at'] == null
+                    ? DateTime.now()
+                    : DateTime.parse(r['created_at']),
+              ),
+              updatedAt: Value(DateTime.parse(r['updated_at'])),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+    }
+  }
+
   Future<void> _restorePermissions(String clinicId) async {
     for (final r in await _pullAll('role_permissions', clinicId)) {
       await _db
@@ -509,6 +694,29 @@ class SyncEngine {
               as List)
           .cast<Map<String, dynamic>>();
 
+  /// Rows skipped in this run, so a silent failure becomes a visible one.
+  final List<String> _skipped = [];
+
+  /// Applies one pulled row. A row that throws — a duplicate patient code,
+  /// a malformed date — is recorded and skipped, NOT allowed to escape.
+  ///
+  /// Without this, one bad row aborts the whole table's pull, and because
+  /// appointments/invoices/prescriptions skip rows whose patient isn't local
+  /// yet, a single collision stalls the entire clinic's sync indefinitely.
+  Future<void> _row(
+    String table,
+    Object? id,
+    Future<void> Function() apply,
+  ) async {
+    try {
+      await apply();
+    } catch (e) {
+      final key = '$table:$id';
+      _skipped.add(key);
+      debugPrint('SYNC[$table] SKIPPED row $id: $e');
+    }
+  }
+
   Future<String?> _patientUuid(int id) async => (await (_db.select(
     _db.patients,
   )..where((t) => t.id.equals(id))).getSingleOrNull())?.uuid;
@@ -522,6 +730,10 @@ class SyncEngine {
   )..where((t) => t.uuid.equals(uuid))).getSingleOrNull())?.id;
   Future<int?> _patientId(String uuid) async => (await (_db.select(
     _db.patients,
+  )..where((t) => t.uuid.equals(uuid))).getSingleOrNull())?.id;
+
+  Future<int?> _invoiceId(String uuid) async => (await (_db.select(
+    _db.invoices,
   )..where((t) => t.uuid.equals(uuid))).getSingleOrNull())?.id;
 
   // ================= PATIENTS (+ owned tooth/plans) =================
@@ -559,44 +771,48 @@ class SyncEngine {
     }
     final pullSince = await _cur('pull_patients');
     for (final r in await _pull('patients', clinicId, pullSince)) {
-      final u = DateTime.parse(r['updated_at']);
-      final existing = await (_db.select(
-        _db.patients,
-      )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
-      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
-      await _db
-          .into(_db.patients)
-          .insertOnConflictUpdate(
-            PatientsCompanion(
-              id: existing == null ? const Value.absent() : Value(existing.id),
-              uuid: Value(r['uuid']),
-              clinicId: Value(clinicId),
-              branchId: Value(r['branch_id']),
-              code: Value(r['code'] ?? ''),
-              fullName: Value(r['full_name'] ?? ''),
-              gender: Value(r['gender'] ?? 'female'),
-              age: Value(r['age'] ?? 0),
-              phone: Value(r['phone'] ?? ''),
-              cnic: Value(r['cnic'] ?? ''),
-              allergies: Value(r['allergies']),
-              insurance: Value(r['insurance']),
-              lastVisit: Value(
-                r['last_visit'] == null
-                    ? null
-                    : DateTime.parse(r['last_visit']),
+      await _row('patients', r['uuid'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        final existing = await (_db.select(
+          _db.patients,
+        )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        await _db
+            .into(_db.patients)
+            .insertOnConflictUpdate(
+              PatientsCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(r['uuid']),
+                clinicId: Value(clinicId),
+                branchId: Value(r['branch_id']),
+                code: Value(r['code'] ?? ''),
+                fullName: Value(r['full_name'] ?? ''),
+                gender: Value(r['gender'] ?? 'female'),
+                age: Value(r['age'] ?? 0),
+                phone: Value(r['phone'] ?? ''),
+                cnic: Value(r['cnic'] ?? ''),
+                allergies: Value(r['allergies']),
+                insurance: Value(r['insurance']),
+                lastVisit: Value(
+                  r['last_visit'] == null
+                      ? null
+                      : DateTime.parse(r['last_visit']),
+                ),
+                visitCount: Value(r['visit_count'] ?? 0),
+                balance: Value(r['balance'] ?? 0),
+                status: Value(r['status'] ?? 'active'),
+                treatmentSummary: Value(r['treatment_summary'] ?? ''),
+                isDeleted: Value(r['is_deleted'] ?? false),
+                updatedAt: Value(u),
               ),
-              visitCount: Value(r['visit_count'] ?? 0),
-              balance: Value(r['balance'] ?? 0),
-              status: Value(r['status'] ?? 'active'),
-              treatmentSummary: Value(r['treatment_summary'] ?? ''),
-              isDeleted: Value(r['is_deleted'] ?? false),
-              updatedAt: Value(u),
-            ),
-          );
-      final localId = await _patientId(r['uuid']);
-      if (localId != null)
-        await _pullPatientChildren(r['uuid'], localId, clinicId);
-      if (u.isAfter(pullSince)) await _setCur('pull_patients', u);
+            );
+        final localId = await _patientId(r['uuid']);
+        if (localId != null)
+          await _pullPatientChildren(r['uuid'], localId, clinicId);
+        if (u.isAfter(pullSince)) await _setCur('pull_patients', u);
+      });
     }
   }
 
@@ -871,35 +1087,39 @@ class SyncEngine {
     }
     final pullSince = await _cur('pull_appointments');
     for (final r in await _pull('appointments', clinicId, pullSince)) {
-      final u = DateTime.parse(r['updated_at']);
-      final localPid = await _patientId(r['patient_uuid']);
-      if (localPid == null) continue; // parent not here yet; next round
-      final existing = await (_db.select(
-        _db.appointments,
-      )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
-      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
-      await _db
-          .into(_db.appointments)
-          .insertOnConflictUpdate(
-            AppointmentsCompanion(
-              id: existing == null ? const Value.absent() : Value(existing.id),
-              uuid: Value(r['uuid']),
-              clinicId: Value(clinicId),
-              branchId: Value(r['branch_id']),
-              patientId: Value(localPid),
-              dentist: Value(r['dentist'] ?? ''),
-              chair: Value(r['chair'] ?? 1),
-              procedure: Value(r['procedure'] ?? ''),
-              billed: Value(r['billed'] ?? false),
-              startsAt: Value(DateTime.parse(r['starts_at'])),
-              durationMin: Value(r['duration_min'] ?? 30),
-              status: Value(r['status'] ?? 'upcoming'),
-              notes: Value(r['notes']),
-              isDeleted: Value(r['is_deleted'] ?? false),
-              updatedAt: Value(u),
-            ),
-          );
-      if (u.isAfter(pullSince)) await _setCur('pull_appointments', u);
+      await _row('appointments', r['uuid'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        final localPid = await _patientId(r['patient_uuid']);
+        if (localPid == null) return; // parent not here yet; next round
+        final existing = await (_db.select(
+          _db.appointments,
+        )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        await _db
+            .into(_db.appointments)
+            .insertOnConflictUpdate(
+              AppointmentsCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(r['uuid']),
+                clinicId: Value(clinicId),
+                branchId: Value(r['branch_id']),
+                patientId: Value(localPid),
+                dentist: Value(r['dentist'] ?? ''),
+                chair: Value(r['chair'] ?? 1),
+                procedure: Value(r['procedure'] ?? ''),
+                billed: Value(r['billed'] ?? false),
+                startsAt: Value(DateTime.parse(r['starts_at'])),
+                durationMin: Value(r['duration_min'] ?? 30),
+                status: Value(r['status'] ?? 'upcoming'),
+                notes: Value(r['notes']),
+                isDeleted: Value(r['is_deleted'] ?? false),
+                updatedAt: Value(u),
+              ),
+            );
+        if (u.isAfter(pullSince)) await _setCur('pull_appointments', u);
+      });
     }
   }
 
@@ -941,38 +1161,42 @@ class SyncEngine {
     // ---- PULL all requests for this clinic ----
     final pullSince = await _cur('pull_booking_requests');
     for (final r in await _pull('booking_requests', clinicId, pullSince)) {
-      final u = DateTime.parse(r['updated_at']);
-      final rid = r['id'];
-      final existing = await (_db.select(
-        _db.bookingRequests,
-      )..where((t) => t.uuid.equals(rid))).getSingleOrNull();
-      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
-      await _db
-          .into(_db.bookingRequests)
-          .insertOnConflictUpdate(
-            BookingRequestsCompanion(
-              id: existing == null ? const Value.absent() : Value(existing.id),
-              uuid: Value(rid),
-              clinicId: Value(clinicId),
-              branchId: Value(r['branch_id']),
-              patientUuid: Value(r['patient_uuid'] ?? ''),
-              patientAccountId: Value(r['patient_account_id']),
-              dentist: Value(r['dentist'] ?? ''),
-              procedure: Value(r['procedure'] ?? ''),
-              requestedSlot: Value(DateTime.parse(r['requested_slot'])),
-              durationMin: Value(r['duration_min'] ?? 30),
-              status: Value(r['status'] ?? 'pending'),
-              modifiedBy: Value(r['modified_by']),
-              acceptedBy: Value(r['accepted_by']),
-              decidedAt: Value(
-                r['decided_at'] == null
-                    ? null
-                    : DateTime.parse(r['decided_at']),
+      await _row('booking_requests', r['id'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        final rid = r['id'];
+        final existing = await (_db.select(
+          _db.bookingRequests,
+        )..where((t) => t.uuid.equals(rid))).getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        await _db
+            .into(_db.bookingRequests)
+            .insertOnConflictUpdate(
+              BookingRequestsCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(rid),
+                clinicId: Value(clinicId),
+                branchId: Value(r['branch_id']),
+                patientUuid: Value(r['patient_uuid'] ?? ''),
+                patientAccountId: Value(r['patient_account_id']),
+                dentist: Value(r['dentist'] ?? ''),
+                procedure: Value(r['procedure'] ?? ''),
+                requestedSlot: Value(DateTime.parse(r['requested_slot'])),
+                durationMin: Value(r['duration_min'] ?? 30),
+                status: Value(r['status'] ?? 'pending'),
+                modifiedBy: Value(r['modified_by']),
+                acceptedBy: Value(r['accepted_by']),
+                decidedAt: Value(
+                  r['decided_at'] == null
+                      ? null
+                      : DateTime.parse(r['decided_at']),
+                ),
+                updatedAt: Value(u),
               ),
-              updatedAt: Value(u),
-            ),
-          );
-      if (u.isAfter(pullSince)) await _setCur('pull_booking_requests', u);
+            );
+        if (u.isAfter(pullSince)) await _setCur('pull_booking_requests', u);
+      });
     }
   }
 
@@ -1002,6 +1226,7 @@ class SyncEngine {
           'subtotal': inv.subtotal,
           'adjustment': inv.adjustment,
           'total': inv.total,
+          'amount_paid': inv.amountPaid,
           'is_deleted': inv.isDeleted,
           'updated_at': _iso(inv.updatedAt),
         });
@@ -1031,67 +1256,369 @@ class SyncEngine {
     }
     final pullSince = await _cur('pull_invoices');
     for (final r in await _pull('invoices', clinicId, pullSince)) {
-      final u = DateTime.parse(r['updated_at']);
-      final localPid = await _patientId(r['patient_uuid']);
-      if (localPid == null) continue;
-      final localApptId = r['appointment_uuid'] == null
-          ? null
-          : await _appointmentId(r['appointment_uuid']);
-      final existing = await (_db.select(
-        _db.invoices,
-      )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
-      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
-      final invId = await _db
-          .into(_db.invoices)
-          .insertOnConflictUpdate(
-            InvoicesCompanion(
-              id: existing == null ? const Value.absent() : Value(existing.id),
-              uuid: Value(r['uuid']),
-              clinicId: Value(clinicId),
-              branchId: Value(r['branch_id']),
-              patientId: Value(localPid),
-              appointmentId: Value(localApptId),
-              invoiceNo: Value(r['invoice_no'] ?? ''),
-              issuedAt: Value(DateTime.parse(r['issued_at'])),
-              status: Value(r['status'] ?? 'pending'),
-              summary: Value(r['summary'] ?? ''),
-              cancelledBy: Value(r['cancelled_by']),
-              cancelledAt: Value(
-                r['cancelled_at'] == null
-                    ? null
-                    : DateTime.parse(r['cancelled_at']),
-              ),
-              subtotal: Value(r['subtotal'] ?? 0),
-              adjustment: Value(r['adjustment'] ?? 0),
-              total: Value(r['total'] ?? 0),
-              isDeleted: Value(r['is_deleted'] ?? false),
-              updatedAt: Value(u),
-            ),
-          );
-      final realId = existing?.id ?? invId;
-      final items =
-          (await _sb
-                  .from('invoice_items')
-                  .select()
-                  .eq('invoice_uuid', r['uuid'])
-                  .order('position'))
-              as List;
-      await (_db.delete(
-        _db.invoiceItems,
-      )..where((t) => t.invoiceId.equals(realId))).go();
-      for (final it in items) {
-        await _db
-            .into(_db.invoiceItems)
-            .insert(
-              InvoiceItemsCompanion.insert(
-                invoiceId: realId,
-                description: it['description'] ?? '',
-                amount: it['amount'] ?? 0,
-                qty: Value(it['qty'] ?? 1),
+      await _row('invoices', r['invoice_no'] ?? r['uuid'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        final localPid = await _patientId(r['patient_uuid']);
+        if (localPid == null) return;
+        final localApptId = r['appointment_uuid'] == null
+            ? null
+            : await _appointmentId(r['appointment_uuid']);
+        final existing = await (_db.select(
+          _db.invoices,
+        )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        final invId = await _db
+            .into(_db.invoices)
+            .insertOnConflictUpdate(
+              InvoicesCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(r['uuid']),
+                clinicId: Value(clinicId),
+                branchId: Value(r['branch_id']),
+                patientId: Value(localPid),
+                appointmentId: Value(localApptId),
+                invoiceNo: Value(r['invoice_no'] ?? ''),
+                issuedAt: Value(DateTime.parse(r['issued_at'])),
+                status: Value(r['status'] ?? 'pending'),
+                summary: Value(r['summary'] ?? ''),
+                cancelledBy: Value(r['cancelled_by']),
+                cancelledAt: Value(
+                  r['cancelled_at'] == null
+                      ? null
+                      : DateTime.parse(r['cancelled_at']),
+                ),
+                subtotal: Value(r['subtotal'] ?? 0),
+                adjustment: Value(r['adjustment'] ?? 0),
+                total: Value(r['total'] ?? 0),
+                amountPaid: Value(r['amount_paid'] ?? 0),
+                isDeleted: Value(r['is_deleted'] ?? false),
+                updatedAt: Value(u),
               ),
             );
-      }
-      if (u.isAfter(pullSince)) await _setCur('pull_invoices', u);
+        final realId = existing?.id ?? invId;
+        final items =
+            (await _sb
+                    .from('invoice_items')
+                    .select()
+                    .eq('invoice_uuid', r['uuid'])
+                    .order('position'))
+                as List;
+        await (_db.delete(
+          _db.invoiceItems,
+        )..where((t) => t.invoiceId.equals(realId))).go();
+        for (final it in items) {
+          await _db
+              .into(_db.invoiceItems)
+              .insert(
+                InvoiceItemsCompanion.insert(
+                  invoiceId: realId,
+                  description: it['description'] ?? '',
+                  amount: it['amount'] ?? 0,
+                  qty: Value(it['qty'] ?? 1),
+                ),
+              );
+        }
+        if (u.isAfter(pullSince)) await _setCur('pull_invoices', u);
+      });
+    }
+  }
+
+  // ================= INVOICE PAYMENTS =================
+  // Links to its invoice by UUID only — local int ids do not transfer.
+  // A payment whose invoice has not arrived yet is SKIPPED, never inserted
+  // against a wrong id; it lands on the next pull.
+  Future<void> _syncPayments(String clinicId) async {
+    final since = await _cur('push_payments');
+    final changed = await (_db.select(
+      _db.invoicePayments,
+    )..where((t) => t.updatedAt.isBiggerThanValue(since))).get();
+    if (changed.isNotEmpty) {
+      await _sb.from('invoice_payments').upsert([
+        for (final p in changed)
+          {
+            'uuid': p.uuid,
+            'clinic_id': clinicId,
+            'branch_id': p.branchId,
+            'invoice_uuid': p.invoiceUuid,
+            'amount': p.amount,
+            'paid_at': _iso(p.paidAt),
+            'method': p.method,
+            'method_detail': p.methodDetail,
+            'reference': p.reference,
+            'received_by_name': p.receivedByName,
+            'note': p.note,
+            'is_deleted': p.isDeleted,
+            'deleted_by_name': p.deletedByName,
+            'deleted_at': _iso(p.deletedAt),
+            'created_at': _iso(p.createdAt),
+            'updated_at': _iso(p.updatedAt),
+          },
+      ], onConflict: 'uuid');
+      await _setCur('push_payments', _max(changed.map((e) => e.updatedAt)));
+    }
+
+    final pullSince = await _cur('pull_payments');
+    final touched = <int>{};
+    for (final r in await _pull('invoice_payments', clinicId, pullSince)) {
+      await _row('invoice_payments', r['uuid'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        final invId = await _invoiceId(r['invoice_uuid']);
+        if (invId == null) return; // parent not here yet; next round
+        final existing = await (_db.select(
+          _db.invoicePayments,
+        )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        await _db
+            .into(_db.invoicePayments)
+            .insertOnConflictUpdate(
+              InvoicePaymentsCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(r['uuid']),
+                clinicId: Value(clinicId),
+                branchId: Value(r['branch_id']),
+                invoiceId: Value(invId),
+                invoiceUuid: Value(r['invoice_uuid']),
+                amount: Value(r['amount'] ?? 0),
+                paidAt: Value(DateTime.parse(r['paid_at'])),
+                method: Value(r['method'] ?? 'Cash'),
+                methodDetail: Value(r['method_detail']),
+                reference: Value(r['reference']),
+                receivedByName: Value(r['received_by_name'] ?? ''),
+                note: Value(r['note'] ?? ''),
+                isDeleted: Value(r['is_deleted'] ?? false),
+                deletedByName: Value(r['deleted_by_name']),
+                deletedAt: Value(
+                  r['deleted_at'] == null
+                      ? null
+                      : DateTime.parse(r['deleted_at']),
+                ),
+                createdAt: Value(
+                  r['created_at'] == null
+                      ? DateTime.now()
+                      : DateTime.parse(r['created_at']),
+                ),
+                updatedAt: Value(u),
+              ),
+            );
+        touched.add(invId);
+        if (u.isAfter(pullSince)) await _setCur('pull_payments', u);
+      });
+    }
+    // Rebuild the caches for every invoice whose payments changed. The
+    // pushed amount_paid / balance belong to the machine that sent them.
+    for (final id in touched) {
+      await _db.recalcInvoicePaid(id);
+    }
+  }
+
+  // ================= LOOKUP LISTS =================
+  Future<void> _syncLookups(String clinicId) async {
+    final since = await _cur('push_lookups');
+    final changed = await (_db.select(
+      _db.lookupLists,
+    )..where((t) => t.updatedAt.isBiggerThanValue(since))).get();
+    if (changed.isNotEmpty) {
+      await _sb.from('lookup_lists').upsert([
+        for (final l in changed)
+          {
+            'uuid': l.uuid,
+            'clinic_id': clinicId,
+            'kind': l.kind,
+            'name': l.name,
+            'sort_order': l.sortOrder,
+            'is_system': l.isSystem,
+            'is_deleted': l.isDeleted,
+            'updated_at': _iso(l.updatedAt),
+          },
+      ], onConflict: 'uuid');
+      await _setCur('push_lookups', _max(changed.map((e) => e.updatedAt)));
+    }
+
+    final pullSince = await _cur('pull_lookups');
+    for (final r in await _pull('lookup_lists', clinicId, pullSince)) {
+      await _row('lookup_lists', r['uuid'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        final existing = await (_db.select(
+          _db.lookupLists,
+        )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        await _db
+            .into(_db.lookupLists)
+            .insertOnConflictUpdate(
+              LookupListsCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(r['uuid']),
+                clinicId: Value(clinicId),
+                kind: Value(r['kind'] ?? ''),
+                name: Value(r['name'] ?? ''),
+                sortOrder: Value(r['sort_order'] ?? 0),
+                isSystem: Value(r['is_system'] ?? false),
+                isDeleted: Value(r['is_deleted'] ?? false),
+                updatedAt: Value(u),
+              ),
+            );
+        if (u.isAfter(pullSince)) await _setCur('pull_lookups', u);
+      });
+    }
+  }
+
+  // ================= EXPENSES =================
+  Future<void> _syncExpenses(String clinicId) async {
+    final since = await _cur('push_expenses');
+    final changed = await (_db.select(
+      _db.expenses,
+    )..where((t) => t.updatedAt.isBiggerThanValue(since))).get();
+    if (changed.isNotEmpty) {
+      await _sb.from('expenses').upsert([
+        for (final e in changed)
+          {
+            'uuid': e.uuid,
+            'clinic_id': clinicId,
+            'branch_id': e.branchId,
+            'category_uuid': e.categoryUuid,
+            'amount': e.amount,
+            'paid_at': _iso(e.paidAt),
+            'description': e.description,
+            'vendor': e.vendor,
+            'method': e.method,
+            'method_detail': e.methodDetail,
+            'reference': e.reference,
+            'recorded_by_name': e.recordedByName,
+            'updated_by_name': e.updatedByName,
+            'source_type': e.sourceType,
+            'source_uuid': e.sourceUuid,
+            'is_deleted': e.isDeleted,
+            'deleted_by_name': e.deletedByName,
+            'deleted_at': _iso(e.deletedAt),
+            'delete_reason': e.deleteReason,
+            'created_at': _iso(e.createdAt),
+            'updated_at': _iso(e.updatedAt),
+          },
+      ], onConflict: 'uuid');
+      await _setCur('push_expenses', _max(changed.map((e) => e.updatedAt)));
+    }
+
+    final pullSince = await _cur('pull_expenses');
+    for (final r in await _pull('expenses', clinicId, pullSince)) {
+      await _row('expenses', r['uuid'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        final existing = await (_db.select(
+          _db.expenses,
+        )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        await _db
+            .into(_db.expenses)
+            .insertOnConflictUpdate(
+              ExpensesCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(r['uuid']),
+                clinicId: Value(clinicId),
+                branchId: Value(r['branch_id'] ?? ''),
+                categoryUuid: Value(r['category_uuid'] ?? ''),
+                amount: Value(r['amount'] ?? 0),
+                paidAt: Value(DateTime.parse(r['paid_at'])),
+                description: Value(r['description'] ?? ''),
+                vendor: Value(r['vendor']),
+                method: Value(r['method'] ?? 'Cash'),
+                methodDetail: Value(r['method_detail']),
+                reference: Value(r['reference']),
+                recordedByName: Value(r['recorded_by_name'] ?? ''),
+                updatedByName: Value(r['updated_by_name']),
+                sourceType: Value(r['source_type']),
+                sourceUuid: Value(r['source_uuid']),
+                isDeleted: Value(r['is_deleted'] ?? false),
+                deletedByName: Value(r['deleted_by_name']),
+                deletedAt: Value(
+                  r['deleted_at'] == null
+                      ? null
+                      : DateTime.parse(r['deleted_at']),
+                ),
+                deleteReason: Value(r['delete_reason']),
+                createdAt: Value(
+                  r['created_at'] == null
+                      ? DateTime.now()
+                      : DateTime.parse(r['created_at']),
+                ),
+                updatedAt: Value(u),
+              ),
+            );
+        if (u.isAfter(pullSince)) await _setCur('pull_expenses', u);
+      });
+    }
+  }
+
+  // ================= DEVICES =================
+  Future<void> _syncDevices(String clinicId) async {
+    final since = await _cur('push_devices');
+    final changed = await (_db.select(
+      _db.devices,
+    )..where((t) => t.updatedAt.isBiggerThanValue(since))).get();
+    if (changed.isNotEmpty) {
+      await _sb.from('devices').upsert([
+        for (final dv in changed)
+          {
+            'uuid': dv.uuid,
+            'clinic_id': clinicId,
+            'letter': dv.letter,
+            'name': dv.name,
+            'platform': dv.platform,
+            'joined_by_name': dv.joinedByName,
+            'joined_at': _iso(dv.joinedAt),
+            'last_seen_at': _iso(dv.lastSeenAt),
+            'is_active': dv.isActive,
+            'is_deleted': dv.isDeleted,
+            'updated_at': _iso(dv.updatedAt),
+          },
+      ], onConflict: 'uuid');
+      await _setCur('push_devices', _max(changed.map((e) => e.updatedAt)));
+    }
+
+    final pullSince = await _cur('pull_devices');
+    for (final r in await _pull('devices', clinicId, pullSince)) {
+      await _row('devices', r['uuid'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        final existing = await (_db.select(
+          _db.devices,
+        )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        await _db
+            .into(_db.devices)
+            .insertOnConflictUpdate(
+              DevicesCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(r['uuid']),
+                clinicId: Value(clinicId),
+                letter: Value(r['letter'] ?? 'A'),
+                name: Value(r['name'] ?? ''),
+                platform: Value(r['platform'] ?? ''),
+                joinedByName: Value(r['joined_by_name'] ?? ''),
+                joinedAt: Value(
+                  r['joined_at'] == null
+                      ? DateTime.now()
+                      : DateTime.parse(r['joined_at']),
+                ),
+                lastSeenAt: Value(
+                  r['last_seen_at'] == null
+                      ? null
+                      : DateTime.parse(r['last_seen_at']),
+                ),
+                isActive: Value(r['is_active'] ?? true),
+                isDeleted: Value(r['is_deleted'] ?? false),
+                updatedAt: Value(u),
+              ),
+            );
+        if (u.isAfter(pullSince)) await _setCur('pull_devices', u);
+      });
     }
   }
 
@@ -1122,30 +1649,34 @@ class SyncEngine {
     }
     final pullSince = await _cur('pull_inventory');
     for (final r in await _pull('inventory_items', clinicId, pullSince)) {
-      final u = DateTime.parse(r['updated_at']);
-      final existing = await (_db.select(
-        _db.inventoryItems,
-      )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
-      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
-      await _db
-          .into(_db.inventoryItems)
-          .insertOnConflictUpdate(
-            InventoryItemsCompanion(
-              id: existing == null ? const Value.absent() : Value(existing.id),
-              uuid: Value(r['uuid']),
-              clinicId: Value(clinicId),
-              branchId: Value(r['branch_id']),
-              name: Value(r['name'] ?? ''),
-              category: Value(r['category'] ?? ''),
-              inStock: Value(r['in_stock'] ?? 0),
-              parLevel: Value(r['par_level'] ?? 0),
-              reorderAt: Value(r['reorder_at'] ?? 0),
-              unit: Value(r['unit'] ?? 'units'),
-              isDeleted: Value(r['is_deleted'] ?? false),
-              updatedAt: Value(u),
-            ),
-          );
-      if (u.isAfter(pullSince)) await _setCur('pull_inventory', u);
+      await _row('inventory_items', r['uuid'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        final existing = await (_db.select(
+          _db.inventoryItems,
+        )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        await _db
+            .into(_db.inventoryItems)
+            .insertOnConflictUpdate(
+              InventoryItemsCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(r['uuid']),
+                clinicId: Value(clinicId),
+                branchId: Value(r['branch_id']),
+                name: Value(r['name'] ?? ''),
+                category: Value(r['category'] ?? ''),
+                inStock: Value(r['in_stock'] ?? 0),
+                parLevel: Value(r['par_level'] ?? 0),
+                reorderAt: Value(r['reorder_at'] ?? 0),
+                unit: Value(r['unit'] ?? 'units'),
+                isDeleted: Value(r['is_deleted'] ?? false),
+                updatedAt: Value(u),
+              ),
+            );
+        if (u.isAfter(pullSince)) await _setCur('pull_inventory', u);
+      });
     }
   }
 
@@ -1173,28 +1704,32 @@ class SyncEngine {
     }
     final pullSince = await _cur('pull_treatments');
     for (final r in await _pull('treatments', clinicId, pullSince)) {
-      final u = DateTime.parse(r['updated_at']);
-      final existing = await (_db.select(
-        _db.treatments,
-      )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
-      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
-      await _db
-          .into(_db.treatments)
-          .insertOnConflictUpdate(
-            TreatmentsCompanion(
-              id: existing == null ? const Value.absent() : Value(existing.id),
-              uuid: Value(r['uuid']),
-              clinicId: Value(clinicId),
-              branchId: Value(r['branch_id']),
-              name: Value(r['name'] ?? ''),
-              category: Value(r['category'] ?? ''),
-              price: Value(r['price'] ?? 0),
-              duration: Value(r['duration'] ?? ''),
-              isDeleted: Value(r['is_deleted'] ?? false),
-              updatedAt: Value(u),
-            ),
-          );
-      if (u.isAfter(pullSince)) await _setCur('pull_treatments', u);
+      await _row('treatments', r['uuid'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        final existing = await (_db.select(
+          _db.treatments,
+        )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        await _db
+            .into(_db.treatments)
+            .insertOnConflictUpdate(
+              TreatmentsCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(r['uuid']),
+                clinicId: Value(clinicId),
+                branchId: Value(r['branch_id']),
+                name: Value(r['name'] ?? ''),
+                category: Value(r['category'] ?? ''),
+                price: Value(r['price'] ?? 0),
+                duration: Value(r['duration'] ?? ''),
+                isDeleted: Value(r['is_deleted'] ?? false),
+                updatedAt: Value(u),
+              ),
+            );
+        if (u.isAfter(pullSince)) await _setCur('pull_treatments', u);
+      });
     }
   }
 
@@ -1228,39 +1763,45 @@ class SyncEngine {
 
     final pullSince = await _cur('pull_offers');
     for (final r in await _pull('offers', clinicId, pullSince)) {
-      final u = DateTime.parse(r['updated_at']);
-      final existing = await (_db.select(
-        _db.offers,
-      )..where((t) => t.uuid.equals(r['id']))).getSingleOrNull();
-      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
-      await _db
-          .into(_db.offers)
-          .insertOnConflictUpdate(
-            OffersCompanion(
-              id: existing == null ? const Value.absent() : Value(existing.id),
-              uuid: Value(r['id']),
-              clinicId: Value(clinicId),
-              branchId: Value(r['branch_id']),
-              title: Value(r['title'] ?? ''),
-              body: Value(r['body'] ?? ''),
-              imageUrl: Value(r['image_url']),
-              startsAt: Value(
-                r['starts_at'] == null ? null : DateTime.parse(r['starts_at']),
+      await _row('offers', r['id'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        final existing = await (_db.select(
+          _db.offers,
+        )..where((t) => t.uuid.equals(r['id']))).getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        await _db
+            .into(_db.offers)
+            .insertOnConflictUpdate(
+              OffersCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(r['id']),
+                clinicId: Value(clinicId),
+                branchId: Value(r['branch_id']),
+                title: Value(r['title'] ?? ''),
+                body: Value(r['body'] ?? ''),
+                imageUrl: Value(r['image_url']),
+                startsAt: Value(
+                  r['starts_at'] == null
+                      ? null
+                      : DateTime.parse(r['starts_at']),
+                ),
+                expiresAt: Value(
+                  r['expires_at'] == null
+                      ? null
+                      : DateTime.parse(r['expires_at']),
+                ),
+                sentCount: Value(r['sent_count'] ?? 0),
+                sentApp: Value(r['sent_app'] ?? true),
+                sentWhatsApp: Value(r['sent_whats_app'] ?? false),
+                createdBy: Value(r['created_by']),
+                isDeleted: Value(r['is_deleted'] ?? false),
+                updatedAt: Value(u),
               ),
-              expiresAt: Value(
-                r['expires_at'] == null
-                    ? null
-                    : DateTime.parse(r['expires_at']),
-              ),
-              sentCount: Value(r['sent_count'] ?? 0),
-              sentApp: Value(r['sent_app'] ?? true),
-              sentWhatsApp: Value(r['sent_whats_app'] ?? false),
-              createdBy: Value(r['created_by']),
-              isDeleted: Value(r['is_deleted'] ?? false),
-              updatedAt: Value(u),
-            ),
-          );
-      if (u.isAfter(pullSince)) await _setCur('pull_offers', u);
+            );
+        if (u.isAfter(pullSince)) await _setCur('pull_offers', u);
+      });
     }
   }
 
@@ -1289,28 +1830,32 @@ class SyncEngine {
 
     final pullSince = await _cur('pull_medicines');
     for (final r in await _pull('medicines', clinicId, pullSince)) {
-      final u = DateTime.parse(r['updated_at']);
-      final existing = await (_db.select(
-        _db.medicines,
-      )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
-      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
-      await _db
-          .into(_db.medicines)
-          .insertOnConflictUpdate(
-            MedicinesCompanion(
-              id: existing == null ? const Value.absent() : Value(existing.id),
-              uuid: Value(r['uuid']),
-              clinicId: Value(clinicId),
-              name: Value(r['name'] ?? ''),
-              form: Value(r['form'] ?? ''),
-              defaultDosage: Value(r['default_dosage'] ?? ''),
-              defaultFrequency: Value(r['default_frequency'] ?? ''),
-              category: Value(r['category'] ?? ''),
-              isDeleted: Value(r['is_deleted'] ?? false),
-              updatedAt: Value(u),
-            ),
-          );
-      if (u.isAfter(pullSince)) await _setCur('pull_medicines', u);
+      await _row('medicines', r['uuid'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        final existing = await (_db.select(
+          _db.medicines,
+        )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        await _db
+            .into(_db.medicines)
+            .insertOnConflictUpdate(
+              MedicinesCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(r['uuid']),
+                clinicId: Value(clinicId),
+                name: Value(r['name'] ?? ''),
+                form: Value(r['form'] ?? ''),
+                defaultDosage: Value(r['default_dosage'] ?? ''),
+                defaultFrequency: Value(r['default_frequency'] ?? ''),
+                category: Value(r['category'] ?? ''),
+                isDeleted: Value(r['is_deleted'] ?? false),
+                updatedAt: Value(u),
+              ),
+            );
+        if (u.isAfter(pullSince)) await _setCur('pull_medicines', u);
+      });
     }
   }
 
@@ -1350,44 +1895,48 @@ class SyncEngine {
 
     final pullSince = await _cur('pull_precaution_sets');
     for (final r in await _pull('precaution_sets', clinicId, pullSince)) {
-      final u = DateTime.parse(r['updated_at']);
-      final existing = await (_db.select(
-        _db.precautionSets,
-      )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
-      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
+      await _row('precaution_sets', r['uuid'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        final existing = await (_db.select(
+          _db.precautionSets,
+        )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
 
-      final setId = await _db
-          .into(_db.precautionSets)
-          .insertOnConflictUpdate(
-            PrecautionSetsCompanion(
-              id: existing == null ? const Value.absent() : Value(existing.id),
-              uuid: Value(r['uuid']),
-              clinicId: Value(clinicId),
-              name: Value(r['name'] ?? ''),
-              position: Value(r['position'] ?? 0),
-              isDeleted: Value(r['is_deleted'] ?? false),
-              updatedAt: Value(u),
-            ),
-          );
-      final realId = existing?.id ?? setId;
-
-      // replace lines wholesale
-      await (_db.delete(
-        _db.precautionLines,
-      )..where((t) => t.setId.equals(realId))).go();
-      for (final l in (r['lines'] as List? ?? const [])) {
-        await _db
-            .into(_db.precautionLines)
-            .insert(
-              PrecautionLinesCompanion.insert(
-                setId: realId,
-                position: Value(l['position'] ?? 0),
-                urdu: Value(l['urdu'] ?? ''),
-                english: Value(l['english'] ?? ''),
+        final setId = await _db
+            .into(_db.precautionSets)
+            .insertOnConflictUpdate(
+              PrecautionSetsCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(r['uuid']),
+                clinicId: Value(clinicId),
+                name: Value(r['name'] ?? ''),
+                position: Value(r['position'] ?? 0),
+                isDeleted: Value(r['is_deleted'] ?? false),
+                updatedAt: Value(u),
               ),
             );
-      }
-      if (u.isAfter(pullSince)) await _setCur('pull_precaution_sets', u);
+        final realId = existing?.id ?? setId;
+
+        // replace lines wholesale
+        await (_db.delete(
+          _db.precautionLines,
+        )..where((t) => t.setId.equals(realId))).go();
+        for (final l in (r['lines'] as List? ?? const [])) {
+          await _db
+              .into(_db.precautionLines)
+              .insert(
+                PrecautionLinesCompanion.insert(
+                  setId: realId,
+                  position: Value(l['position'] ?? 0),
+                  urdu: Value(l['urdu'] ?? ''),
+                  english: Value(l['english'] ?? ''),
+                ),
+              );
+        }
+        if (u.isAfter(pullSince)) await _setCur('pull_precaution_sets', u);
+      });
     }
   }
 
@@ -1426,39 +1975,43 @@ class SyncEngine {
     }
     final pullSince = await _cur('pull_branches');
     for (final r in await _pull('branches', clinicId, pullSince)) {
-      final u = DateTime.parse(r['updated_at']);
-      final existing = await (_db.select(
-        _db.branches,
-      )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
-      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
-      await _db
-          .into(_db.branches)
-          .insertOnConflictUpdate(
-            BranchesCompanion(
-              id: existing == null ? const Value.absent() : Value(existing.id),
-              uuid: Value(r['uuid']),
-              clinicId: Value(clinicId),
-              name: Value(r['name'] ?? ''),
-              location: Value(r['location'] ?? ''),
-              isPrimary: Value(r['is_primary'] ?? false),
-              openMinutes: Value(r['open_minutes'] ?? 600),
-              closeMinutes: Value(r['close_minutes'] ?? 1020),
-              slotMinutes: Value(r['slot_minutes'] ?? 20),
-              closedDays: Value(r['closed_days'] ?? ''),
-              isDeleted: Value(r['is_deleted'] ?? false),
-              updatedAt: Value(u),
-              waEnabled: Value(r['wa_enabled'] ?? false),
-              waMethod: Value(r['wa_method'] ?? 'official'),
-              waPhone: Value(r['wa_phone']),
-              waApiToken: Value(r['wa_api_token']),
-              waPhoneId: Value(r['wa_phone_id']),
-              waSessionStatus: Value(r['wa_session_status']),
-              waQrStatus: Value(r['wa_qr_status']),
-              waReminderChannel: Value(r['wa_reminder_channel'] ?? 'none'),
-              waLanguage: Value(r['wa_language'] ?? 'en'),
-            ),
-          );
-      if (u.isAfter(pullSince)) await _setCur('pull_branches', u);
+      await _row('branches', r['uuid'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        final existing = await (_db.select(
+          _db.branches,
+        )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        await _db
+            .into(_db.branches)
+            .insertOnConflictUpdate(
+              BranchesCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(r['uuid']),
+                clinicId: Value(clinicId),
+                name: Value(r['name'] ?? ''),
+                location: Value(r['location'] ?? ''),
+                isPrimary: Value(r['is_primary'] ?? false),
+                openMinutes: Value(r['open_minutes'] ?? 600),
+                closeMinutes: Value(r['close_minutes'] ?? 1020),
+                slotMinutes: Value(r['slot_minutes'] ?? 20),
+                closedDays: Value(r['closed_days'] ?? ''),
+                isDeleted: Value(r['is_deleted'] ?? false),
+                updatedAt: Value(u),
+                waEnabled: Value(r['wa_enabled'] ?? false),
+                waMethod: Value(r['wa_method'] ?? 'official'),
+                waPhone: Value(r['wa_phone']),
+                waApiToken: Value(r['wa_api_token']),
+                waPhoneId: Value(r['wa_phone_id']),
+                waSessionStatus: Value(r['wa_session_status']),
+                waQrStatus: Value(r['wa_qr_status']),
+                waReminderChannel: Value(r['wa_reminder_channel'] ?? 'none'),
+                waLanguage: Value(r['wa_language'] ?? 'en'),
+              ),
+            );
+        if (u.isAfter(pullSince)) await _setCur('pull_branches', u);
+      });
     }
   }
 
@@ -1482,46 +2035,51 @@ class SyncEngine {
             'username': usr.username,
             'password_hash': usr.passwordHash,
             'role': usr.role,
+            'email': usr.email,
+            'phone': usr.phone,
             'is_deleted': usr.isDeleted,
             'updated_at': _iso(usr.updatedAt),
           },
       ], onConflict: 'uuid');
       await _setCur('push_users', _max(changed.map((e) => e.updatedAt)));
     }
+
     final pullSince = await _cur('pull_users');
     for (final r in await _pull('users', clinicId, pullSince)) {
-      final u = DateTime.parse(r['updated_at']);
-      // final existing = await (_db.select(
-      //   _db.users,
-      // )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
-
-      var existing = await (_db.select(
-        _db.users,
-      )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
-      // Fall back to username match so we don't insert a duplicate
-      // (same user created locally + in cloud under different ids).
-      existing ??=
-          await (_db.select(_db.users)
-                ..where((t) => t.username.equals(r['username'] ?? '')))
-              .getSingleOrNull();
-      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
-      await _db
-          .into(_db.users)
-          .insertOnConflictUpdate(
-            UsersCompanion(
-              id: existing == null ? const Value.absent() : Value(existing.id),
-              uuid: Value(r['uuid']),
-              clinicId: Value(clinicId),
-              branchId: Value(r['branch_id']),
-              fullName: Value(r['full_name'] ?? ''),
-              username: Value(r['username'] ?? ''),
-              passwordHash: Value(r['password_hash'] ?? ''),
-              role: Value(r['role'] ?? 'receptionist'),
-              isDeleted: Value(r['is_deleted'] ?? false),
-              updatedAt: Value(u),
-            ),
-          );
-      if (u.isAfter(pullSince)) await _setCur('pull_users', u);
+      await _row('users', r['username'] ?? r['uuid'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        var existing = await (_db.select(
+          _db.users,
+        )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+        // Fall back to username match so we don't insert a duplicate
+        // (same user created locally + in cloud under different ids).
+        existing ??=
+            await (_db.select(_db.users)
+                  ..where((t) => t.username.equals(r['username'] ?? '')))
+                .getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        await _db
+            .into(_db.users)
+            .insertOnConflictUpdate(
+              UsersCompanion(
+                id: existing == null
+                    ? const Value.absent()
+                    : Value(existing.id),
+                uuid: Value(r['uuid']),
+                clinicId: Value(clinicId),
+                branchId: Value(r['branch_id']),
+                fullName: Value(r['full_name'] ?? ''),
+                username: Value(r['username'] ?? ''),
+                passwordHash: Value(r['password_hash'] ?? ''),
+                role: Value(r['role'] ?? 'receptionist'),
+                email: Value(r['email']),
+                phone: Value(r['phone']),
+                isDeleted: Value(r['is_deleted'] ?? false),
+                updatedAt: Value(u),
+              ),
+            );
+        if (u.isAfter(pullSince)) await _setCur('pull_users', u);
+      });
     }
   }
 
@@ -1546,25 +2104,27 @@ class SyncEngine {
 
     final pullSince = await _cur('pull_permissions');
     for (final r in await _pull('role_permissions', clinicId, pullSince)) {
-      final u = DateTime.parse(r['updated_at']);
-      final existing =
-          await (_db.select(_db.rolePermissions)..where(
-                (t) => t.role.equals(r['role']) & t.key.equals(r['key']),
-              ))
-              .getSingleOrNull();
-      if (existing != null && !u.isAfter(existing.updatedAt)) continue;
-      await _db
-          .into(_db.rolePermissions)
-          .insertOnConflictUpdate(
-            RolePermissionsCompanion.insert(
-              clinicId: clinicId,
-              role: r['role'],
-              key: r['key'],
-              allowed: Value(r['allowed'] ?? false),
-              updatedAt: Value(u),
-            ),
-          );
-      if (u.isAfter(pullSince)) await _setCur('pull_permissions', u);
+      await _row('role_permissions', '${r['role']}|${r['key']}', () async {
+        final u = DateTime.parse(r['updated_at']);
+        final existing =
+            await (_db.select(_db.rolePermissions)..where(
+                  (t) => t.role.equals(r['role']) & t.key.equals(r['key']),
+                ))
+                .getSingleOrNull();
+        if (existing != null && !u.isAfter(existing.updatedAt)) return;
+        await _db
+            .into(_db.rolePermissions)
+            .insertOnConflictUpdate(
+              RolePermissionsCompanion.insert(
+                clinicId: clinicId,
+                role: r['role'],
+                key: r['key'],
+                allowed: Value(r['allowed'] ?? false),
+                updatedAt: Value(u),
+              ),
+            );
+        if (u.isAfter(pullSince)) await _setCur('pull_permissions', u);
+      });
     }
   }
 }

@@ -93,6 +93,25 @@ class LicenseController extends AsyncNotifier<LicenseState> {
 
   Future<void> reload() async => state = AsyncData(await _resolve());
 
+  /// Called by the wizard once a join or recovery has restored the data.
+  Future<void> completeJoin({
+    required String cloudEmail,
+    required String cloudPassword,
+    required String deviceLetter,
+  }) async {
+    final lic = state.value?.license;
+    if (lic == null) return;
+    final svc = ref.read(licenseServiceProvider);
+    await svc.completeJoin(
+      lic: lic,
+      cloudEmail: cloudEmail,
+      cloudPassword: cloudPassword,
+      deviceLetter: deviceLetter,
+    );
+    await _conn.seedContact();
+    state = AsyncData(await svc.resolveLicense());
+  }
+
   /// Apply a new licence to an already-set-up install — an upgrade or renewal.
   /// Nothing is deleted: the clinic id is unchanged, so patients, staff,
   /// settings and cloud data all stay exactly as they are.

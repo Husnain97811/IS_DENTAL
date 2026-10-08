@@ -46,17 +46,49 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } })
 
     const { error: userErr } = await admin.auth.admin.createUser({
-  email, password, email_confirm: true, app_metadata: { clinic_id: license.clinicId },
-})
-const dup = userErr && /already.*(registered|exists)|duplicate/i.test(userErr.message)
-if (userErr && !dup) return json({ ok: false, error: userErr.message }, 400)
-// dup => a previous attempt already created this account; fall through and finish the clinic row.
+      email, email_confirm: true, password,
+      app_metadata: { clinic_id: license.clinicId },
+    })
+    const dup = userErr && /already.*(registered|exists)|duplicate/i.test(userErr.message)
+    if (userErr && !dup) return json({ ok: false, error: userErr.message }, 400)
 
-const { error: clinicErr } = await admin.from('clinics').upsert({
-  id: license.clinicId, name: license.clinicName, tier: license.tier, expires_at: license.expiresAt,
-})
-if (clinicErr) return json({ ok: false, error: clinicErr.message }, 400)
-return json({ ok: true })
+    if (dup) {
+      // The account exists from an earlier attempt. The OLD code fell through
+      // without touching it, so a second install that typed a different
+      // password stored credentials that could never sign in — sync then
+      // failed silently forever. Re-point the account at this clinic and set
+      // the password the caller just chose.
+      const { data: list } = await admin.auth.admin.listUsers()
+      const found = list?.users?.find((u) => u.email?.toLowerCase() === String(email).toLowerCase())
+      if (!found) return json({ ok: false, error: 'Account exists but could not be read.' }, 400)
+      if (found.app_metadata?.clinic_id && found.app_metadata.clinic_id !== license.clinicId) {
+        return json({ ok: false, error: 'That email already belongs to a different clinic.' }, 400)
+      }
+      const { error: updErr } = await admin.auth.admin.updateUserById(found.id, {
+        password, app_metadata: { clinic_id: license.clinicId },
+      })
+      if (updErr) return json({ ok: false, error: updErr.message }, 400)
+    }
+
+    // Only move the clinic row FORWARD. The old code upserted unconditionally,
+    // so a second computer pasting an older licence would roll expires_at
+    // back — and the heartbeat reads exactly this row, which would lock out
+    // every machine in the clinic at once.
+    const { data: existing } = await admin.from('clinics')
+      .select('expires_at').eq('id', license.clinicId).maybeSingle()
+
+    const incoming = new Date(license.expiresAt)
+    const current = existing?.expires_at ? new Date(existing.expires_at) : null
+
+    if (!current || incoming >= current) {
+      const { error: clinicErr } = await admin.from('clinics').upsert({
+        id: license.clinicId, name: license.clinicName,
+        tier: license.tier, expires_at: license.expiresAt, status: 'active',
+      })
+      if (clinicErr) return json({ ok: false, error: clinicErr.message }, 400)
+    }
+
+    return json({ ok: true })
 
   
   } catch (e) { return json({ ok: false, error: String(e) }, 500) }

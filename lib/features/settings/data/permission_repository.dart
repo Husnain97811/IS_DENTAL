@@ -47,6 +47,10 @@ class PermissionRepository {
 
   /// Write the defaults once, so the settings screen reflects reality.
   Future<void> seedIfEmpty() async {
+    // A joined or restored install must never write defaults: its tables are
+    // empty because the data has not arrived, and defaults would push up with
+    // today's timestamp and beat the owner's real matrix everywhere.
+    if (!await _db.seedAllowed()) return;
     if ((await _db.select(_db.rolePermissions).get()).isNotEmpty) return;
     for (final role in const [
       AppRole.admin,

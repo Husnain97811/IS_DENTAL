@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:is_dental/features/expenses/presentation/expenses_screen.dart';
 
 import '../constants/views.dart';
 import 'app_routes.dart';
@@ -139,6 +140,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.billing,
                 builder: (c, s) => const BillingScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.expenses,
+                builder: (c, s) => const ExpensesScreen(),
               ),
             ],
           ),

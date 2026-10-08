@@ -15,7 +15,7 @@ class ConnectivityService {
   final SyncEngine _sync;
 
   // static const window = Duration(hours: 48);
-  static const window = Duration(seconds: 48);
+  static const window = Duration(hours: 48);
   static const _kLastContact = 'last_contact_ms';
 
   Future<Duration?> sinceLastContact() async {
@@ -47,12 +47,25 @@ class ConnectivityService {
 
       // 2) Validate the subscription server-side.
       final sub = await _cloud.subscription(clinicId);
-      if (sub == null) return HeartbeatResult.offline; // unreachable
+      if (sub == null) {
+        await _db.setSetting(
+          'hb_reason',
+          'Could not read the clinic row (offline, RLS, or clinic id '
+              'mismatch). Not treated as a cancellation.',
+        );
+        return HeartbeatResult.offline; // unreachable
+      }
+      final now = await _clock.now();
       final serverExpired =
-          sub.expiresAt != null && DateTime.now().isAfter(sub.expiresAt!);
+          sub.expiresAt != null && now.isAfter(sub.expiresAt!);
       if (sub.status != 'active' || serverExpired) {
+        await _db.setSetting(
+          'hb_reason',
+          'Cloud says status=${sub.status}, expires=${sub.expiresAt}',
+        );
         return HeartbeatResult.subscriptionInvalid;
       }
+      await _db.setSetting('hb_reason', '');
 
       // 3) Success → reset the 48h window, then sync (best-effort).
       await seedContact();

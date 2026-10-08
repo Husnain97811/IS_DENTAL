@@ -1,12 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/utils/uuids.dart';
-import 'package:is_dental/features/offers/data/offer_tables.dart';
-import 'package:is_dental/features/prescriptions/data/prescription_tables.dart';
-import 'package:is_dental/features/requests/data/booking_request_tables.dart';
-import 'package:is_dental/features/patients/data/xray_tables.dart';
-import 'package:is_dental/features/settings/data/permission_tables.dart';
-
 import '../constants/views.dart';
 import 'database_connection.dart';
 part 'app_database.g.dart';
@@ -75,6 +69,10 @@ class Users extends Table {
     PrescriptionItems,
     PrescriptionCare,
     RolePermissions,
+    LookupLists,
+    Expenses,
+    InvoicePayments,
+    Devices,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -82,7 +80,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 26;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -467,8 +465,594 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(branches, branches.waLanguage);
         } catch (_) {}
       }
+      if (from < 24) {
+        try {
+          await m.createTable(lookupLists);
+        } catch (_) {}
+        try {
+          await m.createTable(expenses);
+        } catch (_) {}
+        try {
+          await m.createTable(invoicePayments);
+        } catch (_) {}
+        try {
+          await m.addColumn(invoices, invoices.amountPaid);
+        } catch (_) {}
+        try {
+          await _v24Indexes();
+        } catch (_) {}
+        try {
+          await backfillPaymentsForPaidInvoices();
+        } catch (_) {}
+      }
+      if (from < 25) {
+        try {
+          await m.addColumn(expenses, expenses.updatedByName);
+        } catch (_) {}
+      }
+      if (from < 26) {
+        try {
+          await m.createTable(devices);
+        } catch (_) {}
+        try {
+          await customStatement(
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_device_letter '
+            'ON devices(clinic_id, letter) WHERE is_deleted = 0;',
+          );
+        } catch (_) {}
+      }
     },
   );
+  // ───────────────────────── v24: payments, balance, expenses ──────────────
+
+  /// One payment row per already-paid invoice, so no figure on screen changes
+  /// the day a clinic upgrades.
+  ///
+  /// The uuid is derived from the invoice uuid, NOT random: every machine
+  /// backfills independently, and a random uuid would push a second payment
+  /// row for the same invoice and double its revenue after sync.
+  Future<void> backfillPaymentsForPaidInvoices() async {
+    final clinicId = await currentClinicId() ?? '';
+    final rows = await (select(
+      invoices,
+    )..where((t) => t.isDeleted.equals(false) & t.status.equals('paid'))).get();
+
+    for (final inv in rows) {
+      final uuid = 'pay-${inv.uuid}';
+      final existing = await (select(
+        invoicePayments,
+      )..where((t) => t.uuid.equals(uuid))).getSingleOrNull();
+      if (existing == null) {
+        await into(invoicePayments).insert(
+          InvoicePaymentsCompanion.insert(
+            uuid: uuid,
+            clinicId: clinicId.isEmpty ? inv.clinicId : clinicId,
+            branchId: Value(inv.branchId),
+            invoiceId: inv.id,
+            invoiceUuid: inv.uuid,
+            amount: inv.total,
+            paidAt: inv.issuedAt,
+            note: const Value('Recorded before payment tracking'),
+          ),
+        );
+      }
+      // Only amountPaid is written — updatedAt is deliberately left alone so
+      // the upgrade doesn't re-push every historical invoice.
+      await (update(invoices)..where((t) => t.id.equals(inv.id))).write(
+        InvoicesCompanion(amountPaid: Value(inv.total)),
+      );
+    }
+  }
+
+  /// Recomputes invoices.amountPaid, moves the status between pending and
+  /// paid, then refreshes the patient's balance. Call after EVERY payment
+  /// insert, edit or delete, and after an invoice total changes.
+  Future<void> recalcInvoicePaid(int invoiceId) async {
+    final s = invoicePayments.amount.sum();
+    final q = selectOnly(invoicePayments)
+      ..addColumns([s])
+      ..where(
+        invoicePayments.invoiceId.equals(invoiceId) &
+            invoicePayments.isDeleted.equals(false),
+      );
+    final paid = (await q.getSingleOrNull())?.read(s) ?? 0;
+
+    final inv = await (select(
+      invoices,
+    )..where((t) => t.id.equals(invoiceId))).getSingleOrNull();
+    if (inv == null) return;
+
+    // A cancelled invoice keeps its status whatever the payments say.
+    var status = inv.status;
+    if (status != 'cancelled') {
+      if (paid >= inv.total && inv.total > 0) {
+        status = 'paid';
+      } else if (status == 'paid') {
+        status = 'pending';
+      }
+    }
+
+    // No write when nothing changed — otherwise every sync pull bumps
+    // updatedAt, re-pushes the invoice, and the two machines ping-pong.
+    if (paid != inv.amountPaid || status != inv.status) {
+      await (update(invoices)..where((t) => t.id.equals(invoiceId))).write(
+        InvoicesCompanion(
+          amountPaid: Value(paid),
+          status: Value(status),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    }
+
+    await recalcPatientBalance(inv.patientId);
+  }
+
+  /// patients.balance is a cache, never typed by hand:
+  /// sum(total - amountPaid) over live, non-cancelled invoices.
+  Future<void> recalcPatientBalance(int patientId) async {
+    final rows =
+        await (select(invoices)..where(
+              (t) =>
+                  t.patientId.equals(patientId) &
+                  t.isDeleted.equals(false) &
+                  t.status.equals('cancelled').not(),
+            ))
+            .get();
+    var due = 0;
+    for (final i in rows) {
+      final d = i.total - i.amountPaid;
+      if (d > 0) due += d;
+    }
+    final p = await (select(
+      patients,
+    )..where((t) => t.id.equals(patientId))).getSingleOrNull();
+    if (p == null || p.balance == due) return;
+    await (update(patients)..where((t) => t.id.equals(patientId))).write(
+      PatientsCompanion(balance: Value(due), updatedAt: Value(DateTime.now())),
+    );
+  }
+
+  /// Rebuilds every cached figure. Run once after a restore from cloud.
+  Future<void> recalcAllPaidAndBalances() async {
+    for (final inv in await (select(
+      invoices,
+    )..where((t) => t.isDeleted.equals(false))).get()) {
+      await recalcInvoicePaid(inv.id);
+    }
+  }
+
+  /// The one place a payment is written. Both the payment dialog and
+  /// markPaid() go through here so amountPaid, invoice status and the
+  /// patient balance can never drift apart.
+  Future<void> insertPayment({
+    required int invoiceId,
+    required int amount,
+    required DateTime paidAt,
+    String method = 'Cash',
+    String? methodDetail,
+    String? reference,
+    String note = '',
+    String receivedByName = '',
+  }) async {
+    final inv = await (select(
+      invoices,
+    )..where((t) => t.id.equals(invoiceId))).getSingleOrNull();
+    if (inv == null) return;
+
+    await into(invoicePayments).insert(
+      InvoicePaymentsCompanion.insert(
+        uuid: Uuids.v4(),
+        clinicId: inv.clinicId,
+        branchId: Value(inv.branchId),
+        invoiceId: inv.id,
+        invoiceUuid: inv.uuid,
+        amount: amount,
+        paidAt: paidAt,
+        method: Value(method),
+        methodDetail: Value(methodDetail),
+        reference: Value(reference),
+        note: Value(note),
+        receivedByName: Value(receivedByName),
+      ),
+    );
+    await recalcInvoicePaid(inv.id);
+  }
+
+  Future<void> softDeletePayment(int id, {String by = ''}) async {
+    final row = await (select(
+      invoicePayments,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    if (row == null) return;
+    await (update(invoicePayments)..where((t) => t.id.equals(id))).write(
+      InvoicePaymentsCompanion(
+        isDeleted: const Value(true),
+        deletedByName: Value(by),
+        deletedAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+    await recalcInvoicePaid(row.invoiceId);
+  }
+
+  Future<List<InvoicePaymentRow>> paymentsForInvoice(int invoiceId) =>
+      (select(invoicePayments)
+            ..where(
+              (t) => t.invoiceId.equals(invoiceId) & t.isDeleted.equals(false),
+            )
+            ..orderBy([(t) => OrderingTerm.asc(t.paidAt)]))
+          .get();
+
+  /// What the patient owes on OTHER invoices — the "previous balance"
+  /// line on a receipt.
+  Future<int> patientBalanceExcluding(int patientId, int invoiceId) async {
+    final rows =
+        await (select(invoices)..where(
+              (t) =>
+                  t.patientId.equals(patientId) &
+                  t.isDeleted.equals(false) &
+                  t.id.equals(invoiceId).not() &
+                  t.status.equals('cancelled').not(),
+            ))
+            .get();
+    var due = 0;
+    for (final i in rows) {
+      final d = i.total - i.amountPaid;
+      if (d > 0) due += d;
+    }
+    return due;
+  }
+
+  Stream<List<InvoicePaymentRow>> watchPaymentsForInvoice(int invoiceId) =>
+      (select(invoicePayments)
+            ..where(
+              (t) => t.invoiceId.equals(invoiceId) & t.isDeleted.equals(false),
+            )
+            ..orderBy([(t) => OrderingTerm.asc(t.paidAt)]))
+          .watch();
+
+  Future<int> patientBalance(int patientId) async {
+    final p = await (select(
+      patients,
+    )..where((t) => t.id.equals(patientId))).getSingleOrNull();
+    return p?.balance ?? 0;
+  }
+
+  Stream<int> watchPatientBalance(int patientId) =>
+      (select(patients)..where((t) => t.id.equals(patientId)))
+          .watchSingleOrNull()
+          .map((p) => p?.balance ?? 0);
+
+  /// Cash actually collected in a period — the income side of net profit.
+  Stream<int> watchCollectedBetween(
+    DateTime start,
+    DateTime end, {
+    String? branchId,
+  }) {
+    final s = invoicePayments.amount.sum();
+    final q = selectOnly(invoicePayments)
+      ..addColumns([s])
+      ..where(
+        invoicePayments.isDeleted.equals(false) &
+            invoicePayments.paidAt.isBiggerOrEqualValue(start) &
+            invoicePayments.paidAt.isSmallerThanValue(end) &
+            (branchId == null
+                ? const Constant(true)
+                : invoicePayments.branchId.equals(branchId)),
+      );
+    return q.map((r) => r.read(s) ?? 0).watchSingle();
+  }
+
+  /// Individual payments in a period, for the weekly / monthly charts.
+  Stream<List<({DateTime paidAt, int amount})>> watchPaymentsBetween(
+    DateTime start,
+    DateTime end, {
+    String? branchId,
+  }) {
+    final q = select(invoicePayments)
+      ..where(
+        (t) =>
+            t.isDeleted.equals(false) &
+            t.paidAt.isBiggerOrEqualValue(start) &
+            t.paidAt.isSmallerThanValue(end) &
+            (branchId == null
+                ? const Constant(true)
+                : t.branchId.equals(branchId)),
+      );
+    return q.map((r) => (paidAt: r.paidAt, amount: r.amount)).watch();
+  }
+
+  Stream<int> watchExpenseTotal(
+    DateTime start,
+    DateTime end, {
+    String? branchId,
+  }) {
+    final s = expenses.amount.sum();
+    final q = selectOnly(expenses)
+      ..addColumns([s])
+      ..where(
+        expenses.isDeleted.equals(false) &
+            expenses.paidAt.isBiggerOrEqualValue(start) &
+            expenses.paidAt.isSmallerThanValue(end) &
+            (branchId == null
+                ? const Constant(true)
+                : expenses.branchId.equals(branchId)),
+      );
+    return q.map((r) => r.read(s) ?? 0).watchSingle();
+  }
+
+  Stream<List<ExpenseRow>> watchExpensesBetween(
+    DateTime start,
+    DateTime end, {
+    String? branchId,
+  }) =>
+      (select(expenses)
+            ..where(
+              (t) =>
+                  t.isDeleted.equals(false) &
+                  t.paidAt.isBiggerOrEqualValue(start) &
+                  t.paidAt.isSmallerThanValue(end) &
+                  (branchId == null
+                      ? const Constant(true)
+                      : t.branchId.equals(branchId)),
+            )
+            ..orderBy([(t) => OrderingTerm.desc(t.paidAt)]))
+          .watch();
+
+  Stream<List<({String categoryUuid, int total})>> watchExpenseByCategory(
+    DateTime start,
+    DateTime end, {
+    String? branchId,
+  }) {
+    final s = expenses.amount.sum();
+    final q = selectOnly(expenses)
+      ..addColumns([expenses.categoryUuid, s])
+      ..where(
+        expenses.isDeleted.equals(false) &
+            expenses.paidAt.isBiggerOrEqualValue(start) &
+            expenses.paidAt.isSmallerThanValue(end) &
+            (branchId == null
+                ? const Constant(true)
+                : expenses.branchId.equals(branchId)),
+      )
+      ..groupBy([expenses.categoryUuid])
+      ..orderBy([OrderingTerm(expression: s, mode: OrderingMode.desc)]);
+    return q
+        .map(
+          (r) => (
+            categoryUuid: r.read(expenses.categoryUuid) ?? '',
+            total: r.read(s) ?? 0,
+          ),
+        )
+        .watch();
+  }
+
+  Stream<List<LookupRow>> watchLookups(String kind) =>
+      (select(lookupLists)
+            ..where((t) => t.kind.equals(kind) & t.isDeleted.equals(false))
+            ..orderBy([
+              (t) => OrderingTerm.asc(t.sortOrder),
+              (t) => OrderingTerm.asc(t.name),
+            ]))
+          .watch();
+
+  /// Hidden rows included — only the lists manager wants these.
+  Stream<List<LookupRow>> watchAllLookups(String kind) =>
+      (select(lookupLists)
+            ..where((t) => t.kind.equals(kind))
+            ..orderBy([
+              (t) => OrderingTerm.asc(t.isDeleted),
+              (t) => OrderingTerm.asc(t.sortOrder),
+            ]))
+          .watch();
+
+  /// categoryUuid → count of live expenses using it.
+  Stream<Map<String, int>> watchCategoryUsage() {
+    final c = countAll();
+    final q = selectOnly(expenses)
+      ..addColumns([expenses.categoryUuid, c])
+      ..where(expenses.isDeleted.equals(false))
+      ..groupBy([expenses.categoryUuid]);
+    return q.watch().map(
+      (rows) => {
+        for (final r in rows)
+          (r.read(expenses.categoryUuid) ?? ''): r.read(c) ?? 0,
+      },
+    );
+  }
+
+  Future<List<LookupRow>> lookups(String kind) =>
+      (select(lookupLists)
+            ..where((t) => t.kind.equals(kind) & t.isDeleted.equals(false))
+            ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+          .get();
+
+  /// ⚠ Call ONCE at the end of completeSetup for a genuinely new clinic.
+  /// Never before a restore — seeding first leaves duplicate rows, exactly
+  /// as it did with medicines and precaution sets.
+  Future<void> seedLookupsIfEmpty() async {
+    if (!await seedAllowed()) return;
+    final clinicId = await currentClinicId() ?? '';
+    if (clinicId.isEmpty) return;
+    final existing = await (select(lookupLists)..limit(1)).getSingleOrNull();
+    if (existing != null) return;
+
+    const categories = [
+      'Rent',
+      'Salaries',
+      'Supplies & Consumables',
+      'Lab Fees',
+      'Utilities',
+      'Equipment & Maintenance',
+      'Marketing',
+      'Transport',
+      'Taxes & Govt Fees',
+      'Other',
+    ];
+    const methods = [
+      'Cash',
+      'Bank Transfer',
+      'Card',
+      'JazzCash',
+      'EasyPaisa',
+      'Cheque',
+      'Other',
+    ];
+
+    Future<void> add(String kind, String name, int order) =>
+        into(lookupLists).insert(
+          LookupListsCompanion.insert(
+            uuid: Uuids.v4(),
+            clinicId: clinicId,
+            kind: kind,
+            name: name,
+            sortOrder: Value(order),
+            isSystem: const Value(true),
+          ),
+        );
+
+    for (var i = 0; i < categories.length; i++) {
+      await add('expense_category', categories[i], i);
+    }
+    for (var i = 0; i < methods.length; i++) {
+      await add('payment_method', methods[i], i);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ───────────────────────── v26: device identity ──────────────────────────
+
+  static const _kDeviceUuid = 'device_uuid';
+  static const _kDeviceLetter = 'device_letter';
+  static const _kSeedAllowed = 'seed_allowed';
+
+  /// May this install create factory defaults (categories, permissions,
+  /// medicines)?
+  ///
+  /// Only a genuinely NEW clinic may. A computer that joined an existing
+  /// clinic, or one that restored from the cloud, must never seed: its
+  /// tables are empty only because the data has not arrived yet, and
+  /// seeding would push defaults up with today's timestamp, which
+  /// last-write-wins would then apply over the owner's real settings on
+  /// every other machine.
+  ///
+  /// Absent means allowed, so installs that pre-date this flag keep
+  /// behaving exactly as they did.
+  Future<bool> seedAllowed() async =>
+      (await getSetting(_kSeedAllowed) ?? '1') == '1';
+
+  Future<void> setSeedAllowed(bool v) =>
+      setSetting(_kSeedAllowed, v ? '1' : '0');
+
+  /// This install's own identity. Created on first call and never changed.
+  ///
+  /// Every install starts as 'A'. Only the join flow hands out B and beyond,
+  /// so an existing single-PC clinic upgrading to v26 keeps producing exactly
+  /// the numbers it always has.
+  Future<({String uuid, String letter})> localDevice() async {
+    var uuid = await getSetting(_kDeviceUuid) ?? '';
+    if (uuid.isEmpty) {
+      uuid = Uuids.v4();
+      await setSetting(_kDeviceUuid, uuid);
+    }
+    var letter = await getSetting(_kDeviceLetter) ?? '';
+    if (letter.isEmpty) {
+      letter = 'A';
+      await setSetting(_kDeviceLetter, letter);
+    }
+    return (uuid: uuid, letter: letter);
+  }
+
+  /// Called by the join flow once the server has assigned a letter.
+  Future<void> setLocalDeviceLetter(String letter) =>
+      setSetting(_kDeviceLetter, letter.toUpperCase());
+
+  /// Appended to every locally generated number. Empty on device A, so the
+  /// first computer's numbering is unchanged forever.
+  Future<String> numberSuffix() async {
+    final d = await localDevice();
+    return d.letter == 'A' ? '' : '-${d.letter}';
+  }
+
+  Stream<List<DeviceRow>> watchDevices() =>
+      (select(devices)
+            ..where((t) => t.isDeleted.equals(false))
+            ..orderBy([(t) => OrderingTerm.asc(t.letter)]))
+          .watch();
+
+  Future<List<DeviceRow>> activeDevices() =>
+      (select(devices)
+            ..where((t) => t.isDeleted.equals(false) & t.isActive.equals(true))
+            ..orderBy([(t) => OrderingTerm.asc(t.letter)]))
+          .get();
+
+  /// Creates or refreshes this computer's row.
+  Future<void> upsertDevice({
+    required String uuid,
+    required String clinicId,
+    required String letter,
+    String? name,
+    String? platform,
+    String? joinedByName,
+    bool touchLastSeen = false,
+  }) async {
+    final existing = await (select(
+      devices,
+    )..where((t) => t.uuid.equals(uuid))).getSingleOrNull();
+
+    if (existing == null) {
+      await into(devices).insert(
+        DevicesCompanion.insert(
+          uuid: uuid,
+          clinicId: clinicId,
+          letter: letter.toUpperCase(),
+          name: Value(name ?? ''),
+          platform: Value(platform ?? ''),
+          joinedByName: Value(joinedByName ?? ''),
+          lastSeenAt: Value(touchLastSeen ? DateTime.now() : null),
+        ),
+      );
+      return;
+    }
+
+    // Edit, never insertOnConflictUpdate — uuid is NOT NULL unique and an
+    // absent value throws.
+    await (update(devices)..where((t) => t.id.equals(existing.id))).write(
+      DevicesCompanion(
+        clinicId: Value(clinicId),
+        letter: Value(letter.toUpperCase()),
+        name: name == null ? const Value.absent() : Value(name),
+        platform: platform == null ? const Value.absent() : Value(platform),
+        lastSeenAt: touchLastSeen
+            ? Value(DateTime.now())
+            : const Value.absent(),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Bumped after every successful sync, so the owner can see which
+  /// computers are still alive.
+  Future<void> touchThisDevice() async {
+    final d = await localDevice();
+    await (update(devices)..where((t) => t.uuid.equals(d.uuid))).write(
+      DevicesCompanion(
+        lastSeenAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Owner revoking a machine that was lost or replaced.
+  Future<void> deactivateDevice(int id) =>
+      (update(devices)..where((t) => t.id.equals(id))).write(
+        DevicesCompanion(
+          isActive: const Value(false),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> backfillUserUuids() async {
     for (final u in await (select(
@@ -566,7 +1150,10 @@ class AppDatabase extends _$AppDatabase {
       final n = int.tryParse(digits) ?? 0;
       if (n > maxN) maxN = n;
     }
-    return (maxN + 1).toString().padLeft(7, '0');
+    // The max scan above strips non-digits, so a number from another
+    // computer ("0000187-B") still reads as 187. The sequence is shared
+    // across devices; only the suffix differs.
+    return '${(maxN + 1).toString().padLeft(7, '0')}${await numberSuffix()}';
   }
 
   // for letter head settngs
@@ -609,7 +1196,7 @@ class AppDatabase extends _$AppDatabase {
     final start = await rxStartNo();
     final next = (maxN + 1) > start ? (maxN + 1) : start;
     final prefix = await rxPrefix();
-    return '$prefix${next.toString().padLeft(7, '0')}';
+    return '$prefix${next.toString().padLeft(7, '0')}${await numberSuffix()}';
   }
 
   /// True if this exact invoice number already exists (active clinic).
@@ -637,7 +1224,7 @@ class AppDatabase extends _$AppDatabase {
       final n = int.tryParse(digits) ?? 0;
       if (n > maxN) maxN = n;
     }
-    return 'PT-${(maxN + 1).toString().padLeft(7, '0')}';
+    return 'PT-${(maxN + 1).toString().padLeft(7, '0')}${await numberSuffix()}';
   }
 
   /// True if this patient code already exists (active clinic).
@@ -789,6 +1376,25 @@ class AppDatabase extends _$AppDatabase {
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_tooth_patient ON tooth_records(patient_id);',
     );
+    await _v24Indexes();
+  }
+
+  Future<void> _v24Indexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_pay_invoice ON invoice_payments(invoice_id);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_pay_paid_at ON invoice_payments(paid_at);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_exp_paid_at ON expenses(paid_at);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_exp_branch ON expenses(branch_id);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_lookup_kind ON lookup_lists(kind);',
+    );
   }
 
   /// Active patient with this CNIC (digits-only), excluding [excludeId].
@@ -822,6 +1428,10 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setSetting(String k, String v) => into(
     appSettings,
   ).insertOnConflictUpdate(AppSettingsCompanion.insert(key: k, value: v));
+
+  /// Clears the 48h grace window so the next licence resolve must talk to
+  /// the server. Support + testing tool.
+  Future<void> clearContactWindow() => setSetting('last_contact_ms', '');
 
   // --- users / profile ---
   Future<int> userCount() async => (await (select(

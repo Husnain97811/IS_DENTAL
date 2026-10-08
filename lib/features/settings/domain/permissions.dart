@@ -14,6 +14,8 @@ class Perm {
   static const manageBackup = 'manageBackup';
   static const manageStaff = 'manageStaff';
   static const cancelInvoices = 'cancelInvoices';
+  static const manageExpenses = 'manageExpenses';
+  static const viewExpenses = 'viewExpenses';
 
   static const all = [
     viewFinancials,
@@ -26,6 +28,8 @@ class Perm {
     manageBackup,
     manageStaff,
     cancelInvoices,
+    manageExpenses,
+    viewExpenses,
   ];
 
   static String label(String key) => switch (key) {
@@ -39,6 +43,8 @@ class Perm {
     manageBackup => 'Manage backup & restore',
     manageStaff => 'Manage staff',
     cancelInvoices => 'Cancel invoices',
+    manageExpenses => 'Record expenses',
+    viewExpenses => 'View expenses & profit',
     _ => key,
   };
 
@@ -54,6 +60,11 @@ class Perm {
     manageBackup => 'Backup, restore from cloud, and data export',
     manageStaff => 'Add, edit and remove staff logins',
     cancelInvoices => 'Mark an invoice cancelled. Owner can always do this.',
+    manageExpenses =>
+      'Add, edit and delete expenses, and edit the category list',
+    viewExpenses =>
+      'Open the Expenses screen and see expense totals. Net profit also '
+          'needs "View financials".',
     _ => '',
   };
 }

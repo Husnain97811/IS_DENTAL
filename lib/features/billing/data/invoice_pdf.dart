@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import '../domain/invoice.dart';
+import '../../../core/constants/views.dart';
 import '../../../core/utils/qr_payload.dart';
 
 String _rs(int v) =>
@@ -153,19 +153,26 @@ Future<Uint8List> buildInvoicePdf(
   String? paymentMode, // 'Cash' | 'Card' | 'JazzCash' | 'EasyPaisa'
   String? receiptNo, // defaults to invoiceNo
   String? termsText, // footer terms/policy
+  List<InvoicePaymentRow> payments = const [],
+  int previousBalance = 0, // owed on this patient's OTHER invoices
 }) async {
   final doc = pw.Document();
-  final st = _statusStyle(inv.status);
+  final st = inv.isPartial
+      ? (
+          label: 'PARTIAL',
+          bg: PdfColor.fromInt(0xFFE0F2FE),
+          fg: PdfColor.fromInt(0xFF0369A1),
+        )
+      : _statusStyle(inv.status);
 
   int lineTotal(InvoiceItem it) => it.amount * it.qty;
   final computedSubtotal = inv.items.fold<int>(0, (s, it) => s + lineTotal(it));
   final subtotal = inv.subtotal != 0 ? inv.subtotal : computedSubtotal;
   final gross = inv.total;
 
-  // Paid/unpaid derived from status (no partial-payment system).
-  final isPaid = inv.status == InvoiceStatus.paid;
-  final amountPaid = isPaid ? gross : 0;
+  final amountPaid = inv.amountPaid;
   final balance = gross - amountPaid;
+  final isPaid = balance <= 0 && gross > 0;
 
   final qrPayload = buildPatientQrPayload(
     clinicId: clinicId,
@@ -485,6 +492,11 @@ Future<Uint8List> buildInvoicePdf(
                       ),
                     ),
                     _totalRow('Amount Paid', _rs(amountPaid)),
+                    if (previousBalance > 0)
+                      _totalRow(
+                        'Previous balance (other bills)',
+                        _rs(previousBalance),
+                      ),
                     pw.Container(
                       padding: const pw.EdgeInsets.symmetric(vertical: 6),
                       decoration: const pw.BoxDecoration(
@@ -573,14 +585,66 @@ Future<Uint8List> buildInvoicePdf(
                   ),
                 ),
                 pw.SizedBox(height: 6),
-                pw.Row(
-                  children: [
-                    _payCol('Receipt No', receiptNo ?? inv.invoiceNo),
-                    _payCol('Amount Received', _rs(amountPaid)),
-                    _payCol('Mode', paymentMode ?? (isPaid ? 'Cash' : '—')),
-                    _payCol('Date', _date(inv.issuedAt)),
-                  ],
-                ),
+                if (payments.isEmpty)
+                  pw.Row(
+                    children: [
+                      _payCol('Receipt No', receiptNo ?? inv.invoiceNo),
+                      _payCol('Amount Received', _rs(amountPaid)),
+                      _payCol('Mode', paymentMode ?? '—'),
+                      _payCol('Date', _date(inv.issuedAt)),
+                    ],
+                  )
+                else
+                  pw.Column(
+                    children: [
+                      for (final p in payments)
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.only(bottom: 3),
+                          child: pw.Row(
+                            children: [
+                              pw.Expanded(
+                                flex: 3,
+                                child: pw.Text(
+                                  _date(p.paidAt),
+                                  style: const pw.TextStyle(
+                                    fontSize: 9,
+                                    color: _ink,
+                                  ),
+                                ),
+                              ),
+                              pw.Expanded(
+                                flex: 4,
+                                child: pw.Text(
+                                  [
+                                    p.method,
+                                    if ((p.methodDetail ?? '').isNotEmpty)
+                                      p.methodDetail!,
+                                    if ((p.reference ?? '').isNotEmpty)
+                                      'TID ${p.reference}',
+                                  ].join(' · '),
+                                  style: const pw.TextStyle(
+                                    fontSize: 8.5,
+                                    color: _muted,
+                                  ),
+                                ),
+                              ),
+                              pw.Expanded(
+                                flex: 2,
+                                child: pw.Text(
+                                  _rs(p.amount),
+                                  textAlign: pw.TextAlign.right,
+                                  style: pw.TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: _ink,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
               ],
             ),
           ),

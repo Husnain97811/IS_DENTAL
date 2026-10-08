@@ -12,4 +12,5 @@ class AppRoutes {
   static const requests = '/dashboard/requests';
   static const offers = '/patients/offers';
   static const whatsapp = '/whatsapp';
+  static const expenses = '/expenses';
 }

@@ -458,14 +458,34 @@ class PatientDetailScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      Text(
-                        'Rs ${_money(i.total)}',
-                        style: AppTypography.mono(size: 8.5.sp, color: d.text1),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Rs ${_money(i.total)}',
+                            style: AppTypography.mono(
+                              size: 8.5.sp,
+                              color: d.text1,
+                            ),
+                          ),
+                          if (i.balance > 0 &&
+                              i.status != InvoiceStatus.cancelled)
+                            Text(
+                              'Rs ${_money(i.balance)} due',
+                              style: AppTypography.mono(
+                                size: 7.5.sp,
+                                color: d.alert,
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(width: 12),
                       StatusChip(
-                        _prettify(i.status.name),
-                        kind: _invKind(i.status),
+                        i.isPartial ? 'Partial' : _prettify(i.status.name),
+                        kind: i.isPartial
+                            ? ChipKind.inProgress
+                            : _invKind(i.status),
                       ),
                     ],
                   ),

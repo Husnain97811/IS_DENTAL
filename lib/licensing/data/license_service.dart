@@ -9,8 +9,6 @@ import '../../core/utils/monotonic_clock.dart';
 import '../domain/license.dart';
 import 'license_verifier.dart';
 
-
-
 class LicenseService {
   LicenseService(this._db, this._clock);
   final AppDatabase _db;
@@ -129,7 +127,6 @@ class LicenseService {
     );
   }
 
-
   static const _kUsedNonces = 'used_reset_nonces';
 
   /// Consume a vendor reset token and set a new owner password.
@@ -161,7 +158,7 @@ class LicenseService {
     if (now.isAfter(t.expiresAt)) {
       return (
         ok: false,
-        error: 'This reset code has expired. Please request a new one.'
+        error: 'This reset code has expired. Please request a new one.',
       );
     }
 
@@ -174,10 +171,11 @@ class LicenseService {
       return (ok: false, error: 'Choose a password of at least 6 characters.');
     }
 
-    final owner = await (_db.select(_db.users)
-          ..where((u) => u.role.equals('owner') & u.isDeleted.equals(false))
-          ..limit(1))
-        .getSingleOrNull();
+    final owner =
+        await (_db.select(_db.users)
+              ..where((u) => u.role.equals('owner') & u.isDeleted.equals(false))
+              ..limit(1))
+            .getSingleOrNull();
     if (owner == null) {
       return (ok: false, error: 'No owner account found on this device.');
     }
@@ -199,6 +197,38 @@ class LicenseService {
     return (ok: true, error: null);
   }
 
+  /// Finishes a JOIN or a RECOVER. Deliberately does NOT create an owner,
+  /// does NOT call register-clinic, and does NOT allow seeding:
+  ///
+  ///  • createOwner would give the clinic a second owner, against a licence
+  ///    that counts the owner toward maxUsers
+  ///  • register-clinic re-upserts the clinics row, and a stale licence
+  ///    pasted here would roll expires_at back — the heartbeat reads exactly
+  ///    that row, so every machine in the clinic would lock out at once
+  ///  • seeding would write factory defaults with today's timestamp, which
+  ///    last-write-wins would then apply over the owner's real settings
+  ///
+  /// Staff logins arrive with the users table during the restore.
+  Future<void> completeJoin({
+    required License lic,
+    required String cloudEmail,
+    required String cloudPassword,
+    required String deviceLetter,
+  }) async {
+    final existing = await _db.select(_db.clinicProfile).getSingleOrNull();
+    await _db.saveProfile(
+      clinicId: lic.clinicId,
+      name: lic.clinicName,
+      branch: existing?.branch ?? '',
+      currency: existing?.currency ?? 'PKR (Rs)',
+      tier: lic.tier.name,
+    );
+    await _db.setSetting('cloud_email', cloudEmail);
+    await _db.setSetting('cloud_password', cloudPassword);
+    await _db.setLocalDeviceLetter(deviceLetter);
+    await _db.setSeedAllowed(false);
+    await _db.setSetting('setup_complete', '1');
+  }
 
   Future<void> completeSetup({
     required License lic,
@@ -225,6 +255,8 @@ class LicenseService {
     );
     await _db.setSetting('cloud_email', email);
     await _db.setSetting('cloud_password', password);
+    // A genuinely new clinic — this install owns the factory defaults.
+    await _db.setSeedAllowed(true);
     await _db.setSetting('setup_complete', '1');
   }
 }

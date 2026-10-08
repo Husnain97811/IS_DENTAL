@@ -2,10 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:is_dental/features/patients/presentation/widgets/inventory_editor.dart';
-import 'package:is_dental/features/prescriptions/presentation/prescription_controller.dart';
-import 'package:is_dental/features/prescriptions/presentation/widgets/medicine_editor.dart';
-
 import 'package:sizer/sizer.dart';
 import '../../constants/views.dart';
 import '../../router/nav_destinations.dart';
@@ -68,10 +64,35 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
 
   void _onSearch(String v) {
     setState(() => _query = v);
+
+    // Expenses filters its own table in place — no dropdown.
+    if (widget.destination.route == AppRoutes.expenses) {
+      ref.read(expenseSearchProvider.notifier).state = v;
+      if (_portal.isShowing) _portal.hide();
+      return;
+    }
+
     if (v.trim().isEmpty) {
       if (_portal.isShowing) _portal.hide();
     } else {
       if (!_portal.isShowing) _portal.show();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant AppTopbar old) {
+    super.didUpdateWidget(old);
+    // Leaving a screen clears its search, so a stale query can't keep
+    // filtering a table the user is no longer looking at.
+    if (old.destination.route != widget.destination.route) {
+      if (old.destination.route == AppRoutes.expenses) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => ref.read(expenseSearchProvider.notifier).state = '',
+        );
+      }
+      _searchCtrl.clear();
+      _query = '';
+      if (_portal.isShowing) _portal.hide();
     }
   }
 
@@ -113,7 +134,7 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
     AppRoutes.billing => 'Search invoices…',
     AppRoutes.inventory => 'Search inventory…',
     AppRoutes.prescriptions => 'Search medicines…',
-
+    AppRoutes.expenses => 'Search expenses…',
     _ => 'Search patients…',
   };
 
@@ -363,9 +384,15 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
               ),
               const SizedBox(width: 10),
               _notificationBell(context, notifs),
-              const SizedBox(width: 10),
-              _DbStatusButton(destination: widget.destination),
-              if (_showPrimary(ref)) ...[
+              // DB status is a system detail — only where system settings live.
+              if (route == AppRoutes.dashboard ||
+                  route == AppRoutes.settings) ...[
+                const SizedBox(width: 10),
+                _DbStatusButton(destination: widget.destination),
+              ],
+              if (route == AppRoutes.expenses)
+                ..._expenseActions(context, ref)
+              else if (_showPrimary(ref)) ...[
                 const SizedBox(width: 10),
                 _primaryButton(context, ref),
               ],
@@ -645,10 +672,100 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
     );
   }
 
+  /// Expenses needs three actions, not one, so it bypasses _primaryButton.
+  List<Widget> _expenseActions(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(canProvider(Perm.manageExpenses))) return const [];
+    final d = context.dent;
+    final period = ref.watch(expensePeriodProvider);
+
+    return [
+      // Copying forward only makes sense while viewing a single month.
+      if (period.mode == PeriodMode.month) ...[
+        const SizedBox(width: 10),
+        Material(
+          color: d.surface,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => copyLastMonthFlow(context, ref, period),
+            child: Container(
+              height: 42,
+              padding: EdgeInsets.symmetric(horizontal: 8.sp),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: d.line),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.copy_all_rounded, size: 14.sp, color: d.text3),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Copy last month',
+                    style: TextStyle(
+                      fontFamily: AppFonts.body,
+                      color: d.text2,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10.5.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+      const SizedBox(width: 10),
+      _iconBtn(context, Icons.tune_rounded, () => showListsManager(context)),
+      const SizedBox(width: 10),
+      Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => showExpenseEditor(context),
+          child: Container(
+            height: 42,
+            padding: EdgeInsets.all(8.sp),
+            decoration: BoxDecoration(
+              gradient: d.accentGradient,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: d.teal.withValues(alpha: .35),
+                  blurRadius: 22,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.add_rounded,
+                  color: AppPalette.onAccent,
+                  size: 15.5.sp,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Add Expense',
+                  style: TextStyle(
+                    fontFamily: AppFonts.body,
+                    color: AppPalette.onAccent,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11.sp,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
   /// Whether the topbar's primary action applies to this screen and this user.
   bool _showPrimary(WidgetRef ref) {
     final r = widget.destination.route;
     if (r == AppRoutes.settings) return false;
+    if (r == AppRoutes.expenses) return false; // handled by _expenseActions
     // "+ New Offer" — Premium only
     if (r == AppRoutes.whatsapp) return ref.watch(entitlementsProvider).offers;
     // "Export Report" — financial data
@@ -791,6 +908,9 @@ class _DbStatusButton extends ConsumerWidget {
     final lastSync = await db.lastSyncAt();
     final clinicId = await db.currentClinicId();
     final isCloud = clinicId != null && clinicId.isNotEmpty;
+    final skipped =
+        int.tryParse(await db.getSetting('sync_skipped_count') ?? '') ?? 0;
+    final skippedWhat = await db.getSetting('sync_skipped') ?? '';
     if (!context.mounted) return;
 
     final d = context.dent;
@@ -898,6 +1018,40 @@ class _DbStatusButton extends ConsumerWidget {
                     const SizedBox(height: 14),
                     _row(
                       d,
+                      skipped == 0
+                          ? Icons.check_circle_outline_rounded
+                          : Icons.report_problem_rounded,
+                      'Last sync result',
+                      skipped == 0
+                          ? 'All records came through'
+                          : '$skipped record${skipped == 1 ? "" : "s"} '
+                                'could not be applied',
+                      skipped == 0 ? d.ok : d.warn,
+                    ),
+                    if (skipped > 0) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: d.warn.withValues(alpha: .08),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Text(
+                          'Usually a duplicate patient code or invoice number '
+                          'created on two computers. Contact support with: '
+                          '$skippedWhat',
+                          style: TextStyle(
+                            color: d.text3,
+                            fontSize: 8.sp,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    _row(
+                      d,
                       Icons.folder_rounded,
                       'Storage',
                       'Local encrypted DB · auto-backup',
@@ -912,6 +1066,26 @@ class _DbStatusButton extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 child: Row(
                   children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: d.warn,
+                          side: BorderSide(color: d.line),
+                          minimumSize: const Size.fromHeight(40),
+                        ),
+                        onPressed: () async {
+                          Navigator.pop(ctx);
+                          await ref
+                              .read(appDatabaseProvider)
+                              .clearContactWindow();
+                          await ref
+                              .read(licenseControllerProvider.notifier)
+                              .reload();
+                        },
+                        child: const Text('Force check'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(

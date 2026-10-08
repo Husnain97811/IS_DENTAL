@@ -98,6 +98,16 @@ const kNavDestinations = <NavDestination>[
     primaryAction: 'New Invoice',
     drawer: DrawerKind.invoice,
   ),
+  NavDestination(
+    route: AppRoutes.expenses,
+    icon: Icons.account_balance_wallet_rounded,
+    label: 'Expenses',
+    group: NavGroup.operations,
+    title: 'Expenses',
+    subtitle: 'Clinic spending & net profit',
+    primaryAction: 'Add Expense',
+    drawer: DrawerKind.none,
+  ),
   // NavDestination(
   //   route: AppRoutes.inventory,
   //   icon: Icons.inventory_2_rounded,
@@ -138,6 +148,7 @@ const kNavDestinations = <NavDestination>[
 const kRoutePerm = <String, String>{
   AppRoutes.whatsapp: Perm.manageWhatsapp,
   AppRoutes.billing: Perm.accessBilling,
+  AppRoutes.expenses: Perm.viewExpenses,
   AppRoutes.reports: Perm.viewFinancials,
 };
 

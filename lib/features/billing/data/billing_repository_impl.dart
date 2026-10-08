@@ -41,6 +41,7 @@ class BillingRepositoryImpl implements BillingRepository {
           subtotal: i.subtotal,
           adjustment: i.adjustment,
           total: i.total,
+          amountPaid: i.amountPaid,
         );
       }).toList(),
     );
@@ -87,6 +88,7 @@ class BillingRepositoryImpl implements BillingRepository {
             ),
           );
     }
+    await _db.recalcInvoicePaid(invId);
   }
 
   @override
@@ -122,6 +124,7 @@ class BillingRepositoryImpl implements BillingRepository {
           subtotal: i.subtotal,
           adjustment: i.adjustment,
           total: i.total,
+          amountPaid: i.amountPaid,
           cancelledBy: i.cancelledBy,
           cancelledAt: i.cancelledAt,
         );
@@ -130,15 +133,22 @@ class BillingRepositoryImpl implements BillingRepository {
   }
 
   @override
-  Future<void> cancelInvoice(int id, {required String by}) =>
-      (_db.update(_db.invoices)..where((t) => t.id.equals(id))).write(
-        InvoicesCompanion(
-          status: const Value('cancelled'),
-          cancelledBy: Value(by),
-          cancelledAt: Value(DateTime.now()),
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
+  Future<void> cancelInvoice(int id, {required String by}) async {
+    final inv = await (_db.select(
+      _db.invoices,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    await (_db.update(_db.invoices)..where((t) => t.id.equals(id))).write(
+      InvoicesCompanion(
+        status: const Value('cancelled'),
+        cancelledBy: Value(by),
+        cancelledAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+    // Payments already received stay in revenue; the patient just no
+    // longer owes this invoice.
+    if (inv != null) await _db.recalcPatientBalance(inv.patientId);
+  }
 
   @override
   Stream<Invoice?> watchInvoice(int id) {
@@ -166,6 +176,7 @@ class BillingRepositoryImpl implements BillingRepository {
         subtotal: i.subtotal,
         adjustment: i.adjustment,
         total: i.total,
+        amountPaid: i.amountPaid,
         items: itemRows
             .map(
               (it) => InvoiceItem(
@@ -180,14 +191,27 @@ class BillingRepositoryImpl implements BillingRepository {
     });
   }
 
+  /// Records the remaining balance as a cash payment today.
+  /// Status, amountPaid and the patient balance follow from that.
   @override
-  Future<void> markPaid(int id) =>
-      (_db.update(_db.invoices)..where((t) => t.id.equals(id))).write(
-        InvoicesCompanion(
-          status: const Value('paid'),
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
+  Future<void> markPaid(int id) async {
+    final inv = await (_db.select(
+      _db.invoices,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    if (inv == null) return;
+    final due = inv.total - inv.amountPaid;
+    if (due <= 0) {
+      await _db.recalcInvoicePaid(id);
+      return;
+    }
+    await _db.insertPayment(
+      invoiceId: id,
+      amount: due,
+      paidAt: DateTime.now(),
+      note: 'Marked as paid',
+    );
+  }
+
   @override
   Future<void> seedDemoInvoicesIfEmpty() async {
     final clinicId = await _db.currentClinicId();

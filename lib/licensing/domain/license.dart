@@ -18,6 +18,7 @@ class License {
     required this.expiresAt,
     required this.machineFingerprint,
     required this.signature,
+    this.maxDevices = 1,
   });
 
   final String clinicId, clinicName, machineFingerprint, signature;
@@ -25,6 +26,19 @@ class License {
   final CloudPackage cloudPackage;
   final int maxBranches, maxUsers;
   final DateTime issuedAt, expiresAt;
+
+  /// How many computers may run this clinic's install.
+  ///
+  /// Deliberately OUTSIDE canonicalPayload(): adding a field there changes
+  /// the signed bytes and would invalidate every licence already issued.
+  /// Licences minted before this field existed decode as 1, which is the
+  /// behaviour those clinics already have.
+  ///
+  /// Unsigned is safe here because it is never trusted on the computer that
+  /// reads it — the join-code server reads maxDevices from the licence the
+  /// OWNER's authenticated PC sends, and the owner's PC is the only thing
+  /// that can mint a code.
+  final int maxDevices;
 
   /// Deterministic bytes the vendor signs and the app verifies.
   /// The vendor signing tool MUST emit these fields in this exact order.
@@ -42,6 +56,7 @@ class License {
 
   Map<String, dynamic> toJson() => {
     ...jsonDecode(canonicalPayload()) as Map<String, dynamic>,
+    'maxDevices': maxDevices,
     'signature': signature,
   };
 
@@ -56,6 +71,7 @@ class License {
     expiresAt: DateTime.parse(j['expiresAt']),
     machineFingerprint: j['machineFingerprint'],
     signature: j['signature'],
+    maxDevices: (j['maxDevices'] as num?)?.toInt() ?? 1,
   );
 }
 
@@ -64,8 +80,10 @@ class LicenseState {
     required this.status,
     this.license,
     this.setupComplete = false,
+    this.reason,
   });
   final LicenseStatus status;
   final License? license;
   final bool setupComplete;
+  final String? reason;
 }

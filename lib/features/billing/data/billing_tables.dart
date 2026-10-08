@@ -17,6 +17,10 @@ class Invoices extends Table {
   IntColumn get subtotal => integer().withDefault(const Constant(0))();
   IntColumn get adjustment => integer().withDefault(const Constant(0))();
   IntColumn get total => integer().withDefault(const Constant(0))();
+
+  /// Cached sum of non-deleted invoice_payments for this invoice.
+  /// Never edited by hand — recalcInvoicePaid() owns it.
+  IntColumn get amountPaid => integer().withDefault(const Constant(0))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   TextColumn get cancelledBy => text().nullable()();

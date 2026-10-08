@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:is_dental/cloud/data/cloud_service.dart';
-import 'package:is_dental/cloud/data/sync_engine.dart';
-import 'package:is_dental/core/utils/qr_payload.dart';
-import 'package:is_dental/features/settings/data/clinic_qr_pdf.dart';
-import 'package:is_dental/features/settings/presentaion/widgets/license_panel.dart';
-import 'package:is_dental/features/settings/presentation/widgets/permissions_panel.dart';
+
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:sizer/sizer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
@@ -41,6 +36,9 @@ class _S extends ConsumerState<SettingsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Never seed on a joined or restored install — the owner's real
+      // matrix is in the cloud and defaults would overwrite it.
+      if (!await ref.read(appDatabaseProvider).seedAllowed()) return;
       await ref.read(permissionRepositoryProvider).seedIfEmpty();
     });
   }
@@ -332,7 +330,8 @@ class _S extends ConsumerState<SettingsScreen> {
                   // Owner only: branches
                   if (isOwner) ...[
                     _branchesPanel(d),
-
+                    const SizedBox(height: 18),
+                    const DevicesPanel(),
                     const SizedBox(height: 18),
                   ],
                   _hoursPanel(d),

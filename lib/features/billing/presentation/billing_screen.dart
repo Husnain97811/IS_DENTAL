@@ -35,6 +35,10 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
     InvoiceStatus.cancelled => (ChipKind.overdue, 'Cancelled'),
   };
 
+  /// Partial is display only — no new InvoiceStatus value.
+  (ChipKind, String) _stInv(Invoice i) =>
+      i.isPartial ? (ChipKind.inProgress, 'Partial') : _st(i.status);
+
   Future<void> _cancel(Invoice inv) async {
     final d = context.dent;
     final reason = TextEditingController();
@@ -51,6 +55,15 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
               '#${inv.invoiceNo} · ${inv.patientName} · Rs ${_m(inv.total)}',
               style: TextStyle(color: d.text2, fontSize: 11.sp),
             ),
+            if (inv.amountPaid > 0) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Rs ${_m(inv.amountPaid)} has already been received on this '
+                'invoice. That money stays in your revenue — refund it '
+                'separately if you are giving it back.',
+                style: TextStyle(color: d.alert, fontSize: 9.5.sp),
+              ),
+            ],
             const SizedBox(height: 10),
             Text(
               'The invoice is kept for your records and excluded from totals. '
@@ -112,12 +125,13 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
             ),
             error: (e, _) => Text('$e', style: TextStyle(color: d.alert)),
             data: (list) {
-              final paidMtd = list
-                  .where((i) => i.status == InvoiceStatus.paid)
-                  .fold<int>(0, (s, i) => s + i.total);
-              final pending = list
-                  .where((i) => i.status != InvoiceStatus.paid)
-                  .fold<int>(0, (s, i) => s + i.total);
+              // Collected = money actually received, including partials.
+              final paidMtd = list.fold<int>(0, (s, i) => s + i.amountPaid);
+              // Pending = what is still owed, not the full invoice value.
+              final pending = list.fold<int>(
+                0,
+                (s, i) => s + (i.balance > 0 ? i.balance : 0),
+              );
               final avg = list.isEmpty
                   ? 0
                   : (list.fold<int>(0, (s, i) => s + i.total) / list.length)
@@ -205,7 +219,7 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
 
   Widget _row(DentColors d, Invoice inv, bool canCancel) {
     final selected = ref.watch(selectedInvoiceIdProvider) == inv.id;
-    final (chip, label) = _st(inv.status);
+    final (chip, label) = _stInv(inv);
     return InkWell(
       onTap: () => ref.read(selectedInvoiceIdProvider.notifier).state = inv.id,
       child: Container(
@@ -255,9 +269,20 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
             // ),
             Expanded(
               flex: 2,
-              child: Text(
-                'Rs ${_m(inv.total)}',
-                style: AppTypography.mono(size: 11.sp, color: d.text2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Rs ${_m(inv.total)}',
+                    style: AppTypography.mono(size: 11.sp, color: d.text2),
+                  ),
+                  if (inv.balance > 0 && inv.amountPaid > 0)
+                    Text(
+                      'Rs ${_m(inv.balance)} due',
+                      style: AppTypography.mono(size: 8.sp, color: d.alert),
+                    ),
+                ],
               ),
             ),
             Expanded(

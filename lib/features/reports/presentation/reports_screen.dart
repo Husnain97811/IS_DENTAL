@@ -10,6 +10,7 @@ import '../../../core/widgets/dent_panel.dart';
 import '../../../core/widgets/kpi_card.dart';
 import '../../../core/widgets/stat_bar.dart';
 import 'reports_controller.dart';
+import 'package:is_dental/features/settings/domain/permissions.dart' show Perm;
 import '../../../core/db/app_database.dart';
 import '../../../core/utils/pdf_output.dart';
 import '../data/reports_pdf.dart';
@@ -220,6 +221,27 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         KpiTone.slate,
                         Icons.medical_services_rounded,
                       ),
+                      if (ref.watch(canProvider(Perm.viewExpenses)))
+                        (
+                          'Total Expenses',
+                          'Rs ${_m(s.totalExpenses)}',
+                          KpiTone.amber,
+                          Icons.account_balance_wallet_rounded,
+                        ),
+                      if (ref.watch(canProvider(Perm.viewExpenses)))
+                        (
+                          'Net Profit',
+                          '${s.netProfit < 0 ? "– " : ""}Rs '
+                              '${_m(s.netProfit.abs())}',
+                          s.netProfit >= 0 ? KpiTone.teal : KpiTone.amber,
+                          Icons.trending_up_rounded,
+                        ),
+                      (
+                        'Outstanding',
+                        'Rs ${_m(s.outstanding)}',
+                        KpiTone.slate,
+                        Icons.pending_actions_rounded,
+                      ),
                       // (
                       //   'Avg. Rating',
                       //   '4.8/5',
@@ -241,20 +263,28 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 SizedBox(height: 2.2.h),
                 LayoutBuilder(
                   builder: (context, cns) {
+                    final showExp = ref.watch(canProvider(Perm.viewExpenses));
                     final trend = DentPanel(
-                      title: 'Revenue Trend',
-                      subtitle: 'Rs (000) · 6 months',
+                      title: showExp
+                          ? 'Collected vs Expenses'
+                          : 'Collected Revenue',
+                      subtitle: 'Rs (000) · by month',
                       child: Padding(
                         padding: const EdgeInsets.all(18),
-                        child: SizedBox(height: 200, child: _bars(context, s)),
+                        child: SizedBox(
+                          height: 200,
+                          child: _bars(context, s, showExp),
+                        ),
                       ),
                     );
                     final mix = DentPanel(
-                      title: 'Procedure Mix',
-                      subtitle: 'By revenue share',
+                      title: showExp ? 'Expense Mix' : 'Procedure Mix',
+                      subtitle: showExp
+                          ? 'Where the money went'
+                          : 'By revenue share',
                       child: Padding(
                         padding: const EdgeInsets.all(18),
-                        child: _donut(context, s),
+                        child: _donut(context, showExp ? s.expenseMix : s.mix),
                       ),
                     );
                     if (cns.maxWidth < 920)
@@ -272,6 +302,38 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   },
                 ),
                 SizedBox(height: 2.2.h),
+                if (ref.watch(canProvider(Perm.viewExpenses)))
+                  DentPanel(
+                    title: 'Expenses by Category',
+                    subtitle: 'Rs ${_m(s.totalExpenses)} total',
+                    child: s.expenseMix.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(36),
+                            child: Center(
+                              child: Text(
+                                'No expenses recorded in this period.',
+                                style: TextStyle(
+                                  color: d.text4,
+                                  fontSize: 9.sp,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Column(
+                            children: [
+                              for (final e in s.expenseMix)
+                                StatBarRow(
+                                  label: e.label,
+                                  fraction: s.expenseMix.first.value == 0
+                                      ? 0
+                                      : e.value / s.expenseMix.first.value,
+                                  trailing: 'Rs ${_m(e.value.round())}',
+                                ),
+                            ],
+                          ),
+                  ),
+                if (ref.watch(canProvider(Perm.viewExpenses)))
+                  SizedBox(height: 2.2.h),
                 DentPanel(
                   title: 'Dentist Performance',
                   subtitle: 'Appointments this period',
@@ -296,18 +358,27 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  Widget _bars(BuildContext context, ReportsSummary s) {
+  Widget _bars(BuildContext context, ReportsSummary s, bool showExpenses) {
     final d = context.dent;
-    final maxV =
-        (s.monthly.isEmpty ? 1.0 : s.monthly.reduce((a, b) => a > b ? a : b))
-            .clamp(1.0, double.infinity);
-    final peak = s.monthly.indexOf(maxV.toDouble());
+    final all = [...s.monthly, if (showExpenses) ...s.monthlyExpenses];
+    final maxV = (all.isEmpty ? 1.0 : all.reduce((a, b) => a > b ? a : b))
+        .clamp(1.0, double.infinity);
+
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
         maxY: maxV * 1.25,
         gridData: const FlGridData(show: false),
         borderData: FlBorderData(show: false),
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipItem: (group, _, rod, rodIndex) => BarTooltipItem(
+              '${rodIndex == 0 ? "In" : "Out"}  Rs '
+              '${(rod.toY * 1000).round().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (x) => '${x[1]},')}',
+              TextStyle(color: d.text1, fontSize: 8.sp),
+            ),
+          ),
+        ),
         titlesData: FlTitlesData(
           leftTitles: const AxisTitles(
             sideTitles: SideTitles(showTitles: false),
@@ -338,21 +409,35 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           for (var i = 0; i < s.monthly.length; i++)
             BarChartGroupData(
               x: i,
+              barsSpace: 3,
               barRods: [
                 BarChartRodData(
                   toY: s.monthly[i],
-                  width: 18,
+                  width: showExpenses ? 9 : 18,
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(6),
+                    top: Radius.circular(5),
                   ),
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    colors: i == peak
-                        ? [d.tealDeep, d.teal]
-                        : [d.ice.withValues(alpha: .6), d.ice],
+                    colors: [d.tealDeep, d.teal],
                   ),
                 ),
+                if (showExpenses)
+                  BarChartRodData(
+                    toY: i < s.monthlyExpenses.length
+                        ? s.monthlyExpenses[i]
+                        : 0,
+                    width: 9,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(5),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [d.warn.withValues(alpha: .6), d.warn],
+                    ),
+                  ),
               ],
             ),
         ],
@@ -360,10 +445,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  Widget _donut(BuildContext context, ReportsSummary s) {
+  Widget _donut(
+    BuildContext context,
+    List<({String label, double value})> data,
+  ) {
     final d = context.dent;
     final colors = [d.ice, d.teal, d.tealDeep, d.text4, d.warn];
-    final total = s.mix.fold<double>(0, (a, b) => a + b.value);
+    final total = data.fold<double>(0, (a, b) => a + b.value);
+    final s = (mix: data);
     return Row(
       children: [
         SizedBox(

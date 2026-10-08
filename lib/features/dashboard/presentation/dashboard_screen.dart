@@ -73,16 +73,37 @@ final _topProcProvider = StreamProvider.autoDispose
             branchId: ref.watch(activeBranchProvider),
           ),
     );
+// Money actually collected in the window — matches the Reports basis.
 final _weekPaidProvider = StreamProvider.autoDispose
-    .family<List<({DateTime issuedAt, int total})>, _Range>(
+    .family<List<({DateTime paidAt, int amount})>, _Range>(
       (ref, r) => ref
           .watch(appDatabaseProvider)
-          .watchPaidInvoicesBetween(
+          .watchPaymentsBetween(
             r.start,
             r.end,
             branchId: ref.watch(activeBranchProvider),
           ),
     );
+
+final _collectedProvider = StreamProvider.autoDispose.family<int, _Range>(
+  (ref, r) => ref
+      .watch(appDatabaseProvider)
+      .watchCollectedBetween(
+        r.start,
+        r.end,
+        branchId: ref.watch(activeBranchProvider),
+      ),
+);
+
+final _expenseProvider = StreamProvider.autoDispose.family<int, _Range>(
+  (ref, r) => ref
+      .watch(appDatabaseProvider)
+      .watchExpenseTotal(
+        r.start,
+        r.end,
+        branchId: ref.watch(activeBranchProvider),
+      ),
+);
 
 String _money(int v) => v.toString().replaceAllMapped(
   RegExp(r'(\d)(?=(\d{3})+$)'),
@@ -123,13 +144,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final inTreatment = ref.watch(_inTreatmentProvider).value ?? 0;
     final unpaid = ref.watch(_unpaidProvider).value ?? (sum: 0, count: 0);
     final apptCount = ref.watch(_apptCountProvider(periodRange)).value ?? 0;
-    final revenue = ref.watch(_revenueProvider(periodRange)).value ?? 0;
+    // Collected, not invoiced — so the KPI agrees with Reports and profit.
+    final revenue = ref.watch(_collectedProvider(periodRange)).value ?? 0;
+    final periodExpenses = ref.watch(_expenseProvider(periodRange)).value ?? 0;
+    final canExpenses = ref.watch(canProvider(Perm.viewExpenses));
     final topRows =
         ref.watch(_topProcProvider(monthRange)).value ??
         const <({String procedure, int count})>[];
     final weekPaid =
         ref.watch(_weekPaidProvider(weekRange)).value ??
-        const <({DateTime issuedAt, int total})>[];
+        const <({DateTime paidAt, int amount})>[];
     final today = ref.watch(_todayApptsProvider).value ?? const <Appointment>[];
     final inventory =
         ref.watch(inventoryStreamProvider).value ?? const <InventoryItem>[];
@@ -155,8 +179,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final dayTotals = [
       for (final day in weekDays)
         weekPaid
-            .where((e) => sameDay(e.issuedAt, day))
-            .fold<int>(0, (s, e) => s + e.total),
+            .where((e) => sameDay(e.paidAt, day))
+            .fold<int>(0, (s, e) => s + e.amount),
     ];
     final weekTotal = dayTotals.fold<int>(0, (a, b) => a + b);
     final maxT = dayTotals.fold<int>(0, (m, v) => v > m ? v : m);
@@ -258,6 +282,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     label: 'Pending Payments',
                     value: 'Rs ${_money(unpaid.sum)}',
                     delta: '${unpaid.count} outstanding',
+                    deltaUp: false,
+                  ),
+                if (canFin && canExpenses)
+                  KpiCard(
+                    icon: Icons.trending_up_rounded,
+                    tone: (revenue - periodExpenses) >= 0
+                        ? KpiTone.teal
+                        : KpiTone.amber,
+                    label: 'Net Profit ($periodWord)',
+                    value:
+                        '${(revenue - periodExpenses) < 0 ? "– " : ""}Rs '
+                        '${_money((revenue - periodExpenses).abs())}',
+                    delta: 'Rs ${_money(periodExpenses)} spent',
                     deltaUp: false,
                   ),
                 if (canStats)
@@ -549,14 +586,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               'Nothing collected yet this week',
                               style: TextStyle(
                                 color: d.text3,
-                                fontSize: 10.sp,
+                                fontSize: 11.sp,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               'Paid invoices will appear here.',
-                              style: TextStyle(color: d.text4, fontSize: 8.sp),
+                              style: TextStyle(
+                                color: d.text3,
+                                fontSize: 9.5.sp,
+                              ),
                             ),
                           ],
                         ),
@@ -636,7 +676,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           style: TextStyle(
             fontFamily: AppFonts.display,
             color: d.text1,
-            fontSize: 11.5.sp,
+            fontSize: 12.sp,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -646,8 +686,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: d.text4,
-            fontSize: 8.sp,
+            color: d.text2,
+            fontSize: 9.5.sp,
             fontWeight: FontWeight.w600,
           ),
         ),

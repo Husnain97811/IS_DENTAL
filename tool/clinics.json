@@ -1,5 +1,29 @@
 [
   {
+    "clinicId": "EMAN-ISL-440203",
+    "clinicName": "eman laptaop",
+    "city": "Islamabad",
+    "email": "hussnainahmed977777@gmail.com",
+    "tier": "basic",
+    "cloudPackage": "cloud",
+    "maxBranches": 1,
+    "maxUsers": 3,
+    "firstIssuedAt": "2026-10-08T18:54:33.305869",
+    "lastIssuedAt": "2026-10-08T18:54:33.305869",
+    "expiresAt": "2027-10-08T18:54:33.305869",
+    "history": [
+      {
+        "issuedAt": "2026-10-08T18:54:33.305869",
+        "expiresAt": "2027-10-08T18:54:33.305869",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 3,
+        "kind": "new"
+      }
+    ]
+  },
+  {
     "clinicId": "MI-ISL-359249",
     "clinicName": "MI MEDICAL DENTAL & AESTHETICS",
     "city": "Islamabad",
@@ -9,9 +33,18 @@
     "maxBranches": 2,
     "maxUsers": 3,
     "firstIssuedAt": "2026-10-03T23:06:44.888140",
-    "lastIssuedAt": "2026-10-04T00:00:27.639086",
-    "expiresAt": "2026-11-03T00:00:27.639086",
+    "lastIssuedAt": "2026-10-07T10:27:46.243448",
+    "expiresAt": "2026-11-03T10:27:46.243448",
     "history": [
+      {
+        "issuedAt": "2026-10-07T10:27:46.243448",
+        "expiresAt": "2026-11-03T10:27:46.243448",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 2,
+        "maxUsers": 3,
+        "kind": "renewal"
+      },
       {
         "issuedAt": "2026-10-04T00:00:27.639086",
         "expiresAt": "2026-11-03T00:00:27.639086",
@@ -51,9 +84,18 @@
     "maxBranches": 2,
     "maxUsers": 4,
     "firstIssuedAt": "2026-09-19T15:53:33.192763",
-    "lastIssuedAt": "2026-09-29T16:32:23.920412",
-    "expiresAt": "2027-09-29T16:32:23.920412",
+    "lastIssuedAt": "2026-10-08T19:58:30.623276",
+    "expiresAt": "2027-10-08T19:58:30.623276",
     "history": [
+      {
+        "issuedAt": "2026-10-08T19:58:30.623276",
+        "expiresAt": "2027-10-08T19:58:30.623276",
+        "tier": "standard",
+        "cloudPackage": "cloud",
+        "maxBranches": 2,
+        "maxUsers": 4,
+        "kind": "renewal"
+      },
       {
         "issuedAt": "2026-09-29T16:32:23.920412",
         "expiresAt": "2027-09-29T16:32:23.920412",

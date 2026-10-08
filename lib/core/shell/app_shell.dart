@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../db/app_database.dart';
+import '../constants/views.dart';
 import '../router/nav_destinations.dart';
-import '../../features/requests/data/requests_realtime.dart';
 import 'widgets/app_sidebar.dart';
 import 'widgets/app_topbar.dart';
 import 'widgets/contextual_drawer.dart';
-import '../theme/dent_colors.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -30,6 +28,12 @@ class _AppShellState extends ConsumerState<AppShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final clinicId = await ref.read(appDatabaseProvider).currentClinicId();
       if (clinicId != null && clinicId.isNotEmpty) {
+        await ref
+            .read(deviceServiceProvider)
+            .ensureRegistered(
+              byUsername: ref.read(authControllerProvider)?.username,
+            );
+        await ref.read(appDatabaseProvider).seedLookupsIfEmpty();
         await ref.read(requestsRealtimeProvider).start(clinicId);
       }
     });

@@ -4963,6 +4963,18 @@ class $InvoicesTable extends Invoices
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _amountPaidMeta = const VerificationMeta(
+    'amountPaid',
+  );
+  @override
+  late final GeneratedColumn<int> amountPaid = GeneratedColumn<int>(
+    'amount_paid',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _isDeletedMeta = const VerificationMeta(
     'isDeleted',
   );
@@ -5027,6 +5039,7 @@ class $InvoicesTable extends Invoices
     subtotal,
     adjustment,
     total,
+    amountPaid,
     isDeleted,
     updatedAt,
     cancelledBy,
@@ -5132,6 +5145,12 @@ class $InvoicesTable extends Invoices
         total.isAcceptableOrUnknown(data['total']!, _totalMeta),
       );
     }
+    if (data.containsKey('amount_paid')) {
+      context.handle(
+        _amountPaidMeta,
+        amountPaid.isAcceptableOrUnknown(data['amount_paid']!, _amountPaidMeta),
+      );
+    }
     if (data.containsKey('is_deleted')) {
       context.handle(
         _isDeletedMeta,
@@ -5223,6 +5242,10 @@ class $InvoicesTable extends Invoices
         DriftSqlType.int,
         data['${effectivePrefix}total'],
       )!,
+      amountPaid: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_paid'],
+      )!,
       isDeleted: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_deleted'],
@@ -5262,6 +5285,10 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
   final int subtotal;
   final int adjustment;
   final int total;
+
+  /// Cached sum of non-deleted invoice_payments for this invoice.
+  /// Never edited by hand — recalcInvoicePaid() owns it.
+  final int amountPaid;
   final bool isDeleted;
   final DateTime updatedAt;
   final String? cancelledBy;
@@ -5280,6 +5307,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     required this.subtotal,
     required this.adjustment,
     required this.total,
+    required this.amountPaid,
     required this.isDeleted,
     required this.updatedAt,
     this.cancelledBy,
@@ -5305,6 +5333,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     map['subtotal'] = Variable<int>(subtotal);
     map['adjustment'] = Variable<int>(adjustment);
     map['total'] = Variable<int>(total);
+    map['amount_paid'] = Variable<int>(amountPaid);
     map['is_deleted'] = Variable<bool>(isDeleted);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || cancelledBy != null) {
@@ -5335,6 +5364,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       subtotal: Value(subtotal),
       adjustment: Value(adjustment),
       total: Value(total),
+      amountPaid: Value(amountPaid),
       isDeleted: Value(isDeleted),
       updatedAt: Value(updatedAt),
       cancelledBy: cancelledBy == null && nullToAbsent
@@ -5365,6 +5395,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       subtotal: serializer.fromJson<int>(json['subtotal']),
       adjustment: serializer.fromJson<int>(json['adjustment']),
       total: serializer.fromJson<int>(json['total']),
+      amountPaid: serializer.fromJson<int>(json['amountPaid']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       cancelledBy: serializer.fromJson<String?>(json['cancelledBy']),
@@ -5388,6 +5419,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       'subtotal': serializer.toJson<int>(subtotal),
       'adjustment': serializer.toJson<int>(adjustment),
       'total': serializer.toJson<int>(total),
+      'amountPaid': serializer.toJson<int>(amountPaid),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'cancelledBy': serializer.toJson<String?>(cancelledBy),
@@ -5409,6 +5441,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     int? subtotal,
     int? adjustment,
     int? total,
+    int? amountPaid,
     bool? isDeleted,
     DateTime? updatedAt,
     Value<String?> cancelledBy = const Value.absent(),
@@ -5429,6 +5462,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     subtotal: subtotal ?? this.subtotal,
     adjustment: adjustment ?? this.adjustment,
     total: total ?? this.total,
+    amountPaid: amountPaid ?? this.amountPaid,
     isDeleted: isDeleted ?? this.isDeleted,
     updatedAt: updatedAt ?? this.updatedAt,
     cancelledBy: cancelledBy.present ? cancelledBy.value : this.cancelledBy,
@@ -5453,6 +5487,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
           ? data.adjustment.value
           : this.adjustment,
       total: data.total.present ? data.total.value : this.total,
+      amountPaid: data.amountPaid.present
+          ? data.amountPaid.value
+          : this.amountPaid,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       cancelledBy: data.cancelledBy.present
@@ -5480,6 +5517,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
           ..write('subtotal: $subtotal, ')
           ..write('adjustment: $adjustment, ')
           ..write('total: $total, ')
+          ..write('amountPaid: $amountPaid, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('cancelledBy: $cancelledBy, ')
@@ -5503,6 +5541,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     subtotal,
     adjustment,
     total,
+    amountPaid,
     isDeleted,
     updatedAt,
     cancelledBy,
@@ -5525,6 +5564,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
           other.subtotal == this.subtotal &&
           other.adjustment == this.adjustment &&
           other.total == this.total &&
+          other.amountPaid == this.amountPaid &&
           other.isDeleted == this.isDeleted &&
           other.updatedAt == this.updatedAt &&
           other.cancelledBy == this.cancelledBy &&
@@ -5545,6 +5585,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
   final Value<int> subtotal;
   final Value<int> adjustment;
   final Value<int> total;
+  final Value<int> amountPaid;
   final Value<bool> isDeleted;
   final Value<DateTime> updatedAt;
   final Value<String?> cancelledBy;
@@ -5563,6 +5604,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     this.subtotal = const Value.absent(),
     this.adjustment = const Value.absent(),
     this.total = const Value.absent(),
+    this.amountPaid = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.cancelledBy = const Value.absent(),
@@ -5582,6 +5624,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     this.subtotal = const Value.absent(),
     this.adjustment = const Value.absent(),
     this.total = const Value.absent(),
+    this.amountPaid = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.cancelledBy = const Value.absent(),
@@ -5605,6 +5648,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     Expression<int>? subtotal,
     Expression<int>? adjustment,
     Expression<int>? total,
+    Expression<int>? amountPaid,
     Expression<bool>? isDeleted,
     Expression<DateTime>? updatedAt,
     Expression<String>? cancelledBy,
@@ -5624,6 +5668,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
       if (subtotal != null) 'subtotal': subtotal,
       if (adjustment != null) 'adjustment': adjustment,
       if (total != null) 'total': total,
+      if (amountPaid != null) 'amount_paid': amountPaid,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (cancelledBy != null) 'cancelled_by': cancelledBy,
@@ -5645,6 +5690,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     Value<int>? subtotal,
     Value<int>? adjustment,
     Value<int>? total,
+    Value<int>? amountPaid,
     Value<bool>? isDeleted,
     Value<DateTime>? updatedAt,
     Value<String?>? cancelledBy,
@@ -5664,6 +5710,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
       subtotal: subtotal ?? this.subtotal,
       adjustment: adjustment ?? this.adjustment,
       total: total ?? this.total,
+      amountPaid: amountPaid ?? this.amountPaid,
       isDeleted: isDeleted ?? this.isDeleted,
       updatedAt: updatedAt ?? this.updatedAt,
       cancelledBy: cancelledBy ?? this.cancelledBy,
@@ -5713,6 +5760,9 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     if (total.present) {
       map['total'] = Variable<int>(total.value);
     }
+    if (amountPaid.present) {
+      map['amount_paid'] = Variable<int>(amountPaid.value);
+    }
     if (isDeleted.present) {
       map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
@@ -5744,6 +5794,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
           ..write('subtotal: $subtotal, ')
           ..write('adjustment: $adjustment, ')
           ..write('total: $total, ')
+          ..write('amountPaid: $amountPaid, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('cancelledBy: $cancelledBy, ')
@@ -14534,6 +14585,3531 @@ class RolePermissionsCompanion extends UpdateCompanion<PermissionRow> {
   }
 }
 
+class $LookupListsTable extends LookupLists
+    with TableInfo<$LookupListsTable, LookupRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LookupListsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _clinicIdMeta = const VerificationMeta(
+    'clinicId',
+  );
+  @override
+  late final GeneratedColumn<String> clinicId = GeneratedColumn<String>(
+    'clinic_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _isSystemMeta = const VerificationMeta(
+    'isSystem',
+  );
+  @override
+  late final GeneratedColumn<bool> isSystem = GeneratedColumn<bool>(
+    'is_system',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_system" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    uuid,
+    clinicId,
+    kind,
+    name,
+    sortOrder,
+    isSystem,
+    isDeleted,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'lookup_lists';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LookupRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('clinic_id')) {
+      context.handle(
+        _clinicIdMeta,
+        clinicId.isAcceptableOrUnknown(data['clinic_id']!, _clinicIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('is_system')) {
+      context.handle(
+        _isSystemMeta,
+        isSystem.isAcceptableOrUnknown(data['is_system']!, _isSystemMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LookupRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LookupRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      clinicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clinic_id'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      isSystem: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_system'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LookupListsTable createAlias(String alias) {
+    return $LookupListsTable(attachedDatabase, alias);
+  }
+}
+
+class LookupRow extends DataClass implements Insertable<LookupRow> {
+  final int id;
+  final String uuid;
+  final String clinicId;
+  final String kind;
+  final String name;
+  final int sortOrder;
+
+  /// Seeded by the app. Can be renamed or hidden, but marks the defaults.
+  final bool isSystem;
+  final bool isDeleted;
+  final DateTime updatedAt;
+  const LookupRow({
+    required this.id,
+    required this.uuid,
+    required this.clinicId,
+    required this.kind,
+    required this.name,
+    required this.sortOrder,
+    required this.isSystem,
+    required this.isDeleted,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['uuid'] = Variable<String>(uuid);
+    map['clinic_id'] = Variable<String>(clinicId);
+    map['kind'] = Variable<String>(kind);
+    map['name'] = Variable<String>(name);
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['is_system'] = Variable<bool>(isSystem);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  LookupListsCompanion toCompanion(bool nullToAbsent) {
+    return LookupListsCompanion(
+      id: Value(id),
+      uuid: Value(uuid),
+      clinicId: Value(clinicId),
+      kind: Value(kind),
+      name: Value(name),
+      sortOrder: Value(sortOrder),
+      isSystem: Value(isSystem),
+      isDeleted: Value(isDeleted),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory LookupRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LookupRow(
+      id: serializer.fromJson<int>(json['id']),
+      uuid: serializer.fromJson<String>(json['uuid']),
+      clinicId: serializer.fromJson<String>(json['clinicId']),
+      kind: serializer.fromJson<String>(json['kind']),
+      name: serializer.fromJson<String>(json['name']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      isSystem: serializer.fromJson<bool>(json['isSystem']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'uuid': serializer.toJson<String>(uuid),
+      'clinicId': serializer.toJson<String>(clinicId),
+      'kind': serializer.toJson<String>(kind),
+      'name': serializer.toJson<String>(name),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'isSystem': serializer.toJson<bool>(isSystem),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  LookupRow copyWith({
+    int? id,
+    String? uuid,
+    String? clinicId,
+    String? kind,
+    String? name,
+    int? sortOrder,
+    bool? isSystem,
+    bool? isDeleted,
+    DateTime? updatedAt,
+  }) => LookupRow(
+    id: id ?? this.id,
+    uuid: uuid ?? this.uuid,
+    clinicId: clinicId ?? this.clinicId,
+    kind: kind ?? this.kind,
+    name: name ?? this.name,
+    sortOrder: sortOrder ?? this.sortOrder,
+    isSystem: isSystem ?? this.isSystem,
+    isDeleted: isDeleted ?? this.isDeleted,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  LookupRow copyWithCompanion(LookupListsCompanion data) {
+    return LookupRow(
+      id: data.id.present ? data.id.value : this.id,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      name: data.name.present ? data.name.value : this.name,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      isSystem: data.isSystem.present ? data.isSystem.value : this.isSystem,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LookupRow(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('kind: $kind, ')
+          ..write('name: $name, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isSystem: $isSystem, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    uuid,
+    clinicId,
+    kind,
+    name,
+    sortOrder,
+    isSystem,
+    isDeleted,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LookupRow &&
+          other.id == this.id &&
+          other.uuid == this.uuid &&
+          other.clinicId == this.clinicId &&
+          other.kind == this.kind &&
+          other.name == this.name &&
+          other.sortOrder == this.sortOrder &&
+          other.isSystem == this.isSystem &&
+          other.isDeleted == this.isDeleted &&
+          other.updatedAt == this.updatedAt);
+}
+
+class LookupListsCompanion extends UpdateCompanion<LookupRow> {
+  final Value<int> id;
+  final Value<String> uuid;
+  final Value<String> clinicId;
+  final Value<String> kind;
+  final Value<String> name;
+  final Value<int> sortOrder;
+  final Value<bool> isSystem;
+  final Value<bool> isDeleted;
+  final Value<DateTime> updatedAt;
+  const LookupListsCompanion({
+    this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
+    this.clinicId = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.name = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.isSystem = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  LookupListsCompanion.insert({
+    this.id = const Value.absent(),
+    required String uuid,
+    required String clinicId,
+    required String kind,
+    required String name,
+    this.sortOrder = const Value.absent(),
+    this.isSystem = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : uuid = Value(uuid),
+       clinicId = Value(clinicId),
+       kind = Value(kind),
+       name = Value(name);
+  static Insertable<LookupRow> custom({
+    Expression<int>? id,
+    Expression<String>? uuid,
+    Expression<String>? clinicId,
+    Expression<String>? kind,
+    Expression<String>? name,
+    Expression<int>? sortOrder,
+    Expression<bool>? isSystem,
+    Expression<bool>? isDeleted,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (uuid != null) 'uuid': uuid,
+      if (clinicId != null) 'clinic_id': clinicId,
+      if (kind != null) 'kind': kind,
+      if (name != null) 'name': name,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (isSystem != null) 'is_system': isSystem,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  LookupListsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? uuid,
+    Value<String>? clinicId,
+    Value<String>? kind,
+    Value<String>? name,
+    Value<int>? sortOrder,
+    Value<bool>? isSystem,
+    Value<bool>? isDeleted,
+    Value<DateTime>? updatedAt,
+  }) {
+    return LookupListsCompanion(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      clinicId: clinicId ?? this.clinicId,
+      kind: kind ?? this.kind,
+      name: name ?? this.name,
+      sortOrder: sortOrder ?? this.sortOrder,
+      isSystem: isSystem ?? this.isSystem,
+      isDeleted: isDeleted ?? this.isDeleted,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (clinicId.present) {
+      map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (isSystem.present) {
+      map['is_system'] = Variable<bool>(isSystem.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LookupListsCompanion(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('kind: $kind, ')
+          ..write('name: $name, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isSystem: $isSystem, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ExpensesTable extends Expenses
+    with TableInfo<$ExpensesTable, ExpenseRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ExpensesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _clinicIdMeta = const VerificationMeta(
+    'clinicId',
+  );
+  @override
+  late final GeneratedColumn<String> clinicId = GeneratedColumn<String>(
+    'clinic_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _categoryUuidMeta = const VerificationMeta(
+    'categoryUuid',
+  );
+  @override
+  late final GeneratedColumn<String> categoryUuid = GeneratedColumn<String>(
+    'category_uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _paidAtMeta = const VerificationMeta('paidAt');
+  @override
+  late final GeneratedColumn<DateTime> paidAt = GeneratedColumn<DateTime>(
+    'paid_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _vendorMeta = const VerificationMeta('vendor');
+  @override
+  late final GeneratedColumn<String> vendor = GeneratedColumn<String>(
+    'vendor',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _methodMeta = const VerificationMeta('method');
+  @override
+  late final GeneratedColumn<String> method = GeneratedColumn<String>(
+    'method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Cash'),
+  );
+  static const VerificationMeta _methodDetailMeta = const VerificationMeta(
+    'methodDetail',
+  );
+  @override
+  late final GeneratedColumn<String> methodDetail = GeneratedColumn<String>(
+    'method_detail',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _referenceMeta = const VerificationMeta(
+    'reference',
+  );
+  @override
+  late final GeneratedColumn<String> reference = GeneratedColumn<String>(
+    'reference',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _recordedByNameMeta = const VerificationMeta(
+    'recordedByName',
+  );
+  @override
+  late final GeneratedColumn<String> recordedByName = GeneratedColumn<String>(
+    'recorded_by_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _updatedByNameMeta = const VerificationMeta(
+    'updatedByName',
+  );
+  @override
+  late final GeneratedColumn<String> updatedByName = GeneratedColumn<String>(
+    'updated_by_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _editedAtMeta = const VerificationMeta(
+    'editedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> editedAt = GeneratedColumn<DateTime>(
+    'edited_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceTypeMeta = const VerificationMeta(
+    'sourceType',
+  );
+  @override
+  late final GeneratedColumn<String> sourceType = GeneratedColumn<String>(
+    'source_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceUuidMeta = const VerificationMeta(
+    'sourceUuid',
+  );
+  @override
+  late final GeneratedColumn<String> sourceUuid = GeneratedColumn<String>(
+    'source_uuid',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _deletedByNameMeta = const VerificationMeta(
+    'deletedByName',
+  );
+  @override
+  late final GeneratedColumn<String> deletedByName = GeneratedColumn<String>(
+    'deleted_by_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deleteReasonMeta = const VerificationMeta(
+    'deleteReason',
+  );
+  @override
+  late final GeneratedColumn<String> deleteReason = GeneratedColumn<String>(
+    'delete_reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    uuid,
+    clinicId,
+    branchId,
+    categoryUuid,
+    amount,
+    paidAt,
+    description,
+    vendor,
+    method,
+    methodDetail,
+    reference,
+    recordedByName,
+    updatedByName,
+    editedAt,
+    sourceType,
+    sourceUuid,
+    isDeleted,
+    deletedByName,
+    deletedAt,
+    deleteReason,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'expenses';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ExpenseRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('clinic_id')) {
+      context.handle(
+        _clinicIdMeta,
+        clinicId.isAcceptableOrUnknown(data['clinic_id']!, _clinicIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
+    if (data.containsKey('category_uuid')) {
+      context.handle(
+        _categoryUuidMeta,
+        categoryUuid.isAcceptableOrUnknown(
+          data['category_uuid']!,
+          _categoryUuidMeta,
+        ),
+      );
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('paid_at')) {
+      context.handle(
+        _paidAtMeta,
+        paidAt.isAcceptableOrUnknown(data['paid_at']!, _paidAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_paidAtMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('vendor')) {
+      context.handle(
+        _vendorMeta,
+        vendor.isAcceptableOrUnknown(data['vendor']!, _vendorMeta),
+      );
+    }
+    if (data.containsKey('method')) {
+      context.handle(
+        _methodMeta,
+        method.isAcceptableOrUnknown(data['method']!, _methodMeta),
+      );
+    }
+    if (data.containsKey('method_detail')) {
+      context.handle(
+        _methodDetailMeta,
+        methodDetail.isAcceptableOrUnknown(
+          data['method_detail']!,
+          _methodDetailMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reference')) {
+      context.handle(
+        _referenceMeta,
+        reference.isAcceptableOrUnknown(data['reference']!, _referenceMeta),
+      );
+    }
+    if (data.containsKey('recorded_by_name')) {
+      context.handle(
+        _recordedByNameMeta,
+        recordedByName.isAcceptableOrUnknown(
+          data['recorded_by_name']!,
+          _recordedByNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('updated_by_name')) {
+      context.handle(
+        _updatedByNameMeta,
+        updatedByName.isAcceptableOrUnknown(
+          data['updated_by_name']!,
+          _updatedByNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('edited_at')) {
+      context.handle(
+        _editedAtMeta,
+        editedAt.isAcceptableOrUnknown(data['edited_at']!, _editedAtMeta),
+      );
+    }
+    if (data.containsKey('source_type')) {
+      context.handle(
+        _sourceTypeMeta,
+        sourceType.isAcceptableOrUnknown(data['source_type']!, _sourceTypeMeta),
+      );
+    }
+    if (data.containsKey('source_uuid')) {
+      context.handle(
+        _sourceUuidMeta,
+        sourceUuid.isAcceptableOrUnknown(data['source_uuid']!, _sourceUuidMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('deleted_by_name')) {
+      context.handle(
+        _deletedByNameMeta,
+        deletedByName.isAcceptableOrUnknown(
+          data['deleted_by_name']!,
+          _deletedByNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('delete_reason')) {
+      context.handle(
+        _deleteReasonMeta,
+        deleteReason.isAcceptableOrUnknown(
+          data['delete_reason']!,
+          _deleteReasonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ExpenseRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ExpenseRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      clinicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clinic_id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      categoryUuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_uuid'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount'],
+      )!,
+      paidAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}paid_at'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      )!,
+      vendor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vendor'],
+      ),
+      method: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}method'],
+      )!,
+      methodDetail: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}method_detail'],
+      ),
+      reference: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reference'],
+      ),
+      recordedByName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recorded_by_name'],
+      )!,
+      updatedByName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_by_name'],
+      ),
+      editedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}edited_at'],
+      ),
+      sourceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_type'],
+      ),
+      sourceUuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_uuid'],
+      ),
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      deletedByName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deleted_by_name'],
+      ),
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      deleteReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}delete_reason'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ExpensesTable createAlias(String alias) {
+    return $ExpensesTable(attachedDatabase, alias);
+  }
+}
+
+class ExpenseRow extends DataClass implements Insertable<ExpenseRow> {
+  final int id;
+  final String uuid;
+  final String clinicId;
+
+  /// Always set by the editor. Defaulted rather than NOT NULL so a pull
+  /// from an older row can never crash the insert.
+  final String branchId;
+
+  /// lookup_lists.uuid where kind = 'expense_category'.
+  final String categoryUuid;
+  final int amount;
+  final DateTime paidAt;
+  final String description;
+  final String? vendor;
+
+  /// lookup_lists name where kind = 'payment_method'. Stored as text so a
+  /// renamed or deleted method never breaks an old expense.
+  final String method;
+
+  /// Free text beside the method — bank name, wallet, account.
+  final String? methodDetail;
+
+  /// Optional transaction id / TID / cheque no.
+  final String? reference;
+
+  /// Snapshot of the username. Local int user ids don't transfer between machines.
+  final String recordedByName;
+
+  /// Who last edited it. Null until someone edits.
+  final String? updatedByName;
+  final DateTime? editedAt;
+
+  /// Reserved for the inventory link (sourceType 'inventory' + the stock uuid).
+  final String? sourceType;
+  final String? sourceUuid;
+  final bool isDeleted;
+  final String? deletedByName;
+  final DateTime? deletedAt;
+  final String? deleteReason;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const ExpenseRow({
+    required this.id,
+    required this.uuid,
+    required this.clinicId,
+    required this.branchId,
+    required this.categoryUuid,
+    required this.amount,
+    required this.paidAt,
+    required this.description,
+    this.vendor,
+    required this.method,
+    this.methodDetail,
+    this.reference,
+    required this.recordedByName,
+    this.updatedByName,
+    this.editedAt,
+    this.sourceType,
+    this.sourceUuid,
+    required this.isDeleted,
+    this.deletedByName,
+    this.deletedAt,
+    this.deleteReason,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['uuid'] = Variable<String>(uuid);
+    map['clinic_id'] = Variable<String>(clinicId);
+    map['branch_id'] = Variable<String>(branchId);
+    map['category_uuid'] = Variable<String>(categoryUuid);
+    map['amount'] = Variable<int>(amount);
+    map['paid_at'] = Variable<DateTime>(paidAt);
+    map['description'] = Variable<String>(description);
+    if (!nullToAbsent || vendor != null) {
+      map['vendor'] = Variable<String>(vendor);
+    }
+    map['method'] = Variable<String>(method);
+    if (!nullToAbsent || methodDetail != null) {
+      map['method_detail'] = Variable<String>(methodDetail);
+    }
+    if (!nullToAbsent || reference != null) {
+      map['reference'] = Variable<String>(reference);
+    }
+    map['recorded_by_name'] = Variable<String>(recordedByName);
+    if (!nullToAbsent || updatedByName != null) {
+      map['updated_by_name'] = Variable<String>(updatedByName);
+    }
+    if (!nullToAbsent || editedAt != null) {
+      map['edited_at'] = Variable<DateTime>(editedAt);
+    }
+    if (!nullToAbsent || sourceType != null) {
+      map['source_type'] = Variable<String>(sourceType);
+    }
+    if (!nullToAbsent || sourceUuid != null) {
+      map['source_uuid'] = Variable<String>(sourceUuid);
+    }
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    if (!nullToAbsent || deletedByName != null) {
+      map['deleted_by_name'] = Variable<String>(deletedByName);
+    }
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    if (!nullToAbsent || deleteReason != null) {
+      map['delete_reason'] = Variable<String>(deleteReason);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ExpensesCompanion toCompanion(bool nullToAbsent) {
+    return ExpensesCompanion(
+      id: Value(id),
+      uuid: Value(uuid),
+      clinicId: Value(clinicId),
+      branchId: Value(branchId),
+      categoryUuid: Value(categoryUuid),
+      amount: Value(amount),
+      paidAt: Value(paidAt),
+      description: Value(description),
+      vendor: vendor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(vendor),
+      method: Value(method),
+      methodDetail: methodDetail == null && nullToAbsent
+          ? const Value.absent()
+          : Value(methodDetail),
+      reference: reference == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reference),
+      recordedByName: Value(recordedByName),
+      updatedByName: updatedByName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedByName),
+      editedAt: editedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(editedAt),
+      sourceType: sourceType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceType),
+      sourceUuid: sourceUuid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceUuid),
+      isDeleted: Value(isDeleted),
+      deletedByName: deletedByName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedByName),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      deleteReason: deleteReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deleteReason),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ExpenseRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ExpenseRow(
+      id: serializer.fromJson<int>(json['id']),
+      uuid: serializer.fromJson<String>(json['uuid']),
+      clinicId: serializer.fromJson<String>(json['clinicId']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      categoryUuid: serializer.fromJson<String>(json['categoryUuid']),
+      amount: serializer.fromJson<int>(json['amount']),
+      paidAt: serializer.fromJson<DateTime>(json['paidAt']),
+      description: serializer.fromJson<String>(json['description']),
+      vendor: serializer.fromJson<String?>(json['vendor']),
+      method: serializer.fromJson<String>(json['method']),
+      methodDetail: serializer.fromJson<String?>(json['methodDetail']),
+      reference: serializer.fromJson<String?>(json['reference']),
+      recordedByName: serializer.fromJson<String>(json['recordedByName']),
+      updatedByName: serializer.fromJson<String?>(json['updatedByName']),
+      editedAt: serializer.fromJson<DateTime?>(json['editedAt']),
+      sourceType: serializer.fromJson<String?>(json['sourceType']),
+      sourceUuid: serializer.fromJson<String?>(json['sourceUuid']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      deletedByName: serializer.fromJson<String?>(json['deletedByName']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      deleteReason: serializer.fromJson<String?>(json['deleteReason']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'uuid': serializer.toJson<String>(uuid),
+      'clinicId': serializer.toJson<String>(clinicId),
+      'branchId': serializer.toJson<String>(branchId),
+      'categoryUuid': serializer.toJson<String>(categoryUuid),
+      'amount': serializer.toJson<int>(amount),
+      'paidAt': serializer.toJson<DateTime>(paidAt),
+      'description': serializer.toJson<String>(description),
+      'vendor': serializer.toJson<String?>(vendor),
+      'method': serializer.toJson<String>(method),
+      'methodDetail': serializer.toJson<String?>(methodDetail),
+      'reference': serializer.toJson<String?>(reference),
+      'recordedByName': serializer.toJson<String>(recordedByName),
+      'updatedByName': serializer.toJson<String?>(updatedByName),
+      'editedAt': serializer.toJson<DateTime?>(editedAt),
+      'sourceType': serializer.toJson<String?>(sourceType),
+      'sourceUuid': serializer.toJson<String?>(sourceUuid),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'deletedByName': serializer.toJson<String?>(deletedByName),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'deleteReason': serializer.toJson<String?>(deleteReason),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ExpenseRow copyWith({
+    int? id,
+    String? uuid,
+    String? clinicId,
+    String? branchId,
+    String? categoryUuid,
+    int? amount,
+    DateTime? paidAt,
+    String? description,
+    Value<String?> vendor = const Value.absent(),
+    String? method,
+    Value<String?> methodDetail = const Value.absent(),
+    Value<String?> reference = const Value.absent(),
+    String? recordedByName,
+    Value<String?> updatedByName = const Value.absent(),
+    Value<DateTime?> editedAt = const Value.absent(),
+    Value<String?> sourceType = const Value.absent(),
+    Value<String?> sourceUuid = const Value.absent(),
+    bool? isDeleted,
+    Value<String?> deletedByName = const Value.absent(),
+    Value<DateTime?> deletedAt = const Value.absent(),
+    Value<String?> deleteReason = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => ExpenseRow(
+    id: id ?? this.id,
+    uuid: uuid ?? this.uuid,
+    clinicId: clinicId ?? this.clinicId,
+    branchId: branchId ?? this.branchId,
+    categoryUuid: categoryUuid ?? this.categoryUuid,
+    amount: amount ?? this.amount,
+    paidAt: paidAt ?? this.paidAt,
+    description: description ?? this.description,
+    vendor: vendor.present ? vendor.value : this.vendor,
+    method: method ?? this.method,
+    methodDetail: methodDetail.present ? methodDetail.value : this.methodDetail,
+    reference: reference.present ? reference.value : this.reference,
+    recordedByName: recordedByName ?? this.recordedByName,
+    updatedByName: updatedByName.present
+        ? updatedByName.value
+        : this.updatedByName,
+    editedAt: editedAt.present ? editedAt.value : this.editedAt,
+    sourceType: sourceType.present ? sourceType.value : this.sourceType,
+    sourceUuid: sourceUuid.present ? sourceUuid.value : this.sourceUuid,
+    isDeleted: isDeleted ?? this.isDeleted,
+    deletedByName: deletedByName.present
+        ? deletedByName.value
+        : this.deletedByName,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    deleteReason: deleteReason.present ? deleteReason.value : this.deleteReason,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ExpenseRow copyWithCompanion(ExpensesCompanion data) {
+    return ExpenseRow(
+      id: data.id.present ? data.id.value : this.id,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      categoryUuid: data.categoryUuid.present
+          ? data.categoryUuid.value
+          : this.categoryUuid,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      paidAt: data.paidAt.present ? data.paidAt.value : this.paidAt,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      vendor: data.vendor.present ? data.vendor.value : this.vendor,
+      method: data.method.present ? data.method.value : this.method,
+      methodDetail: data.methodDetail.present
+          ? data.methodDetail.value
+          : this.methodDetail,
+      reference: data.reference.present ? data.reference.value : this.reference,
+      recordedByName: data.recordedByName.present
+          ? data.recordedByName.value
+          : this.recordedByName,
+      updatedByName: data.updatedByName.present
+          ? data.updatedByName.value
+          : this.updatedByName,
+      editedAt: data.editedAt.present ? data.editedAt.value : this.editedAt,
+      sourceType: data.sourceType.present
+          ? data.sourceType.value
+          : this.sourceType,
+      sourceUuid: data.sourceUuid.present
+          ? data.sourceUuid.value
+          : this.sourceUuid,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      deletedByName: data.deletedByName.present
+          ? data.deletedByName.value
+          : this.deletedByName,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      deleteReason: data.deleteReason.present
+          ? data.deleteReason.value
+          : this.deleteReason,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExpenseRow(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('branchId: $branchId, ')
+          ..write('categoryUuid: $categoryUuid, ')
+          ..write('amount: $amount, ')
+          ..write('paidAt: $paidAt, ')
+          ..write('description: $description, ')
+          ..write('vendor: $vendor, ')
+          ..write('method: $method, ')
+          ..write('methodDetail: $methodDetail, ')
+          ..write('reference: $reference, ')
+          ..write('recordedByName: $recordedByName, ')
+          ..write('updatedByName: $updatedByName, ')
+          ..write('editedAt: $editedAt, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('sourceUuid: $sourceUuid, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('deletedByName: $deletedByName, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('deleteReason: $deleteReason, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    id,
+    uuid,
+    clinicId,
+    branchId,
+    categoryUuid,
+    amount,
+    paidAt,
+    description,
+    vendor,
+    method,
+    methodDetail,
+    reference,
+    recordedByName,
+    updatedByName,
+    editedAt,
+    sourceType,
+    sourceUuid,
+    isDeleted,
+    deletedByName,
+    deletedAt,
+    deleteReason,
+    createdAt,
+    updatedAt,
+  ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ExpenseRow &&
+          other.id == this.id &&
+          other.uuid == this.uuid &&
+          other.clinicId == this.clinicId &&
+          other.branchId == this.branchId &&
+          other.categoryUuid == this.categoryUuid &&
+          other.amount == this.amount &&
+          other.paidAt == this.paidAt &&
+          other.description == this.description &&
+          other.vendor == this.vendor &&
+          other.method == this.method &&
+          other.methodDetail == this.methodDetail &&
+          other.reference == this.reference &&
+          other.recordedByName == this.recordedByName &&
+          other.updatedByName == this.updatedByName &&
+          other.editedAt == this.editedAt &&
+          other.sourceType == this.sourceType &&
+          other.sourceUuid == this.sourceUuid &&
+          other.isDeleted == this.isDeleted &&
+          other.deletedByName == this.deletedByName &&
+          other.deletedAt == this.deletedAt &&
+          other.deleteReason == this.deleteReason &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ExpensesCompanion extends UpdateCompanion<ExpenseRow> {
+  final Value<int> id;
+  final Value<String> uuid;
+  final Value<String> clinicId;
+  final Value<String> branchId;
+  final Value<String> categoryUuid;
+  final Value<int> amount;
+  final Value<DateTime> paidAt;
+  final Value<String> description;
+  final Value<String?> vendor;
+  final Value<String> method;
+  final Value<String?> methodDetail;
+  final Value<String?> reference;
+  final Value<String> recordedByName;
+  final Value<String?> updatedByName;
+  final Value<DateTime?> editedAt;
+  final Value<String?> sourceType;
+  final Value<String?> sourceUuid;
+  final Value<bool> isDeleted;
+  final Value<String?> deletedByName;
+  final Value<DateTime?> deletedAt;
+  final Value<String?> deleteReason;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const ExpensesCompanion({
+    this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
+    this.clinicId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.categoryUuid = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.paidAt = const Value.absent(),
+    this.description = const Value.absent(),
+    this.vendor = const Value.absent(),
+    this.method = const Value.absent(),
+    this.methodDetail = const Value.absent(),
+    this.reference = const Value.absent(),
+    this.recordedByName = const Value.absent(),
+    this.updatedByName = const Value.absent(),
+    this.editedAt = const Value.absent(),
+    this.sourceType = const Value.absent(),
+    this.sourceUuid = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.deletedByName = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.deleteReason = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  ExpensesCompanion.insert({
+    this.id = const Value.absent(),
+    required String uuid,
+    required String clinicId,
+    this.branchId = const Value.absent(),
+    this.categoryUuid = const Value.absent(),
+    required int amount,
+    required DateTime paidAt,
+    this.description = const Value.absent(),
+    this.vendor = const Value.absent(),
+    this.method = const Value.absent(),
+    this.methodDetail = const Value.absent(),
+    this.reference = const Value.absent(),
+    this.recordedByName = const Value.absent(),
+    this.updatedByName = const Value.absent(),
+    this.editedAt = const Value.absent(),
+    this.sourceType = const Value.absent(),
+    this.sourceUuid = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.deletedByName = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.deleteReason = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : uuid = Value(uuid),
+       clinicId = Value(clinicId),
+       amount = Value(amount),
+       paidAt = Value(paidAt);
+  static Insertable<ExpenseRow> custom({
+    Expression<int>? id,
+    Expression<String>? uuid,
+    Expression<String>? clinicId,
+    Expression<String>? branchId,
+    Expression<String>? categoryUuid,
+    Expression<int>? amount,
+    Expression<DateTime>? paidAt,
+    Expression<String>? description,
+    Expression<String>? vendor,
+    Expression<String>? method,
+    Expression<String>? methodDetail,
+    Expression<String>? reference,
+    Expression<String>? recordedByName,
+    Expression<String>? updatedByName,
+    Expression<DateTime>? editedAt,
+    Expression<String>? sourceType,
+    Expression<String>? sourceUuid,
+    Expression<bool>? isDeleted,
+    Expression<String>? deletedByName,
+    Expression<DateTime>? deletedAt,
+    Expression<String>? deleteReason,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (uuid != null) 'uuid': uuid,
+      if (clinicId != null) 'clinic_id': clinicId,
+      if (branchId != null) 'branch_id': branchId,
+      if (categoryUuid != null) 'category_uuid': categoryUuid,
+      if (amount != null) 'amount': amount,
+      if (paidAt != null) 'paid_at': paidAt,
+      if (description != null) 'description': description,
+      if (vendor != null) 'vendor': vendor,
+      if (method != null) 'method': method,
+      if (methodDetail != null) 'method_detail': methodDetail,
+      if (reference != null) 'reference': reference,
+      if (recordedByName != null) 'recorded_by_name': recordedByName,
+      if (updatedByName != null) 'updated_by_name': updatedByName,
+      if (editedAt != null) 'edited_at': editedAt,
+      if (sourceType != null) 'source_type': sourceType,
+      if (sourceUuid != null) 'source_uuid': sourceUuid,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (deletedByName != null) 'deleted_by_name': deletedByName,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (deleteReason != null) 'delete_reason': deleteReason,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  ExpensesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? uuid,
+    Value<String>? clinicId,
+    Value<String>? branchId,
+    Value<String>? categoryUuid,
+    Value<int>? amount,
+    Value<DateTime>? paidAt,
+    Value<String>? description,
+    Value<String?>? vendor,
+    Value<String>? method,
+    Value<String?>? methodDetail,
+    Value<String?>? reference,
+    Value<String>? recordedByName,
+    Value<String?>? updatedByName,
+    Value<DateTime?>? editedAt,
+    Value<String?>? sourceType,
+    Value<String?>? sourceUuid,
+    Value<bool>? isDeleted,
+    Value<String?>? deletedByName,
+    Value<DateTime?>? deletedAt,
+    Value<String?>? deleteReason,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return ExpensesCompanion(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      clinicId: clinicId ?? this.clinicId,
+      branchId: branchId ?? this.branchId,
+      categoryUuid: categoryUuid ?? this.categoryUuid,
+      amount: amount ?? this.amount,
+      paidAt: paidAt ?? this.paidAt,
+      description: description ?? this.description,
+      vendor: vendor ?? this.vendor,
+      method: method ?? this.method,
+      methodDetail: methodDetail ?? this.methodDetail,
+      reference: reference ?? this.reference,
+      recordedByName: recordedByName ?? this.recordedByName,
+      updatedByName: updatedByName ?? this.updatedByName,
+      editedAt: editedAt ?? this.editedAt,
+      sourceType: sourceType ?? this.sourceType,
+      sourceUuid: sourceUuid ?? this.sourceUuid,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedByName: deletedByName ?? this.deletedByName,
+      deletedAt: deletedAt ?? this.deletedAt,
+      deleteReason: deleteReason ?? this.deleteReason,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (clinicId.present) {
+      map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (categoryUuid.present) {
+      map['category_uuid'] = Variable<String>(categoryUuid.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(amount.value);
+    }
+    if (paidAt.present) {
+      map['paid_at'] = Variable<DateTime>(paidAt.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (vendor.present) {
+      map['vendor'] = Variable<String>(vendor.value);
+    }
+    if (method.present) {
+      map['method'] = Variable<String>(method.value);
+    }
+    if (methodDetail.present) {
+      map['method_detail'] = Variable<String>(methodDetail.value);
+    }
+    if (reference.present) {
+      map['reference'] = Variable<String>(reference.value);
+    }
+    if (recordedByName.present) {
+      map['recorded_by_name'] = Variable<String>(recordedByName.value);
+    }
+    if (updatedByName.present) {
+      map['updated_by_name'] = Variable<String>(updatedByName.value);
+    }
+    if (editedAt.present) {
+      map['edited_at'] = Variable<DateTime>(editedAt.value);
+    }
+    if (sourceType.present) {
+      map['source_type'] = Variable<String>(sourceType.value);
+    }
+    if (sourceUuid.present) {
+      map['source_uuid'] = Variable<String>(sourceUuid.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (deletedByName.present) {
+      map['deleted_by_name'] = Variable<String>(deletedByName.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (deleteReason.present) {
+      map['delete_reason'] = Variable<String>(deleteReason.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExpensesCompanion(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('branchId: $branchId, ')
+          ..write('categoryUuid: $categoryUuid, ')
+          ..write('amount: $amount, ')
+          ..write('paidAt: $paidAt, ')
+          ..write('description: $description, ')
+          ..write('vendor: $vendor, ')
+          ..write('method: $method, ')
+          ..write('methodDetail: $methodDetail, ')
+          ..write('reference: $reference, ')
+          ..write('recordedByName: $recordedByName, ')
+          ..write('updatedByName: $updatedByName, ')
+          ..write('editedAt: $editedAt, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('sourceUuid: $sourceUuid, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('deletedByName: $deletedByName, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('deleteReason: $deleteReason, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InvoicePaymentsTable extends InvoicePayments
+    with TableInfo<$InvoicePaymentsTable, InvoicePaymentRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InvoicePaymentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _clinicIdMeta = const VerificationMeta(
+    'clinicId',
+  );
+  @override
+  late final GeneratedColumn<String> clinicId = GeneratedColumn<String>(
+    'clinic_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _invoiceIdMeta = const VerificationMeta(
+    'invoiceId',
+  );
+  @override
+  late final GeneratedColumn<int> invoiceId = GeneratedColumn<int>(
+    'invoice_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES invoices (id)',
+    ),
+  );
+  static const VerificationMeta _invoiceUuidMeta = const VerificationMeta(
+    'invoiceUuid',
+  );
+  @override
+  late final GeneratedColumn<String> invoiceUuid = GeneratedColumn<String>(
+    'invoice_uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _paidAtMeta = const VerificationMeta('paidAt');
+  @override
+  late final GeneratedColumn<DateTime> paidAt = GeneratedColumn<DateTime>(
+    'paid_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _methodMeta = const VerificationMeta('method');
+  @override
+  late final GeneratedColumn<String> method = GeneratedColumn<String>(
+    'method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Cash'),
+  );
+  static const VerificationMeta _methodDetailMeta = const VerificationMeta(
+    'methodDetail',
+  );
+  @override
+  late final GeneratedColumn<String> methodDetail = GeneratedColumn<String>(
+    'method_detail',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _referenceMeta = const VerificationMeta(
+    'reference',
+  );
+  @override
+  late final GeneratedColumn<String> reference = GeneratedColumn<String>(
+    'reference',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _receivedByNameMeta = const VerificationMeta(
+    'receivedByName',
+  );
+  @override
+  late final GeneratedColumn<String> receivedByName = GeneratedColumn<String>(
+    'received_by_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _deletedByNameMeta = const VerificationMeta(
+    'deletedByName',
+  );
+  @override
+  late final GeneratedColumn<String> deletedByName = GeneratedColumn<String>(
+    'deleted_by_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    uuid,
+    clinicId,
+    branchId,
+    invoiceId,
+    invoiceUuid,
+    amount,
+    paidAt,
+    method,
+    methodDetail,
+    reference,
+    receivedByName,
+    note,
+    isDeleted,
+    deletedByName,
+    deletedAt,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'invoice_payments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InvoicePaymentRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('clinic_id')) {
+      context.handle(
+        _clinicIdMeta,
+        clinicId.isAcceptableOrUnknown(data['clinic_id']!, _clinicIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
+    if (data.containsKey('invoice_id')) {
+      context.handle(
+        _invoiceIdMeta,
+        invoiceId.isAcceptableOrUnknown(data['invoice_id']!, _invoiceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_invoiceIdMeta);
+    }
+    if (data.containsKey('invoice_uuid')) {
+      context.handle(
+        _invoiceUuidMeta,
+        invoiceUuid.isAcceptableOrUnknown(
+          data['invoice_uuid']!,
+          _invoiceUuidMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_invoiceUuidMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('paid_at')) {
+      context.handle(
+        _paidAtMeta,
+        paidAt.isAcceptableOrUnknown(data['paid_at']!, _paidAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_paidAtMeta);
+    }
+    if (data.containsKey('method')) {
+      context.handle(
+        _methodMeta,
+        method.isAcceptableOrUnknown(data['method']!, _methodMeta),
+      );
+    }
+    if (data.containsKey('method_detail')) {
+      context.handle(
+        _methodDetailMeta,
+        methodDetail.isAcceptableOrUnknown(
+          data['method_detail']!,
+          _methodDetailMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reference')) {
+      context.handle(
+        _referenceMeta,
+        reference.isAcceptableOrUnknown(data['reference']!, _referenceMeta),
+      );
+    }
+    if (data.containsKey('received_by_name')) {
+      context.handle(
+        _receivedByNameMeta,
+        receivedByName.isAcceptableOrUnknown(
+          data['received_by_name']!,
+          _receivedByNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('deleted_by_name')) {
+      context.handle(
+        _deletedByNameMeta,
+        deletedByName.isAcceptableOrUnknown(
+          data['deleted_by_name']!,
+          _deletedByNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InvoicePaymentRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InvoicePaymentRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      clinicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clinic_id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      ),
+      invoiceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}invoice_id'],
+      )!,
+      invoiceUuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}invoice_uuid'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount'],
+      )!,
+      paidAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}paid_at'],
+      )!,
+      method: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}method'],
+      )!,
+      methodDetail: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}method_detail'],
+      ),
+      reference: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reference'],
+      ),
+      receivedByName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}received_by_name'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      deletedByName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deleted_by_name'],
+      ),
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InvoicePaymentsTable createAlias(String alias) {
+    return $InvoicePaymentsTable(attachedDatabase, alias);
+  }
+}
+
+class InvoicePaymentRow extends DataClass
+    implements Insertable<InvoicePaymentRow> {
+  final int id;
+  final String uuid;
+  final String clinicId;
+  final String? branchId;
+
+  /// Local link, for fast joins on this machine.
+  final int invoiceId;
+
+  /// Cross-machine link. Resolved back to invoiceId on pull.
+  final String invoiceUuid;
+  final int amount;
+  final DateTime paidAt;
+  final String method;
+  final String? methodDetail;
+
+  /// Transaction id / TID / cheque no.
+  final String? reference;
+  final String receivedByName;
+  final String note;
+  final bool isDeleted;
+  final String? deletedByName;
+  final DateTime? deletedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const InvoicePaymentRow({
+    required this.id,
+    required this.uuid,
+    required this.clinicId,
+    this.branchId,
+    required this.invoiceId,
+    required this.invoiceUuid,
+    required this.amount,
+    required this.paidAt,
+    required this.method,
+    this.methodDetail,
+    this.reference,
+    required this.receivedByName,
+    required this.note,
+    required this.isDeleted,
+    this.deletedByName,
+    this.deletedAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['uuid'] = Variable<String>(uuid);
+    map['clinic_id'] = Variable<String>(clinicId);
+    if (!nullToAbsent || branchId != null) {
+      map['branch_id'] = Variable<String>(branchId);
+    }
+    map['invoice_id'] = Variable<int>(invoiceId);
+    map['invoice_uuid'] = Variable<String>(invoiceUuid);
+    map['amount'] = Variable<int>(amount);
+    map['paid_at'] = Variable<DateTime>(paidAt);
+    map['method'] = Variable<String>(method);
+    if (!nullToAbsent || methodDetail != null) {
+      map['method_detail'] = Variable<String>(methodDetail);
+    }
+    if (!nullToAbsent || reference != null) {
+      map['reference'] = Variable<String>(reference);
+    }
+    map['received_by_name'] = Variable<String>(receivedByName);
+    map['note'] = Variable<String>(note);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    if (!nullToAbsent || deletedByName != null) {
+      map['deleted_by_name'] = Variable<String>(deletedByName);
+    }
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  InvoicePaymentsCompanion toCompanion(bool nullToAbsent) {
+    return InvoicePaymentsCompanion(
+      id: Value(id),
+      uuid: Value(uuid),
+      clinicId: Value(clinicId),
+      branchId: branchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchId),
+      invoiceId: Value(invoiceId),
+      invoiceUuid: Value(invoiceUuid),
+      amount: Value(amount),
+      paidAt: Value(paidAt),
+      method: Value(method),
+      methodDetail: methodDetail == null && nullToAbsent
+          ? const Value.absent()
+          : Value(methodDetail),
+      reference: reference == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reference),
+      receivedByName: Value(receivedByName),
+      note: Value(note),
+      isDeleted: Value(isDeleted),
+      deletedByName: deletedByName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedByName),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory InvoicePaymentRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InvoicePaymentRow(
+      id: serializer.fromJson<int>(json['id']),
+      uuid: serializer.fromJson<String>(json['uuid']),
+      clinicId: serializer.fromJson<String>(json['clinicId']),
+      branchId: serializer.fromJson<String?>(json['branchId']),
+      invoiceId: serializer.fromJson<int>(json['invoiceId']),
+      invoiceUuid: serializer.fromJson<String>(json['invoiceUuid']),
+      amount: serializer.fromJson<int>(json['amount']),
+      paidAt: serializer.fromJson<DateTime>(json['paidAt']),
+      method: serializer.fromJson<String>(json['method']),
+      methodDetail: serializer.fromJson<String?>(json['methodDetail']),
+      reference: serializer.fromJson<String?>(json['reference']),
+      receivedByName: serializer.fromJson<String>(json['receivedByName']),
+      note: serializer.fromJson<String>(json['note']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      deletedByName: serializer.fromJson<String?>(json['deletedByName']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'uuid': serializer.toJson<String>(uuid),
+      'clinicId': serializer.toJson<String>(clinicId),
+      'branchId': serializer.toJson<String?>(branchId),
+      'invoiceId': serializer.toJson<int>(invoiceId),
+      'invoiceUuid': serializer.toJson<String>(invoiceUuid),
+      'amount': serializer.toJson<int>(amount),
+      'paidAt': serializer.toJson<DateTime>(paidAt),
+      'method': serializer.toJson<String>(method),
+      'methodDetail': serializer.toJson<String?>(methodDetail),
+      'reference': serializer.toJson<String?>(reference),
+      'receivedByName': serializer.toJson<String>(receivedByName),
+      'note': serializer.toJson<String>(note),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'deletedByName': serializer.toJson<String?>(deletedByName),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  InvoicePaymentRow copyWith({
+    int? id,
+    String? uuid,
+    String? clinicId,
+    Value<String?> branchId = const Value.absent(),
+    int? invoiceId,
+    String? invoiceUuid,
+    int? amount,
+    DateTime? paidAt,
+    String? method,
+    Value<String?> methodDetail = const Value.absent(),
+    Value<String?> reference = const Value.absent(),
+    String? receivedByName,
+    String? note,
+    bool? isDeleted,
+    Value<String?> deletedByName = const Value.absent(),
+    Value<DateTime?> deletedAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => InvoicePaymentRow(
+    id: id ?? this.id,
+    uuid: uuid ?? this.uuid,
+    clinicId: clinicId ?? this.clinicId,
+    branchId: branchId.present ? branchId.value : this.branchId,
+    invoiceId: invoiceId ?? this.invoiceId,
+    invoiceUuid: invoiceUuid ?? this.invoiceUuid,
+    amount: amount ?? this.amount,
+    paidAt: paidAt ?? this.paidAt,
+    method: method ?? this.method,
+    methodDetail: methodDetail.present ? methodDetail.value : this.methodDetail,
+    reference: reference.present ? reference.value : this.reference,
+    receivedByName: receivedByName ?? this.receivedByName,
+    note: note ?? this.note,
+    isDeleted: isDeleted ?? this.isDeleted,
+    deletedByName: deletedByName.present
+        ? deletedByName.value
+        : this.deletedByName,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  InvoicePaymentRow copyWithCompanion(InvoicePaymentsCompanion data) {
+    return InvoicePaymentRow(
+      id: data.id.present ? data.id.value : this.id,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      invoiceId: data.invoiceId.present ? data.invoiceId.value : this.invoiceId,
+      invoiceUuid: data.invoiceUuid.present
+          ? data.invoiceUuid.value
+          : this.invoiceUuid,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      paidAt: data.paidAt.present ? data.paidAt.value : this.paidAt,
+      method: data.method.present ? data.method.value : this.method,
+      methodDetail: data.methodDetail.present
+          ? data.methodDetail.value
+          : this.methodDetail,
+      reference: data.reference.present ? data.reference.value : this.reference,
+      receivedByName: data.receivedByName.present
+          ? data.receivedByName.value
+          : this.receivedByName,
+      note: data.note.present ? data.note.value : this.note,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      deletedByName: data.deletedByName.present
+          ? data.deletedByName.value
+          : this.deletedByName,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InvoicePaymentRow(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('branchId: $branchId, ')
+          ..write('invoiceId: $invoiceId, ')
+          ..write('invoiceUuid: $invoiceUuid, ')
+          ..write('amount: $amount, ')
+          ..write('paidAt: $paidAt, ')
+          ..write('method: $method, ')
+          ..write('methodDetail: $methodDetail, ')
+          ..write('reference: $reference, ')
+          ..write('receivedByName: $receivedByName, ')
+          ..write('note: $note, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('deletedByName: $deletedByName, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    uuid,
+    clinicId,
+    branchId,
+    invoiceId,
+    invoiceUuid,
+    amount,
+    paidAt,
+    method,
+    methodDetail,
+    reference,
+    receivedByName,
+    note,
+    isDeleted,
+    deletedByName,
+    deletedAt,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InvoicePaymentRow &&
+          other.id == this.id &&
+          other.uuid == this.uuid &&
+          other.clinicId == this.clinicId &&
+          other.branchId == this.branchId &&
+          other.invoiceId == this.invoiceId &&
+          other.invoiceUuid == this.invoiceUuid &&
+          other.amount == this.amount &&
+          other.paidAt == this.paidAt &&
+          other.method == this.method &&
+          other.methodDetail == this.methodDetail &&
+          other.reference == this.reference &&
+          other.receivedByName == this.receivedByName &&
+          other.note == this.note &&
+          other.isDeleted == this.isDeleted &&
+          other.deletedByName == this.deletedByName &&
+          other.deletedAt == this.deletedAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class InvoicePaymentsCompanion extends UpdateCompanion<InvoicePaymentRow> {
+  final Value<int> id;
+  final Value<String> uuid;
+  final Value<String> clinicId;
+  final Value<String?> branchId;
+  final Value<int> invoiceId;
+  final Value<String> invoiceUuid;
+  final Value<int> amount;
+  final Value<DateTime> paidAt;
+  final Value<String> method;
+  final Value<String?> methodDetail;
+  final Value<String?> reference;
+  final Value<String> receivedByName;
+  final Value<String> note;
+  final Value<bool> isDeleted;
+  final Value<String?> deletedByName;
+  final Value<DateTime?> deletedAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const InvoicePaymentsCompanion({
+    this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
+    this.clinicId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.invoiceId = const Value.absent(),
+    this.invoiceUuid = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.paidAt = const Value.absent(),
+    this.method = const Value.absent(),
+    this.methodDetail = const Value.absent(),
+    this.reference = const Value.absent(),
+    this.receivedByName = const Value.absent(),
+    this.note = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.deletedByName = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  InvoicePaymentsCompanion.insert({
+    this.id = const Value.absent(),
+    required String uuid,
+    required String clinicId,
+    this.branchId = const Value.absent(),
+    required int invoiceId,
+    required String invoiceUuid,
+    required int amount,
+    required DateTime paidAt,
+    this.method = const Value.absent(),
+    this.methodDetail = const Value.absent(),
+    this.reference = const Value.absent(),
+    this.receivedByName = const Value.absent(),
+    this.note = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.deletedByName = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : uuid = Value(uuid),
+       clinicId = Value(clinicId),
+       invoiceId = Value(invoiceId),
+       invoiceUuid = Value(invoiceUuid),
+       amount = Value(amount),
+       paidAt = Value(paidAt);
+  static Insertable<InvoicePaymentRow> custom({
+    Expression<int>? id,
+    Expression<String>? uuid,
+    Expression<String>? clinicId,
+    Expression<String>? branchId,
+    Expression<int>? invoiceId,
+    Expression<String>? invoiceUuid,
+    Expression<int>? amount,
+    Expression<DateTime>? paidAt,
+    Expression<String>? method,
+    Expression<String>? methodDetail,
+    Expression<String>? reference,
+    Expression<String>? receivedByName,
+    Expression<String>? note,
+    Expression<bool>? isDeleted,
+    Expression<String>? deletedByName,
+    Expression<DateTime>? deletedAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (uuid != null) 'uuid': uuid,
+      if (clinicId != null) 'clinic_id': clinicId,
+      if (branchId != null) 'branch_id': branchId,
+      if (invoiceId != null) 'invoice_id': invoiceId,
+      if (invoiceUuid != null) 'invoice_uuid': invoiceUuid,
+      if (amount != null) 'amount': amount,
+      if (paidAt != null) 'paid_at': paidAt,
+      if (method != null) 'method': method,
+      if (methodDetail != null) 'method_detail': methodDetail,
+      if (reference != null) 'reference': reference,
+      if (receivedByName != null) 'received_by_name': receivedByName,
+      if (note != null) 'note': note,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (deletedByName != null) 'deleted_by_name': deletedByName,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  InvoicePaymentsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? uuid,
+    Value<String>? clinicId,
+    Value<String?>? branchId,
+    Value<int>? invoiceId,
+    Value<String>? invoiceUuid,
+    Value<int>? amount,
+    Value<DateTime>? paidAt,
+    Value<String>? method,
+    Value<String?>? methodDetail,
+    Value<String?>? reference,
+    Value<String>? receivedByName,
+    Value<String>? note,
+    Value<bool>? isDeleted,
+    Value<String?>? deletedByName,
+    Value<DateTime?>? deletedAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return InvoicePaymentsCompanion(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      clinicId: clinicId ?? this.clinicId,
+      branchId: branchId ?? this.branchId,
+      invoiceId: invoiceId ?? this.invoiceId,
+      invoiceUuid: invoiceUuid ?? this.invoiceUuid,
+      amount: amount ?? this.amount,
+      paidAt: paidAt ?? this.paidAt,
+      method: method ?? this.method,
+      methodDetail: methodDetail ?? this.methodDetail,
+      reference: reference ?? this.reference,
+      receivedByName: receivedByName ?? this.receivedByName,
+      note: note ?? this.note,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedByName: deletedByName ?? this.deletedByName,
+      deletedAt: deletedAt ?? this.deletedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (clinicId.present) {
+      map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (invoiceId.present) {
+      map['invoice_id'] = Variable<int>(invoiceId.value);
+    }
+    if (invoiceUuid.present) {
+      map['invoice_uuid'] = Variable<String>(invoiceUuid.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(amount.value);
+    }
+    if (paidAt.present) {
+      map['paid_at'] = Variable<DateTime>(paidAt.value);
+    }
+    if (method.present) {
+      map['method'] = Variable<String>(method.value);
+    }
+    if (methodDetail.present) {
+      map['method_detail'] = Variable<String>(methodDetail.value);
+    }
+    if (reference.present) {
+      map['reference'] = Variable<String>(reference.value);
+    }
+    if (receivedByName.present) {
+      map['received_by_name'] = Variable<String>(receivedByName.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (deletedByName.present) {
+      map['deleted_by_name'] = Variable<String>(deletedByName.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InvoicePaymentsCompanion(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('branchId: $branchId, ')
+          ..write('invoiceId: $invoiceId, ')
+          ..write('invoiceUuid: $invoiceUuid, ')
+          ..write('amount: $amount, ')
+          ..write('paidAt: $paidAt, ')
+          ..write('method: $method, ')
+          ..write('methodDetail: $methodDetail, ')
+          ..write('reference: $reference, ')
+          ..write('receivedByName: $receivedByName, ')
+          ..write('note: $note, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('deletedByName: $deletedByName, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DevicesTable extends Devices with TableInfo<$DevicesTable, DeviceRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DevicesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _clinicIdMeta = const VerificationMeta(
+    'clinicId',
+  );
+  @override
+  late final GeneratedColumn<String> clinicId = GeneratedColumn<String>(
+    'clinic_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _letterMeta = const VerificationMeta('letter');
+  @override
+  late final GeneratedColumn<String> letter = GeneratedColumn<String>(
+    'letter',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 1,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _platformMeta = const VerificationMeta(
+    'platform',
+  );
+  @override
+  late final GeneratedColumn<String> platform = GeneratedColumn<String>(
+    'platform',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _joinedByNameMeta = const VerificationMeta(
+    'joinedByName',
+  );
+  @override
+  late final GeneratedColumn<String> joinedByName = GeneratedColumn<String>(
+    'joined_by_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _joinedAtMeta = const VerificationMeta(
+    'joinedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> joinedAt = GeneratedColumn<DateTime>(
+    'joined_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _lastSeenAtMeta = const VerificationMeta(
+    'lastSeenAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSeenAt = GeneratedColumn<DateTime>(
+    'last_seen_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    uuid,
+    clinicId,
+    letter,
+    name,
+    platform,
+    joinedByName,
+    joinedAt,
+    lastSeenAt,
+    isActive,
+    isDeleted,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'devices';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeviceRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('clinic_id')) {
+      context.handle(
+        _clinicIdMeta,
+        clinicId.isAcceptableOrUnknown(data['clinic_id']!, _clinicIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('letter')) {
+      context.handle(
+        _letterMeta,
+        letter.isAcceptableOrUnknown(data['letter']!, _letterMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_letterMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    }
+    if (data.containsKey('platform')) {
+      context.handle(
+        _platformMeta,
+        platform.isAcceptableOrUnknown(data['platform']!, _platformMeta),
+      );
+    }
+    if (data.containsKey('joined_by_name')) {
+      context.handle(
+        _joinedByNameMeta,
+        joinedByName.isAcceptableOrUnknown(
+          data['joined_by_name']!,
+          _joinedByNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('joined_at')) {
+      context.handle(
+        _joinedAtMeta,
+        joinedAt.isAcceptableOrUnknown(data['joined_at']!, _joinedAtMeta),
+      );
+    }
+    if (data.containsKey('last_seen_at')) {
+      context.handle(
+        _lastSeenAtMeta,
+        lastSeenAt.isAcceptableOrUnknown(
+          data['last_seen_at']!,
+          _lastSeenAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DeviceRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeviceRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      clinicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clinic_id'],
+      )!,
+      letter: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}letter'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      platform: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}platform'],
+      )!,
+      joinedByName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}joined_by_name'],
+      )!,
+      joinedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}joined_at'],
+      )!,
+      lastSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_seen_at'],
+      ),
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DevicesTable createAlias(String alias) {
+    return $DevicesTable(attachedDatabase, alias);
+  }
+}
+
+class DeviceRow extends DataClass implements Insertable<DeviceRow> {
+  final int id;
+  final String uuid;
+  final String clinicId;
+
+  /// 'A'…'Z'. Unique per clinic.
+  final String letter;
+
+  /// What the owner sees in Settings: "Reception PC", "Dr Khan's laptop".
+  final String name;
+
+  /// macOS / windows / linux, plus the OS version.
+  final String platform;
+
+  /// Username of whoever set this computer up.
+  final String joinedByName;
+  final DateTime joinedAt;
+
+  /// Bumped on every successful sync — how the owner spots a dead machine.
+  final DateTime? lastSeenAt;
+
+  /// Revoked by the owner. A revoked device frees its letter only when the
+  /// owner explicitly removes it, never automatically.
+  final bool isActive;
+  final bool isDeleted;
+  final DateTime updatedAt;
+  const DeviceRow({
+    required this.id,
+    required this.uuid,
+    required this.clinicId,
+    required this.letter,
+    required this.name,
+    required this.platform,
+    required this.joinedByName,
+    required this.joinedAt,
+    this.lastSeenAt,
+    required this.isActive,
+    required this.isDeleted,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['uuid'] = Variable<String>(uuid);
+    map['clinic_id'] = Variable<String>(clinicId);
+    map['letter'] = Variable<String>(letter);
+    map['name'] = Variable<String>(name);
+    map['platform'] = Variable<String>(platform);
+    map['joined_by_name'] = Variable<String>(joinedByName);
+    map['joined_at'] = Variable<DateTime>(joinedAt);
+    if (!nullToAbsent || lastSeenAt != null) {
+      map['last_seen_at'] = Variable<DateTime>(lastSeenAt);
+    }
+    map['is_active'] = Variable<bool>(isActive);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  DevicesCompanion toCompanion(bool nullToAbsent) {
+    return DevicesCompanion(
+      id: Value(id),
+      uuid: Value(uuid),
+      clinicId: Value(clinicId),
+      letter: Value(letter),
+      name: Value(name),
+      platform: Value(platform),
+      joinedByName: Value(joinedByName),
+      joinedAt: Value(joinedAt),
+      lastSeenAt: lastSeenAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSeenAt),
+      isActive: Value(isActive),
+      isDeleted: Value(isDeleted),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DeviceRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeviceRow(
+      id: serializer.fromJson<int>(json['id']),
+      uuid: serializer.fromJson<String>(json['uuid']),
+      clinicId: serializer.fromJson<String>(json['clinicId']),
+      letter: serializer.fromJson<String>(json['letter']),
+      name: serializer.fromJson<String>(json['name']),
+      platform: serializer.fromJson<String>(json['platform']),
+      joinedByName: serializer.fromJson<String>(json['joinedByName']),
+      joinedAt: serializer.fromJson<DateTime>(json['joinedAt']),
+      lastSeenAt: serializer.fromJson<DateTime?>(json['lastSeenAt']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'uuid': serializer.toJson<String>(uuid),
+      'clinicId': serializer.toJson<String>(clinicId),
+      'letter': serializer.toJson<String>(letter),
+      'name': serializer.toJson<String>(name),
+      'platform': serializer.toJson<String>(platform),
+      'joinedByName': serializer.toJson<String>(joinedByName),
+      'joinedAt': serializer.toJson<DateTime>(joinedAt),
+      'lastSeenAt': serializer.toJson<DateTime?>(lastSeenAt),
+      'isActive': serializer.toJson<bool>(isActive),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DeviceRow copyWith({
+    int? id,
+    String? uuid,
+    String? clinicId,
+    String? letter,
+    String? name,
+    String? platform,
+    String? joinedByName,
+    DateTime? joinedAt,
+    Value<DateTime?> lastSeenAt = const Value.absent(),
+    bool? isActive,
+    bool? isDeleted,
+    DateTime? updatedAt,
+  }) => DeviceRow(
+    id: id ?? this.id,
+    uuid: uuid ?? this.uuid,
+    clinicId: clinicId ?? this.clinicId,
+    letter: letter ?? this.letter,
+    name: name ?? this.name,
+    platform: platform ?? this.platform,
+    joinedByName: joinedByName ?? this.joinedByName,
+    joinedAt: joinedAt ?? this.joinedAt,
+    lastSeenAt: lastSeenAt.present ? lastSeenAt.value : this.lastSeenAt,
+    isActive: isActive ?? this.isActive,
+    isDeleted: isDeleted ?? this.isDeleted,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DeviceRow copyWithCompanion(DevicesCompanion data) {
+    return DeviceRow(
+      id: data.id.present ? data.id.value : this.id,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      letter: data.letter.present ? data.letter.value : this.letter,
+      name: data.name.present ? data.name.value : this.name,
+      platform: data.platform.present ? data.platform.value : this.platform,
+      joinedByName: data.joinedByName.present
+          ? data.joinedByName.value
+          : this.joinedByName,
+      joinedAt: data.joinedAt.present ? data.joinedAt.value : this.joinedAt,
+      lastSeenAt: data.lastSeenAt.present
+          ? data.lastSeenAt.value
+          : this.lastSeenAt,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeviceRow(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('letter: $letter, ')
+          ..write('name: $name, ')
+          ..write('platform: $platform, ')
+          ..write('joinedByName: $joinedByName, ')
+          ..write('joinedAt: $joinedAt, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('isActive: $isActive, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    uuid,
+    clinicId,
+    letter,
+    name,
+    platform,
+    joinedByName,
+    joinedAt,
+    lastSeenAt,
+    isActive,
+    isDeleted,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeviceRow &&
+          other.id == this.id &&
+          other.uuid == this.uuid &&
+          other.clinicId == this.clinicId &&
+          other.letter == this.letter &&
+          other.name == this.name &&
+          other.platform == this.platform &&
+          other.joinedByName == this.joinedByName &&
+          other.joinedAt == this.joinedAt &&
+          other.lastSeenAt == this.lastSeenAt &&
+          other.isActive == this.isActive &&
+          other.isDeleted == this.isDeleted &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DevicesCompanion extends UpdateCompanion<DeviceRow> {
+  final Value<int> id;
+  final Value<String> uuid;
+  final Value<String> clinicId;
+  final Value<String> letter;
+  final Value<String> name;
+  final Value<String> platform;
+  final Value<String> joinedByName;
+  final Value<DateTime> joinedAt;
+  final Value<DateTime?> lastSeenAt;
+  final Value<bool> isActive;
+  final Value<bool> isDeleted;
+  final Value<DateTime> updatedAt;
+  const DevicesCompanion({
+    this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
+    this.clinicId = const Value.absent(),
+    this.letter = const Value.absent(),
+    this.name = const Value.absent(),
+    this.platform = const Value.absent(),
+    this.joinedByName = const Value.absent(),
+    this.joinedAt = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  DevicesCompanion.insert({
+    this.id = const Value.absent(),
+    required String uuid,
+    required String clinicId,
+    required String letter,
+    this.name = const Value.absent(),
+    this.platform = const Value.absent(),
+    this.joinedByName = const Value.absent(),
+    this.joinedAt = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : uuid = Value(uuid),
+       clinicId = Value(clinicId),
+       letter = Value(letter);
+  static Insertable<DeviceRow> custom({
+    Expression<int>? id,
+    Expression<String>? uuid,
+    Expression<String>? clinicId,
+    Expression<String>? letter,
+    Expression<String>? name,
+    Expression<String>? platform,
+    Expression<String>? joinedByName,
+    Expression<DateTime>? joinedAt,
+    Expression<DateTime>? lastSeenAt,
+    Expression<bool>? isActive,
+    Expression<bool>? isDeleted,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (uuid != null) 'uuid': uuid,
+      if (clinicId != null) 'clinic_id': clinicId,
+      if (letter != null) 'letter': letter,
+      if (name != null) 'name': name,
+      if (platform != null) 'platform': platform,
+      if (joinedByName != null) 'joined_by_name': joinedByName,
+      if (joinedAt != null) 'joined_at': joinedAt,
+      if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
+      if (isActive != null) 'is_active': isActive,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  DevicesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? uuid,
+    Value<String>? clinicId,
+    Value<String>? letter,
+    Value<String>? name,
+    Value<String>? platform,
+    Value<String>? joinedByName,
+    Value<DateTime>? joinedAt,
+    Value<DateTime?>? lastSeenAt,
+    Value<bool>? isActive,
+    Value<bool>? isDeleted,
+    Value<DateTime>? updatedAt,
+  }) {
+    return DevicesCompanion(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      clinicId: clinicId ?? this.clinicId,
+      letter: letter ?? this.letter,
+      name: name ?? this.name,
+      platform: platform ?? this.platform,
+      joinedByName: joinedByName ?? this.joinedByName,
+      joinedAt: joinedAt ?? this.joinedAt,
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+      isActive: isActive ?? this.isActive,
+      isDeleted: isDeleted ?? this.isDeleted,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (clinicId.present) {
+      map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (letter.present) {
+      map['letter'] = Variable<String>(letter.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (platform.present) {
+      map['platform'] = Variable<String>(platform.value);
+    }
+    if (joinedByName.present) {
+      map['joined_by_name'] = Variable<String>(joinedByName.value);
+    }
+    if (joinedAt.present) {
+      map['joined_at'] = Variable<DateTime>(joinedAt.value);
+    }
+    if (lastSeenAt.present) {
+      map['last_seen_at'] = Variable<DateTime>(lastSeenAt.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DevicesCompanion(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('letter: $letter, ')
+          ..write('name: $name, ')
+          ..write('platform: $platform, ')
+          ..write('joinedByName: $joinedByName, ')
+          ..write('joinedAt: $joinedAt, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('isActive: $isActive, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -14570,6 +18146,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RolePermissionsTable rolePermissions = $RolePermissionsTable(
     this,
   );
+  late final $LookupListsTable lookupLists = $LookupListsTable(this);
+  late final $ExpensesTable expenses = $ExpensesTable(this);
+  late final $InvoicePaymentsTable invoicePayments = $InvoicePaymentsTable(
+    this,
+  );
+  late final $DevicesTable devices = $DevicesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -14599,6 +18181,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     prescriptionItems,
     prescriptionCare,
     rolePermissions,
+    lookupLists,
+    expenses,
+    invoicePayments,
+    devices,
   ];
 }
 
@@ -18017,6 +21603,7 @@ typedef $$InvoicesTableCreateCompanionBuilder =
       Value<int> subtotal,
       Value<int> adjustment,
       Value<int> total,
+      Value<int> amountPaid,
       Value<bool> isDeleted,
       Value<DateTime> updatedAt,
       Value<String?> cancelledBy,
@@ -18037,6 +21624,7 @@ typedef $$InvoicesTableUpdateCompanionBuilder =
       Value<int> subtotal,
       Value<int> adjustment,
       Value<int> total,
+      Value<int> amountPaid,
       Value<bool> isDeleted,
       Value<DateTime> updatedAt,
       Value<String?> cancelledBy,
@@ -18077,6 +21665,29 @@ final class $$InvoicesTableReferences
     ).filter((f) => f.invoiceId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_invoiceItemsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$InvoicePaymentsTable, List<InvoicePaymentRow>>
+  _invoicePaymentsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.invoicePayments,
+    aliasName: $_aliasNameGenerator(
+      db.invoices.id,
+      db.invoicePayments.invoiceId,
+    ),
+  );
+
+  $$InvoicePaymentsTableProcessedTableManager get invoicePaymentsRefs {
+    final manager = $$InvoicePaymentsTableTableManager(
+      $_db,
+      $_db.invoicePayments,
+    ).filter((f) => f.invoiceId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _invoicePaymentsRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -18152,6 +21763,11 @@ class $$InvoicesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get amountPaid => $composableBuilder(
+    column: $table.amountPaid,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<bool> get isDeleted => $composableBuilder(
     column: $table.isDeleted,
     builder: (column) => ColumnFilters(column),
@@ -18211,6 +21827,31 @@ class $$InvoicesTableFilterComposer
           }) => $$InvoiceItemsTableFilterComposer(
             $db: $db,
             $table: $db.invoiceItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> invoicePaymentsRefs(
+    Expression<bool> Function($$InvoicePaymentsTableFilterComposer f) f,
+  ) {
+    final $$InvoicePaymentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.invoicePayments,
+      getReferencedColumn: (t) => t.invoiceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$InvoicePaymentsTableFilterComposer(
+            $db: $db,
+            $table: $db.invoicePayments,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -18287,6 +21928,11 @@ class $$InvoicesTableOrderingComposer
 
   ColumnOrderings<int> get total => $composableBuilder(
     column: $table.total,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountPaid => $composableBuilder(
+    column: $table.amountPaid,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -18383,6 +22029,11 @@ class $$InvoicesTableAnnotationComposer
   GeneratedColumn<int> get total =>
       $composableBuilder(column: $table.total, builder: (column) => column);
 
+  GeneratedColumn<int> get amountPaid => $composableBuilder(
+    column: $table.amountPaid,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 
@@ -18446,6 +22097,31 @@ class $$InvoicesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> invoicePaymentsRefs<T extends Object>(
+    Expression<T> Function($$InvoicePaymentsTableAnnotationComposer a) f,
+  ) {
+    final $$InvoicePaymentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.invoicePayments,
+      getReferencedColumn: (t) => t.invoiceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$InvoicePaymentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.invoicePayments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$InvoicesTableTableManager
@@ -18461,7 +22137,11 @@ class $$InvoicesTableTableManager
           $$InvoicesTableUpdateCompanionBuilder,
           (InvoiceRow, $$InvoicesTableReferences),
           InvoiceRow,
-          PrefetchHooks Function({bool patientId, bool invoiceItemsRefs})
+          PrefetchHooks Function({
+            bool patientId,
+            bool invoiceItemsRefs,
+            bool invoicePaymentsRefs,
+          })
         > {
   $$InvoicesTableTableManager(_$AppDatabase db, $InvoicesTable table)
     : super(
@@ -18489,6 +22169,7 @@ class $$InvoicesTableTableManager
                 Value<int> subtotal = const Value.absent(),
                 Value<int> adjustment = const Value.absent(),
                 Value<int> total = const Value.absent(),
+                Value<int> amountPaid = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<String?> cancelledBy = const Value.absent(),
@@ -18507,6 +22188,7 @@ class $$InvoicesTableTableManager
                 subtotal: subtotal,
                 adjustment: adjustment,
                 total: total,
+                amountPaid: amountPaid,
                 isDeleted: isDeleted,
                 updatedAt: updatedAt,
                 cancelledBy: cancelledBy,
@@ -18527,6 +22209,7 @@ class $$InvoicesTableTableManager
                 Value<int> subtotal = const Value.absent(),
                 Value<int> adjustment = const Value.absent(),
                 Value<int> total = const Value.absent(),
+                Value<int> amountPaid = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<String?> cancelledBy = const Value.absent(),
@@ -18545,6 +22228,7 @@ class $$InvoicesTableTableManager
                 subtotal: subtotal,
                 adjustment: adjustment,
                 total: total,
+                amountPaid: amountPaid,
                 isDeleted: isDeleted,
                 updatedAt: updatedAt,
                 cancelledBy: cancelledBy,
@@ -18559,11 +22243,16 @@ class $$InvoicesTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({patientId = false, invoiceItemsRefs = false}) {
+              ({
+                patientId = false,
+                invoiceItemsRefs = false,
+                invoicePaymentsRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (invoiceItemsRefs) db.invoiceItems,
+                    if (invoicePaymentsRefs) db.invoicePayments,
                   ],
                   addJoins:
                       <
@@ -18620,6 +22309,27 @@ class $$InvoicesTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (invoicePaymentsRefs)
+                        await $_getPrefetchedData<
+                          InvoiceRow,
+                          $InvoicesTable,
+                          InvoicePaymentRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$InvoicesTableReferences
+                              ._invoicePaymentsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$InvoicesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).invoicePaymentsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.invoiceId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -18640,7 +22350,11 @@ typedef $$InvoicesTableProcessedTableManager =
       $$InvoicesTableUpdateCompanionBuilder,
       (InvoiceRow, $$InvoicesTableReferences),
       InvoiceRow,
-      PrefetchHooks Function({bool patientId, bool invoiceItemsRefs})
+      PrefetchHooks Function({
+        bool patientId,
+        bool invoiceItemsRefs,
+        bool invoicePaymentsRefs,
+      })
     >;
 typedef $$InvoiceItemsTableCreateCompanionBuilder =
     InvoiceItemsCompanion Function({
@@ -23063,6 +26777,1730 @@ typedef $$RolePermissionsTableProcessedTableManager =
       PermissionRow,
       PrefetchHooks Function()
     >;
+typedef $$LookupListsTableCreateCompanionBuilder =
+    LookupListsCompanion Function({
+      Value<int> id,
+      required String uuid,
+      required String clinicId,
+      required String kind,
+      required String name,
+      Value<int> sortOrder,
+      Value<bool> isSystem,
+      Value<bool> isDeleted,
+      Value<DateTime> updatedAt,
+    });
+typedef $$LookupListsTableUpdateCompanionBuilder =
+    LookupListsCompanion Function({
+      Value<int> id,
+      Value<String> uuid,
+      Value<String> clinicId,
+      Value<String> kind,
+      Value<String> name,
+      Value<int> sortOrder,
+      Value<bool> isSystem,
+      Value<bool> isDeleted,
+      Value<DateTime> updatedAt,
+    });
+
+class $$LookupListsTableFilterComposer
+    extends Composer<_$AppDatabase, $LookupListsTable> {
+  $$LookupListsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSystem => $composableBuilder(
+    column: $table.isSystem,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LookupListsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LookupListsTable> {
+  $$LookupListsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSystem => $composableBuilder(
+    column: $table.isSystem,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LookupListsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LookupListsTable> {
+  $$LookupListsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get clinicId =>
+      $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSystem =>
+      $composableBuilder(column: $table.isSystem, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$LookupListsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LookupListsTable,
+          LookupRow,
+          $$LookupListsTableFilterComposer,
+          $$LookupListsTableOrderingComposer,
+          $$LookupListsTableAnnotationComposer,
+          $$LookupListsTableCreateCompanionBuilder,
+          $$LookupListsTableUpdateCompanionBuilder,
+          (
+            LookupRow,
+            BaseReferences<_$AppDatabase, $LookupListsTable, LookupRow>,
+          ),
+          LookupRow,
+          PrefetchHooks Function()
+        > {
+  $$LookupListsTableTableManager(_$AppDatabase db, $LookupListsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LookupListsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LookupListsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LookupListsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
+                Value<String> clinicId = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<bool> isSystem = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => LookupListsCompanion(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                kind: kind,
+                name: name,
+                sortOrder: sortOrder,
+                isSystem: isSystem,
+                isDeleted: isDeleted,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String uuid,
+                required String clinicId,
+                required String kind,
+                required String name,
+                Value<int> sortOrder = const Value.absent(),
+                Value<bool> isSystem = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => LookupListsCompanion.insert(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                kind: kind,
+                name: name,
+                sortOrder: sortOrder,
+                isSystem: isSystem,
+                isDeleted: isDeleted,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LookupListsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LookupListsTable,
+      LookupRow,
+      $$LookupListsTableFilterComposer,
+      $$LookupListsTableOrderingComposer,
+      $$LookupListsTableAnnotationComposer,
+      $$LookupListsTableCreateCompanionBuilder,
+      $$LookupListsTableUpdateCompanionBuilder,
+      (LookupRow, BaseReferences<_$AppDatabase, $LookupListsTable, LookupRow>),
+      LookupRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ExpensesTableCreateCompanionBuilder =
+    ExpensesCompanion Function({
+      Value<int> id,
+      required String uuid,
+      required String clinicId,
+      Value<String> branchId,
+      Value<String> categoryUuid,
+      required int amount,
+      required DateTime paidAt,
+      Value<String> description,
+      Value<String?> vendor,
+      Value<String> method,
+      Value<String?> methodDetail,
+      Value<String?> reference,
+      Value<String> recordedByName,
+      Value<String?> updatedByName,
+      Value<DateTime?> editedAt,
+      Value<String?> sourceType,
+      Value<String?> sourceUuid,
+      Value<bool> isDeleted,
+      Value<String?> deletedByName,
+      Value<DateTime?> deletedAt,
+      Value<String?> deleteReason,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$ExpensesTableUpdateCompanionBuilder =
+    ExpensesCompanion Function({
+      Value<int> id,
+      Value<String> uuid,
+      Value<String> clinicId,
+      Value<String> branchId,
+      Value<String> categoryUuid,
+      Value<int> amount,
+      Value<DateTime> paidAt,
+      Value<String> description,
+      Value<String?> vendor,
+      Value<String> method,
+      Value<String?> methodDetail,
+      Value<String?> reference,
+      Value<String> recordedByName,
+      Value<String?> updatedByName,
+      Value<DateTime?> editedAt,
+      Value<String?> sourceType,
+      Value<String?> sourceUuid,
+      Value<bool> isDeleted,
+      Value<String?> deletedByName,
+      Value<DateTime?> deletedAt,
+      Value<String?> deleteReason,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$ExpensesTableFilterComposer
+    extends Composer<_$AppDatabase, $ExpensesTable> {
+  $$ExpensesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryUuid => $composableBuilder(
+    column: $table.categoryUuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get paidAt => $composableBuilder(
+    column: $table.paidAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get vendor => $composableBuilder(
+    column: $table.vendor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get method => $composableBuilder(
+    column: $table.method,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get methodDetail => $composableBuilder(
+    column: $table.methodDetail,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reference => $composableBuilder(
+    column: $table.reference,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recordedByName => $composableBuilder(
+    column: $table.recordedByName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get updatedByName => $composableBuilder(
+    column: $table.updatedByName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get editedAt => $composableBuilder(
+    column: $table.editedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceUuid => $composableBuilder(
+    column: $table.sourceUuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deletedByName => $composableBuilder(
+    column: $table.deletedByName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deleteReason => $composableBuilder(
+    column: $table.deleteReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ExpensesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ExpensesTable> {
+  $$ExpensesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoryUuid => $composableBuilder(
+    column: $table.categoryUuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get paidAt => $composableBuilder(
+    column: $table.paidAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get vendor => $composableBuilder(
+    column: $table.vendor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get method => $composableBuilder(
+    column: $table.method,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get methodDetail => $composableBuilder(
+    column: $table.methodDetail,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reference => $composableBuilder(
+    column: $table.reference,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recordedByName => $composableBuilder(
+    column: $table.recordedByName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedByName => $composableBuilder(
+    column: $table.updatedByName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get editedAt => $composableBuilder(
+    column: $table.editedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceUuid => $composableBuilder(
+    column: $table.sourceUuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deletedByName => $composableBuilder(
+    column: $table.deletedByName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deleteReason => $composableBuilder(
+    column: $table.deleteReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ExpensesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ExpensesTable> {
+  $$ExpensesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get clinicId =>
+      $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get categoryUuid => $composableBuilder(
+    column: $table.categoryUuid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get paidAt =>
+      $composableBuilder(column: $table.paidAt, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get vendor =>
+      $composableBuilder(column: $table.vendor, builder: (column) => column);
+
+  GeneratedColumn<String> get method =>
+      $composableBuilder(column: $table.method, builder: (column) => column);
+
+  GeneratedColumn<String> get methodDetail => $composableBuilder(
+    column: $table.methodDetail,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get reference =>
+      $composableBuilder(column: $table.reference, builder: (column) => column);
+
+  GeneratedColumn<String> get recordedByName => $composableBuilder(
+    column: $table.recordedByName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get updatedByName => $composableBuilder(
+    column: $table.updatedByName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get editedAt =>
+      $composableBuilder(column: $table.editedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceUuid => $composableBuilder(
+    column: $table.sourceUuid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<String> get deletedByName => $composableBuilder(
+    column: $table.deletedByName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get deleteReason => $composableBuilder(
+    column: $table.deleteReason,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ExpensesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ExpensesTable,
+          ExpenseRow,
+          $$ExpensesTableFilterComposer,
+          $$ExpensesTableOrderingComposer,
+          $$ExpensesTableAnnotationComposer,
+          $$ExpensesTableCreateCompanionBuilder,
+          $$ExpensesTableUpdateCompanionBuilder,
+          (
+            ExpenseRow,
+            BaseReferences<_$AppDatabase, $ExpensesTable, ExpenseRow>,
+          ),
+          ExpenseRow,
+          PrefetchHooks Function()
+        > {
+  $$ExpensesTableTableManager(_$AppDatabase db, $ExpensesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ExpensesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ExpensesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ExpensesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
+                Value<String> clinicId = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String> categoryUuid = const Value.absent(),
+                Value<int> amount = const Value.absent(),
+                Value<DateTime> paidAt = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<String?> vendor = const Value.absent(),
+                Value<String> method = const Value.absent(),
+                Value<String?> methodDetail = const Value.absent(),
+                Value<String?> reference = const Value.absent(),
+                Value<String> recordedByName = const Value.absent(),
+                Value<String?> updatedByName = const Value.absent(),
+                Value<DateTime?> editedAt = const Value.absent(),
+                Value<String?> sourceType = const Value.absent(),
+                Value<String?> sourceUuid = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<String?> deletedByName = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String?> deleteReason = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => ExpensesCompanion(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                branchId: branchId,
+                categoryUuid: categoryUuid,
+                amount: amount,
+                paidAt: paidAt,
+                description: description,
+                vendor: vendor,
+                method: method,
+                methodDetail: methodDetail,
+                reference: reference,
+                recordedByName: recordedByName,
+                updatedByName: updatedByName,
+                editedAt: editedAt,
+                sourceType: sourceType,
+                sourceUuid: sourceUuid,
+                isDeleted: isDeleted,
+                deletedByName: deletedByName,
+                deletedAt: deletedAt,
+                deleteReason: deleteReason,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String uuid,
+                required String clinicId,
+                Value<String> branchId = const Value.absent(),
+                Value<String> categoryUuid = const Value.absent(),
+                required int amount,
+                required DateTime paidAt,
+                Value<String> description = const Value.absent(),
+                Value<String?> vendor = const Value.absent(),
+                Value<String> method = const Value.absent(),
+                Value<String?> methodDetail = const Value.absent(),
+                Value<String?> reference = const Value.absent(),
+                Value<String> recordedByName = const Value.absent(),
+                Value<String?> updatedByName = const Value.absent(),
+                Value<DateTime?> editedAt = const Value.absent(),
+                Value<String?> sourceType = const Value.absent(),
+                Value<String?> sourceUuid = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<String?> deletedByName = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String?> deleteReason = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => ExpensesCompanion.insert(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                branchId: branchId,
+                categoryUuid: categoryUuid,
+                amount: amount,
+                paidAt: paidAt,
+                description: description,
+                vendor: vendor,
+                method: method,
+                methodDetail: methodDetail,
+                reference: reference,
+                recordedByName: recordedByName,
+                updatedByName: updatedByName,
+                editedAt: editedAt,
+                sourceType: sourceType,
+                sourceUuid: sourceUuid,
+                isDeleted: isDeleted,
+                deletedByName: deletedByName,
+                deletedAt: deletedAt,
+                deleteReason: deleteReason,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ExpensesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ExpensesTable,
+      ExpenseRow,
+      $$ExpensesTableFilterComposer,
+      $$ExpensesTableOrderingComposer,
+      $$ExpensesTableAnnotationComposer,
+      $$ExpensesTableCreateCompanionBuilder,
+      $$ExpensesTableUpdateCompanionBuilder,
+      (ExpenseRow, BaseReferences<_$AppDatabase, $ExpensesTable, ExpenseRow>),
+      ExpenseRow,
+      PrefetchHooks Function()
+    >;
+typedef $$InvoicePaymentsTableCreateCompanionBuilder =
+    InvoicePaymentsCompanion Function({
+      Value<int> id,
+      required String uuid,
+      required String clinicId,
+      Value<String?> branchId,
+      required int invoiceId,
+      required String invoiceUuid,
+      required int amount,
+      required DateTime paidAt,
+      Value<String> method,
+      Value<String?> methodDetail,
+      Value<String?> reference,
+      Value<String> receivedByName,
+      Value<String> note,
+      Value<bool> isDeleted,
+      Value<String?> deletedByName,
+      Value<DateTime?> deletedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$InvoicePaymentsTableUpdateCompanionBuilder =
+    InvoicePaymentsCompanion Function({
+      Value<int> id,
+      Value<String> uuid,
+      Value<String> clinicId,
+      Value<String?> branchId,
+      Value<int> invoiceId,
+      Value<String> invoiceUuid,
+      Value<int> amount,
+      Value<DateTime> paidAt,
+      Value<String> method,
+      Value<String?> methodDetail,
+      Value<String?> reference,
+      Value<String> receivedByName,
+      Value<String> note,
+      Value<bool> isDeleted,
+      Value<String?> deletedByName,
+      Value<DateTime?> deletedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+final class $$InvoicePaymentsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $InvoicePaymentsTable,
+          InvoicePaymentRow
+        > {
+  $$InvoicePaymentsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $InvoicesTable _invoiceIdTable(_$AppDatabase db) =>
+      db.invoices.createAlias(
+        $_aliasNameGenerator(db.invoicePayments.invoiceId, db.invoices.id),
+      );
+
+  $$InvoicesTableProcessedTableManager get invoiceId {
+    final $_column = $_itemColumn<int>('invoice_id')!;
+
+    final manager = $$InvoicesTableTableManager(
+      $_db,
+      $_db.invoices,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_invoiceIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$InvoicePaymentsTableFilterComposer
+    extends Composer<_$AppDatabase, $InvoicePaymentsTable> {
+  $$InvoicePaymentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get invoiceUuid => $composableBuilder(
+    column: $table.invoiceUuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get paidAt => $composableBuilder(
+    column: $table.paidAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get method => $composableBuilder(
+    column: $table.method,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get methodDetail => $composableBuilder(
+    column: $table.methodDetail,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reference => $composableBuilder(
+    column: $table.reference,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receivedByName => $composableBuilder(
+    column: $table.receivedByName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deletedByName => $composableBuilder(
+    column: $table.deletedByName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$InvoicesTableFilterComposer get invoiceId {
+    final $$InvoicesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.invoiceId,
+      referencedTable: $db.invoices,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$InvoicesTableFilterComposer(
+            $db: $db,
+            $table: $db.invoices,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$InvoicePaymentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InvoicePaymentsTable> {
+  $$InvoicePaymentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get invoiceUuid => $composableBuilder(
+    column: $table.invoiceUuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get paidAt => $composableBuilder(
+    column: $table.paidAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get method => $composableBuilder(
+    column: $table.method,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get methodDetail => $composableBuilder(
+    column: $table.methodDetail,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reference => $composableBuilder(
+    column: $table.reference,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receivedByName => $composableBuilder(
+    column: $table.receivedByName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deletedByName => $composableBuilder(
+    column: $table.deletedByName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$InvoicesTableOrderingComposer get invoiceId {
+    final $$InvoicesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.invoiceId,
+      referencedTable: $db.invoices,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$InvoicesTableOrderingComposer(
+            $db: $db,
+            $table: $db.invoices,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$InvoicePaymentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InvoicePaymentsTable> {
+  $$InvoicePaymentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get clinicId =>
+      $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get invoiceUuid => $composableBuilder(
+    column: $table.invoiceUuid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get paidAt =>
+      $composableBuilder(column: $table.paidAt, builder: (column) => column);
+
+  GeneratedColumn<String> get method =>
+      $composableBuilder(column: $table.method, builder: (column) => column);
+
+  GeneratedColumn<String> get methodDetail => $composableBuilder(
+    column: $table.methodDetail,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get reference =>
+      $composableBuilder(column: $table.reference, builder: (column) => column);
+
+  GeneratedColumn<String> get receivedByName => $composableBuilder(
+    column: $table.receivedByName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<String> get deletedByName => $composableBuilder(
+    column: $table.deletedByName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$InvoicesTableAnnotationComposer get invoiceId {
+    final $$InvoicesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.invoiceId,
+      referencedTable: $db.invoices,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$InvoicesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.invoices,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$InvoicePaymentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InvoicePaymentsTable,
+          InvoicePaymentRow,
+          $$InvoicePaymentsTableFilterComposer,
+          $$InvoicePaymentsTableOrderingComposer,
+          $$InvoicePaymentsTableAnnotationComposer,
+          $$InvoicePaymentsTableCreateCompanionBuilder,
+          $$InvoicePaymentsTableUpdateCompanionBuilder,
+          (InvoicePaymentRow, $$InvoicePaymentsTableReferences),
+          InvoicePaymentRow,
+          PrefetchHooks Function({bool invoiceId})
+        > {
+  $$InvoicePaymentsTableTableManager(
+    _$AppDatabase db,
+    $InvoicePaymentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InvoicePaymentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$InvoicePaymentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$InvoicePaymentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
+                Value<String> clinicId = const Value.absent(),
+                Value<String?> branchId = const Value.absent(),
+                Value<int> invoiceId = const Value.absent(),
+                Value<String> invoiceUuid = const Value.absent(),
+                Value<int> amount = const Value.absent(),
+                Value<DateTime> paidAt = const Value.absent(),
+                Value<String> method = const Value.absent(),
+                Value<String?> methodDetail = const Value.absent(),
+                Value<String?> reference = const Value.absent(),
+                Value<String> receivedByName = const Value.absent(),
+                Value<String> note = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<String?> deletedByName = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => InvoicePaymentsCompanion(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                branchId: branchId,
+                invoiceId: invoiceId,
+                invoiceUuid: invoiceUuid,
+                amount: amount,
+                paidAt: paidAt,
+                method: method,
+                methodDetail: methodDetail,
+                reference: reference,
+                receivedByName: receivedByName,
+                note: note,
+                isDeleted: isDeleted,
+                deletedByName: deletedByName,
+                deletedAt: deletedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String uuid,
+                required String clinicId,
+                Value<String?> branchId = const Value.absent(),
+                required int invoiceId,
+                required String invoiceUuid,
+                required int amount,
+                required DateTime paidAt,
+                Value<String> method = const Value.absent(),
+                Value<String?> methodDetail = const Value.absent(),
+                Value<String?> reference = const Value.absent(),
+                Value<String> receivedByName = const Value.absent(),
+                Value<String> note = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<String?> deletedByName = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => InvoicePaymentsCompanion.insert(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                branchId: branchId,
+                invoiceId: invoiceId,
+                invoiceUuid: invoiceUuid,
+                amount: amount,
+                paidAt: paidAt,
+                method: method,
+                methodDetail: methodDetail,
+                reference: reference,
+                receivedByName: receivedByName,
+                note: note,
+                isDeleted: isDeleted,
+                deletedByName: deletedByName,
+                deletedAt: deletedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$InvoicePaymentsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({invoiceId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (invoiceId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.invoiceId,
+                                referencedTable:
+                                    $$InvoicePaymentsTableReferences
+                                        ._invoiceIdTable(db),
+                                referencedColumn:
+                                    $$InvoicePaymentsTableReferences
+                                        ._invoiceIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$InvoicePaymentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InvoicePaymentsTable,
+      InvoicePaymentRow,
+      $$InvoicePaymentsTableFilterComposer,
+      $$InvoicePaymentsTableOrderingComposer,
+      $$InvoicePaymentsTableAnnotationComposer,
+      $$InvoicePaymentsTableCreateCompanionBuilder,
+      $$InvoicePaymentsTableUpdateCompanionBuilder,
+      (InvoicePaymentRow, $$InvoicePaymentsTableReferences),
+      InvoicePaymentRow,
+      PrefetchHooks Function({bool invoiceId})
+    >;
+typedef $$DevicesTableCreateCompanionBuilder =
+    DevicesCompanion Function({
+      Value<int> id,
+      required String uuid,
+      required String clinicId,
+      required String letter,
+      Value<String> name,
+      Value<String> platform,
+      Value<String> joinedByName,
+      Value<DateTime> joinedAt,
+      Value<DateTime?> lastSeenAt,
+      Value<bool> isActive,
+      Value<bool> isDeleted,
+      Value<DateTime> updatedAt,
+    });
+typedef $$DevicesTableUpdateCompanionBuilder =
+    DevicesCompanion Function({
+      Value<int> id,
+      Value<String> uuid,
+      Value<String> clinicId,
+      Value<String> letter,
+      Value<String> name,
+      Value<String> platform,
+      Value<String> joinedByName,
+      Value<DateTime> joinedAt,
+      Value<DateTime?> lastSeenAt,
+      Value<bool> isActive,
+      Value<bool> isDeleted,
+      Value<DateTime> updatedAt,
+    });
+
+class $$DevicesTableFilterComposer
+    extends Composer<_$AppDatabase, $DevicesTable> {
+  $$DevicesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get letter => $composableBuilder(
+    column: $table.letter,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get platform => $composableBuilder(
+    column: $table.platform,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get joinedByName => $composableBuilder(
+    column: $table.joinedByName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get joinedAt => $composableBuilder(
+    column: $table.joinedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DevicesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DevicesTable> {
+  $$DevicesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get letter => $composableBuilder(
+    column: $table.letter,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get platform => $composableBuilder(
+    column: $table.platform,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get joinedByName => $composableBuilder(
+    column: $table.joinedByName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get joinedAt => $composableBuilder(
+    column: $table.joinedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DevicesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DevicesTable> {
+  $$DevicesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get clinicId =>
+      $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<String> get letter =>
+      $composableBuilder(column: $table.letter, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get platform =>
+      $composableBuilder(column: $table.platform, builder: (column) => column);
+
+  GeneratedColumn<String> get joinedByName => $composableBuilder(
+    column: $table.joinedByName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get joinedAt =>
+      $composableBuilder(column: $table.joinedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$DevicesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DevicesTable,
+          DeviceRow,
+          $$DevicesTableFilterComposer,
+          $$DevicesTableOrderingComposer,
+          $$DevicesTableAnnotationComposer,
+          $$DevicesTableCreateCompanionBuilder,
+          $$DevicesTableUpdateCompanionBuilder,
+          (DeviceRow, BaseReferences<_$AppDatabase, $DevicesTable, DeviceRow>),
+          DeviceRow,
+          PrefetchHooks Function()
+        > {
+  $$DevicesTableTableManager(_$AppDatabase db, $DevicesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DevicesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DevicesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DevicesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
+                Value<String> clinicId = const Value.absent(),
+                Value<String> letter = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> platform = const Value.absent(),
+                Value<String> joinedByName = const Value.absent(),
+                Value<DateTime> joinedAt = const Value.absent(),
+                Value<DateTime?> lastSeenAt = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DevicesCompanion(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                letter: letter,
+                name: name,
+                platform: platform,
+                joinedByName: joinedByName,
+                joinedAt: joinedAt,
+                lastSeenAt: lastSeenAt,
+                isActive: isActive,
+                isDeleted: isDeleted,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String uuid,
+                required String clinicId,
+                required String letter,
+                Value<String> name = const Value.absent(),
+                Value<String> platform = const Value.absent(),
+                Value<String> joinedByName = const Value.absent(),
+                Value<DateTime> joinedAt = const Value.absent(),
+                Value<DateTime?> lastSeenAt = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DevicesCompanion.insert(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                letter: letter,
+                name: name,
+                platform: platform,
+                joinedByName: joinedByName,
+                joinedAt: joinedAt,
+                lastSeenAt: lastSeenAt,
+                isActive: isActive,
+                isDeleted: isDeleted,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DevicesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DevicesTable,
+      DeviceRow,
+      $$DevicesTableFilterComposer,
+      $$DevicesTableOrderingComposer,
+      $$DevicesTableAnnotationComposer,
+      $$DevicesTableCreateCompanionBuilder,
+      $$DevicesTableUpdateCompanionBuilder,
+      (DeviceRow, BaseReferences<_$AppDatabase, $DevicesTable, DeviceRow>),
+      DeviceRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -23115,4 +28553,12 @@ class $AppDatabaseManager {
       $$PrescriptionCareTableTableManager(_db, _db.prescriptionCare);
   $$RolePermissionsTableTableManager get rolePermissions =>
       $$RolePermissionsTableTableManager(_db, _db.rolePermissions);
+  $$LookupListsTableTableManager get lookupLists =>
+      $$LookupListsTableTableManager(_db, _db.lookupLists);
+  $$ExpensesTableTableManager get expenses =>
+      $$ExpensesTableTableManager(_db, _db.expenses);
+  $$InvoicePaymentsTableTableManager get invoicePayments =>
+      $$InvoicePaymentsTableTableManager(_db, _db.invoicePayments);
+  $$DevicesTableTableManager get devices =>
+      $$DevicesTableTableManager(_db, _db.devices);
 }

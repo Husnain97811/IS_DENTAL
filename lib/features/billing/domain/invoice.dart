@@ -27,8 +27,18 @@ abstract class Invoice with _$Invoice {
     @Default(0) int subtotal,
     @Default(0) int adjustment,
     @Default(0) int total,
+    @Default(0) int amountPaid,
     @Default([]) List<InvoiceItem> items,
     String? cancelledBy,
     DateTime? cancelledAt,
   }) = _Invoice;
+
+  const Invoice._();
+
+  int get balance => total - amountPaid;
+
+  /// Display only — no new InvoiceStatus value, so every exhaustive
+  /// switch in the app keeps compiling.
+  bool get isPartial =>
+      amountPaid > 0 && amountPaid < total && status != InvoiceStatus.cancelled;
 }
