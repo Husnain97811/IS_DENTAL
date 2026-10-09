@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
 import '../../core/constants/views.dart';
 
@@ -168,6 +169,30 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
       return;
     }
 
+    // Sign in as THIS computer's own account before downloading anything.
+    // A leftover session from a previous install (often the owner's) would
+    // otherwise be used for the restore and kept forever — and revoking
+    // this computer later would not lock it out.
+    if (mounted) setState(() => _progress = 'Signing in…');
+    await Supabase.instance.client.auth.signOut();
+    final s = await ref
+        .read(deviceJoinProvider)
+        .signInAsOwner(
+          email: res.email!,
+          password: res.password!,
+          clinicId: lic.clinicId,
+        );
+    if (!s.ok) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _progress = null;
+          _error = s.error;
+        });
+      }
+      return;
+    }
+
     await _restoreAndFinish(
       email: res.email!,
       password: res.password!,
@@ -190,6 +215,7 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
       _progress = 'Signing in…';
     });
 
+    await Supabase.instance.client.auth.signOut();
     final r = await ref
         .read(deviceJoinProvider)
         .signInAsOwner(
@@ -258,6 +284,7 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
       return;
     }
 
+    await Supabase.instance.client.auth.signOut();
     final s = await join.signInAsOwner(
       email: r.email!,
       password: _newCloudPass.text,
@@ -425,7 +452,7 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
                   const SizedBox(width: 10),
                   Text(
                     _progress!,
-                    style: TextStyle(color: d.text3, fontSize: 10.sp),
+                    style: TextStyle(color: d.text3, fontSize: 11.sp),
                   ),
                 ],
               ),

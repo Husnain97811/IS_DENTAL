@@ -345,68 +345,68 @@ class _S extends ConsumerState<SettingsScreen> {
 
                     const LicencePanel(),
 
-                    // TEMPORARY — remove before shipping.
-                    const SizedBox(height: 18),
-                    DentPanel(
-                      title: 'Dev tools',
-                      subtitle: 'Remove before release',
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            FutureBuilder<String>(
-                              future: () async {
-                                final db = ref.read(appDatabaseProvider);
-                                final seed = await db.seedAllowed();
-                                final dev = await db.localDevice();
-                                return 'seed_allowed: $seed · '
-                                    'device: ${dev.letter}';
-                              }(),
-                              builder: (_, snap) => Text(
-                                snap.data ?? '…',
-                                style: TextStyle(
-                                  fontFamily: AppFonts.mono,
-                                  color: d.text2,
-                                  fontSize: 10.sp,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            OutlinedButton(
-                              onPressed: () async {
-                                final db = ref.read(appDatabaseProvider);
-                                final now = await db.seedAllowed();
-                                await db.setSeedAllowed(!now);
-                                setState(() {});
-                              },
-                              child: const Text('Toggle seed_allowed'),
-                            ),
-                            const SizedBox(height: 8),
-                            OutlinedButton(
-                              onPressed: () async {
-                                final db = ref.read(appDatabaseProvider);
-                                await db.delete(db.lookupLists).go();
-                                setState(() {});
-                              },
-                              child: const Text('Wipe expense lists'),
-                            ),
-                            const SizedBox(height: 8),
-                            OutlinedButton(
-                              onPressed: () async {
-                                final db = ref.read(appDatabaseProvider);
-                                final d = await db.localDevice();
-                                await db.setLocalDeviceLetter(
-                                  d.letter == 'A' ? 'B' : 'A',
-                                );
-                                setState(() {});
-                              },
-                              child: const Text('Toggle device letter A/B'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    // // TEMPORARY — remove before shipping.
+                    // const SizedBox(height: 18),
+                    // DentPanel(
+                    //   title: 'Dev tools',
+                    //   subtitle: 'Remove before release',
+                    //   child: Padding(
+                    //     padding: const EdgeInsets.all(16),
+                    //     child: Column(
+                    //       crossAxisAlignment: CrossAxisAlignment.stretch,
+                    //       children: [
+                    //         FutureBuilder<String>(
+                    //           future: () async {
+                    //             final db = ref.read(appDatabaseProvider);
+                    //             final seed = await db.seedAllowed();
+                    //             final dev = await db.localDevice();
+                    //             return 'seed_allowed: $seed · '
+                    //                 'device: ${dev.letter}';
+                    //           }(),
+                    //           builder: (_, snap) => Text(
+                    //             snap.data ?? '…',
+                    //             style: TextStyle(
+                    //               fontFamily: AppFonts.mono,
+                    //               color: d.text2,
+                    //               fontSize: 10.sp,
+                    //             ),
+                    //           ),
+                    //         ),
+                    //         const SizedBox(height: 12),
+                    //         OutlinedButton(
+                    //           onPressed: () async {
+                    //             final db = ref.read(appDatabaseProvider);
+                    //             final now = await db.seedAllowed();
+                    //             await db.setSeedAllowed(!now);
+                    //             setState(() {});
+                    //           },
+                    //           child: const Text('Toggle seed_allowed'),
+                    //         ),
+                    //         const SizedBox(height: 8),
+                    //         OutlinedButton(
+                    //           onPressed: () async {
+                    //             final db = ref.read(appDatabaseProvider);
+                    //             await db.delete(db.lookupLists).go();
+                    //             setState(() {});
+                    //           },
+                    //           child: const Text('Wipe expense lists'),
+                    //         ),
+                    //         const SizedBox(height: 8),
+                    //         OutlinedButton(
+                    //           onPressed: () async {
+                    //             final db = ref.read(appDatabaseProvider);
+                    //             final d = await db.localDevice();
+                    //             await db.setLocalDeviceLetter(
+                    //               d.letter == 'A' ? 'B' : 'A',
+                    //             );
+                    //             setState(() {});
+                    //           },
+                    //           child: const Text('Toggle device letter A/B'),
+                    //         ),
+                    //       ],
+                    //     ),
+                    //   ),
+                    // ),
                   ],
                 ],
               );
