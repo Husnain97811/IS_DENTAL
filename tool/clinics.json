@@ -84,9 +84,19 @@
     "maxBranches": 2,
     "maxUsers": 4,
     "firstIssuedAt": "2026-09-19T15:53:33.192763",
-    "lastIssuedAt": "2026-10-08T19:58:30.623276",
-    "expiresAt": "2027-10-08T19:58:30.623276",
+    "lastIssuedAt": "2026-10-09T13:09:32.988045",
+    "expiresAt": "2027-10-09T13:09:32.988045",
     "history": [
+      {
+        "issuedAt": "2026-10-09T13:09:32.988045",
+        "expiresAt": "2027-10-09T13:09:32.988045",
+        "tier": "standard",
+        "cloudPackage": "cloud",
+        "maxBranches": 2,
+        "maxUsers": 4,
+        "maxDevices": 4,
+        "kind": "renewal"
+      },
       {
         "issuedAt": "2026-10-08T19:58:30.623276",
         "expiresAt": "2027-10-08T19:58:30.623276",
@@ -204,7 +214,8 @@
         "maxUsers": 2,
         "kind": "new"
       }
-    ]
+    ],
+    "maxDevices": 4
   },
   {
     "clinicId": "SMILE-ISL-987463",

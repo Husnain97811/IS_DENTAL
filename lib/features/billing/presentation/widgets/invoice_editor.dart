@@ -1,17 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:is_dental/core/db/app_database.dart';
-import 'package:is_dental/features/patients/domain/treatment_plan.dart';
 import 'package:sizer/sizer.dart';
-
-import '../../../../core/theme/app_palette.dart';
-import '../../../../core/theme/app_typography.dart';
-import '../../../../core/theme/dent_colors.dart';
-import '../../../patients/domain/patient.dart';
-import '../../../patients/presentation/patients_controller.dart';
-import '../../../treatments/presentation/treatments_controller.dart';
-import '../billing_controller.dart';
+import '../../../../core/constants/views.dart';
 
 Future<bool?> showInvoiceEditor(
   BuildContext context, {
@@ -43,6 +34,7 @@ class _Line {
 class _S extends ConsumerState<InvoiceEditorDialog> {
   late final TextEditingController _no;
   late final TextEditingController _adjustment;
+  final _received = TextEditingController();
   final List<_Line> _lines = [_Line()];
   int? _patientId;
   String _status = 'pending';
@@ -98,6 +90,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
   void dispose() {
     _no.dispose();
     _adjustment.dispose();
+    _received.dispose();
     for (final l in _lines) {
       l.dispose();
     }
@@ -230,17 +223,40 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
     }
 
     try {
+      // Always create as pending — the payment below is what moves it to
+      // paid, so amountPaid, the status and the patient's balance can
+      // never disagree.
       await ref
           .read(billingRepositoryProvider)
           .createInvoice(
             patientId: _patientId!,
-            invoiceNo: invNo, // ← use the verified number
+            invoiceNo: invNo,
             issuedAt: DateTime.now(),
-            status: _status,
+            status: _status == 'overdue' ? 'overdue' : 'pending',
             summary: items.first.description,
             adjustment: _adj,
             items: items,
           );
+
+      if (_status != 'pending') {
+        final typed = int.tryParse(_received.text.trim()) ?? 0;
+        // Blank on "paid" means the whole thing.
+        final amount = _status == 'paid' && typed == 0 ? _total : typed;
+        if (amount > 0) {
+          final inv = await (db.select(
+            db.invoices,
+          )..where((t) => t.invoiceNo.equals(invNo))).getSingleOrNull();
+          if (inv != null) {
+            await db.insertPayment(
+              invoiceId: inv.id,
+              amount: amount > _total ? _total : amount,
+              paidAt: DateTime.now(),
+              receivedByName: ref.read(authControllerProvider)?.username ?? '',
+              note: 'Recorded when the invoice was created',
+            );
+          }
+        }
+      }
     } catch (e) {
       setState(() {
         _busy = false;
@@ -294,7 +310,9 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                   Expanded(
                     child: Text(
                       'New Invoice',
-                      style: Theme.of(context).textTheme.titleLarge,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(fontSize: 13.sp),
                     ),
                   ),
                   IconButton(
@@ -317,32 +335,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                   children: [
                     // ── Patient ──
                     _label(d, 'Patient'),
-                    _box(
-                      d,
-                      DropdownButton<int>(
-                        isExpanded: true,
-                        underline: const SizedBox(),
-                        value: _patientId,
-                        hint: Text(
-                          'Select patient',
-                          style: TextStyle(fontSize: 9.sp, color: d.text4),
-                        ),
-                        items: [
-                          for (final p in patients)
-                            DropdownMenuItem(
-                              value: p.id,
-                              child: Text(
-                                p.fullName,
-                                style: TextStyle(
-                                  fontSize: 10.sp,
-                                  color: d.text1,
-                                ),
-                              ),
-                            ),
-                        ],
-                        onChanged: (v) => setState(() => _patientId = v),
-                      ),
-                    ),
+                    _patientPicker(d, patients),
 
                     // ── Treatment Plan (if any) ──
                     if (plans.isNotEmpty) ...[
@@ -361,7 +354,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                                   child: Text(
                                     '${p.title}${p.isActive ? '' : ' (done)'}',
                                     style: TextStyle(
-                                      fontSize: 9.sp,
+                                      fontSize: 12.sp,
                                       color: d.text1,
                                     ),
                                   ),
@@ -404,7 +397,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
 
                                   controller: _no,
                                   style: TextStyle(
-                                    fontSize: 9.sp,
+                                    fontSize: 12.sp,
                                     color: d.text1,
                                   ),
                                   decoration: const InputDecoration(
@@ -452,6 +445,50 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                       ],
                     ),
 
+                    // Paid/overdue must record an ACTUAL amount — otherwise
+                    // the status says paid while the balance says the full
+                    // total, because nothing was ever received.
+                    if (_status != 'pending') ...[
+                      _label(
+                        d,
+                        _status == 'paid'
+                            ? 'Amount received now'
+                            : 'Amount received so far',
+                      ),
+                      _box(
+                        d,
+                        TextField(
+                          controller: _received,
+                          keyboardType: TextInputType.number,
+                          onChanged: (_) => setState(() {}),
+                          style: TextStyle(fontSize: 12.sp, color: d.text1),
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            isDense: true,
+                            prefixText: 'Rs  ',
+                            hintText: _status == 'paid'
+                                ? 'Leave blank if patient pays the full Amount'
+                                : '0',
+                            hintStyle: TextStyle(
+                              color: d.text4,
+                              fontSize: 11.sp,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          _status == 'paid'
+                              ? 'Recorded as a cash payment dated today. '
+                                    'Change the method later from the invoice.'
+                              : 'Anything already collected. The rest stays '
+                                    'on the patient\'s balance.',
+                          style: TextStyle(color: d.text3, fontSize: 10.sp),
+                        ),
+                      ),
+                    ],
+
                     // ── Line items ──
                     _label(d, 'Line items'),
                     for (var i = 0; i < _lines.length; i++)
@@ -466,7 +503,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                                 TextField(
                                   controller: _lines[i].desc,
                                   style: TextStyle(
-                                    fontSize: 9.sp,
+                                    fontSize: 12.sp,
                                     color: d.text1,
                                   ),
                                   decoration: InputDecoration(
@@ -475,7 +512,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                                     hintText: 'Description',
                                     hintStyle: TextStyle(
                                       color: d.text4,
-                                      fontSize: 9.sp,
+                                      fontSize: 12.sp,
                                     ),
                                   ),
                                 ),
@@ -491,7 +528,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                                   keyboardType: TextInputType.number,
                                   onChanged: (_) => setState(() {}),
                                   style: TextStyle(
-                                    fontSize: 9.sp,
+                                    fontSize: 12.sp,
                                     color: d.text1,
                                   ),
                                   decoration: InputDecoration(
@@ -500,7 +537,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                                     hintText: 'Rs',
                                     hintStyle: TextStyle(
                                       color: d.text4,
-                                      fontSize: 9.sp,
+                                      fontSize: 12.sp,
                                     ),
                                   ),
                                 ),
@@ -558,7 +595,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                         controller: _adjustment,
                         keyboardType: TextInputType.number,
                         onChanged: (_) => setState(() {}),
-                        style: TextStyle(fontSize: 9.sp, color: d.text1),
+                        style: TextStyle(fontSize: 12.sp, color: d.text1),
                         decoration: const InputDecoration(
                           border: InputBorder.none,
                           isDense: true,
@@ -616,12 +653,186 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
     );
   }
 
+  /// A dropdown over a thousand patients is unusable — this searches
+  /// name, code and phone, and shows the outstanding balance so the
+  /// receptionist sees what the patient already owes before billing.
+  Widget _patientPicker(DentColors d, List<Patient> patients) {
+    final selected = _patientId == null
+        ? null
+        : patients.where((p) => p.id == _patientId).firstOrNull;
+
+    if (selected != null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+        decoration: BoxDecoration(
+          color: d.surface2,
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(color: d.line),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    selected.fullName,
+                    style: TextStyle(
+                      color: d.text1,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    [
+                      '#${selected.code}',
+                      if (selected.phone.isNotEmpty) selected.phone,
+                      if (selected.balance > 0)
+                        'Balance: ${_money(selected.balance)}',
+                    ].join(' · '),
+                    style: TextStyle(
+                      color: selected.balance > 0 ? d.alert : d.text4,
+                      fontSize: 10.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Change patient',
+              icon: Icon(Icons.close_rounded, size: 17, color: d.text4),
+              onPressed: () => setState(() {
+                _patientId = null;
+                _selectedPlanId = null;
+              }),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Autocomplete<Patient>(
+      displayStringForOption: (p) => p.fullName,
+      optionsBuilder: (value) {
+        final q = value.text.trim().toLowerCase();
+        if (q.isEmpty) return patients.take(8);
+        return patients
+            .where(
+              (p) => '${p.fullName} ${p.code} ${p.phone}'
+                  .toLowerCase()
+                  .contains(q),
+            )
+            .take(12);
+      },
+      onSelected: (p) => setState(() {
+        _patientId = p.id;
+        _selectedPlanId = null;
+        _error = null;
+      }),
+      fieldViewBuilder: (ctx, ctrl, focus, onSubmit) => _box(
+        d,
+        TextField(
+          controller: ctrl,
+          focusNode: focus,
+          autofocus: widget.patientId == null,
+          style: TextStyle(fontSize: 12.sp, color: d.text1),
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            isDense: true,
+            hintText: 'Search name, code or phone…',
+            hintStyle: TextStyle(color: d.text4, fontSize: 11.sp),
+            icon: Icon(Icons.search_rounded, size: 17, color: d.text4),
+          ),
+        ),
+      ),
+      optionsViewBuilder: (ctx, onSelected, options) => Align(
+        alignment: Alignment.topLeft,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: 46.w,
+            constraints: const BoxConstraints(maxHeight: 280),
+            margin: const EdgeInsets.only(top: 4),
+            decoration: BoxDecoration(
+              color: d.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: d.line),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: .14),
+                  blurRadius: 22,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              children: [
+                for (final p in options)
+                  InkWell(
+                    onTap: () => onSelected(p),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  p.fullName,
+                                  style: TextStyle(
+                                    color: d.text1,
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  '#${p.code}${p.phone.isEmpty ? "" : " · ${p.phone}"}',
+                                  style: TextStyle(
+                                    color: d.text4,
+                                    fontSize: 10.sp,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (p.balance > 0)
+                            Text(
+                              'Rs ${_money(p.balance)}',
+                              style: AppTypography.mono(
+                                size: 10.sp,
+                                color: d.alert,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _money(int v) => v.toString().replaceAllMapped(
+    RegExp(r'(\d)(?=(\d{3})+$)'),
+    (m) => '${m[1]},',
+  );
+
   Widget _label(DentColors d, String t) => Padding(
     padding: const EdgeInsets.fromLTRB(0, 14, 0, 7),
     child: Text(
       t.toUpperCase(),
       style: TextStyle(
-        color: d.text4,
+        color: d.text2,
         fontSize: 10.sp,
         fontWeight: FontWeight.bold,
         letterSpacing: .5,
@@ -630,7 +841,9 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
   );
 
   Widget _billStep(DentColors d, TreatmentStep s) {
-    final isDone = s.status == StepStatus.done;
+    // completedAt is set by the Complete action; status alone can lag behind
+    // it if a step was completed on another machine before syncing.
+    final isDone = s.status == StepStatus.done || s.completedAt != null;
     final isCurrent = s.status == StepStatus.current;
     final color = isDone ? d.teal : (isCurrent ? d.ice : d.text4);
     return Padding(
@@ -651,14 +864,14 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                   s.label,
                   style: TextStyle(
                     color: d.text1,
-                    fontSize: 10.sp,
+                    fontSize: 12.sp,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 if (s.completedAt != null)
                   Text(
                     '✓ ${_fmtBillDate(s.completedAt!)}',
-                    style: TextStyle(color: d.teal, fontSize: 9.sp),
+                    style: TextStyle(color: d.teal, fontSize: 12.sp),
                   ),
               ],
             ),
@@ -668,7 +881,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
               'DONE',
               style: TextStyle(
                 color: d.teal,
-                fontSize: 9.5.sp,
+                fontSize: 10.sp,
                 fontWeight: FontWeight.w700,
               ),
             )
@@ -682,7 +895,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
               ),
               child: Text(
                 '+ Bill',
-                style: TextStyle(fontSize: 9.5.sp, color: d.text3),
+                style: TextStyle(fontSize: 10.5.sp, color: d.text3),
               ),
             ),
             // mark done
@@ -765,14 +978,14 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
             label,
             style: TextStyle(
               color: bold ? d.text1 : d.text3,
-              fontSize: bold ? 10.sp : 9.sp,
+              fontSize: bold ? 12.sp : 9.sp,
               fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
             ),
           ),
           Text(
             'Rs $m',
             style: AppTypography.mono(
-              size: bold ? 10.sp : 9.sp,
+              size: bold ? 12.sp : 9.sp,
               color: d.text1,
               weight: bold ? FontWeight.w700 : FontWeight.w500,
             ),

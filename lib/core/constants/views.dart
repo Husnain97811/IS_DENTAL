@@ -106,3 +106,7 @@ export '../../features/requests/data/requests_realtime.dart';
 export 'package:is_dental/cloud/data/sync_engine.dart';
 export 'package:is_dental/core/utils/qr_payload.dart';
 export 'package:is_dental/features/settings/presentaion/widgets/devices_panel.dart';
+export 'package:is_dental/features/patients/domain/treatment_plan.dart';
+export '../../../core/constants/views.dart';
+export '../../../core/widgets/kpi_card.dart';
+export '../../../core/widgets/stat_bar.dart';

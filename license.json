@@ -5,8 +5,9 @@
   "cloudPackage": "cloud",
   "maxBranches": 2,
   "maxUsers": 4,
-  "issuedAt": "2026-10-08T14:58:30.623276Z",
-  "expiresAt": "2027-10-08T14:58:30.623276Z",
+  "issuedAt": "2026-10-09T08:09:32.988045Z",
+  "expiresAt": "2027-10-09T08:09:32.988045Z",
   "machineFingerprint": "ANY",
-  "signature": "hxXorfIcsN4O35OXcjmmIVwTF0/FzERegwSvx0at9sZpqDS0/s793RNNp5bQ1SibG7aH6Buwr56x8PeBejHI932LuGPG0vfQLxTtarMArHCZb7IKLEWDW5RFvdTqatlDc0WUSndUdHmBDGe8A5yfIzw4lpTg+FaYjVqR/xrNkgM77mDT25hnPlPhX5X2IJ5cjy51OoZiEc00OVoUH8LsXEUh4nfdALfYy/qiXmEh4r6xRs65I2VTDsDRBFlRXuKeOmfjIIdVY4U91EDILo9kEnTU6M7KjFzXgkXP00LQtXcUt5Y4g44gmEInRyNSuCv4QlD3PbqbKKIytR76TJ9JyQ=="
+  "signature": "i7iLsJITzDRq9S6oIll8OShTYUra91t3rQeGckajBW7Xr07IBfhhuTc0N0sz+OxTP93YIGy1ik7eXdhYMVyY0Ghn0Cyx7IENtn8Vxbr4Jlw/yLv0u54OzCiLe1V+FGRSmh5FS3+75X9w61Uf7NRrGeKatM0S7tDteqRqkpRAbmX9DkARZjjSceaz6Z0eJ3D+e9xmgicICIxMwGYchwmatKfD6ZWnzfUYJYpt9RwoF0VSBjFWlbP/EidV+PAsAfJupnOXb+y3KmT803FuymkUM+Ml9q193IVqEGPbsY0j1R0gZpQODsP869EoFXnUqCkQejV/CapSWzcP6RxVlj90Hg==",
+  "maxDevices": 4
 }

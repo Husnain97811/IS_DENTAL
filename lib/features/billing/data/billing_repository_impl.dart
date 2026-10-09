@@ -152,18 +152,24 @@ class BillingRepositoryImpl implements BillingRepository {
 
   @override
   Stream<Invoice?> watchInvoice(int id) {
-    return (_db.select(
-      _db.invoiceItems,
-    )..where((t) => t.invoiceId.equals(id))).watch().asyncMap((itemRows) async {
-      final row = await (_db.select(_db.invoices).join([
-        innerJoin(
-          _db.patients,
-          _db.patients.id.equalsExp(_db.invoices.patientId),
-        ),
-      ])..where(_db.invoices.id.equals(id))).getSingleOrNull();
+    // Watch the INVOICE row, not just its items. A payment changes
+    // amountPaid and status and touches no item, so watching items alone
+    // meant the drawer never refreshed after taking money — it only
+    // updated when you clicked away and back.
+    final q = _db.select(_db.invoices).join([
+      innerJoin(
+        _db.patients,
+        _db.patients.id.equalsExp(_db.invoices.patientId),
+      ),
+    ])..where(_db.invoices.id.equals(id));
+
+    return q.watchSingleOrNull().asyncMap((row) async {
       if (row == null) return null;
       final i = row.readTable(_db.invoices);
       final p = row.readTable(_db.patients);
+      final itemRows = await (_db.select(
+        _db.invoiceItems,
+      )..where((t) => t.invoiceId.equals(id))).get();
       return Invoice(
         id: i.id,
         uuid: i.uuid,

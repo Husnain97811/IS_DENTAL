@@ -116,13 +116,17 @@ class _PaymentDialogState extends ConsumerState<_PaymentDialog> {
             children: [
               Text(
                 'Take Payment',
-                style: Theme.of(dialogCtx).textTheme.headlineSmall,
+                style: Theme.of(dialogCtx).textTheme.headlineSmall?.copyWith(
+                  color: d.text1,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 '#${widget.inv.invoiceNo} · ${widget.inv.patientName} · '
                 'balance Rs ${_m(_balance)}',
-                style: TextStyle(color: d.text3, fontSize: 9.sp),
+                style: TextStyle(color: d.text3, fontSize: 11.sp),
               ),
               SizedBox(height: 2.h),
 
@@ -175,13 +179,13 @@ class _PaymentDialogState extends ConsumerState<_PaymentDialog> {
                     children: [
                       Text(
                         '${_paidAt.day}/${_paidAt.month}/${_paidAt.year}',
-                        style: TextStyle(color: d.text1, fontSize: 10.sp),
+                        style: TextStyle(color: d.text1, fontSize: 12.sp),
                       ),
                       const Spacer(),
                       Icon(
                         Icons.calendar_today_rounded,
                         size: 15,
-                        color: d.text4,
+                        color: d.text2,
                       ),
                     ],
                   ),
@@ -210,7 +214,7 @@ class _PaymentDialogState extends ConsumerState<_PaymentDialog> {
                           value: n,
                           child: Text(
                             n,
-                            style: TextStyle(color: d.text1, fontSize: 10.sp),
+                            style: TextStyle(color: d.text1, fontSize: 12.sp),
                           ),
                         ),
                     ],
@@ -223,7 +227,7 @@ class _PaymentDialogState extends ConsumerState<_PaymentDialog> {
               _label(d, 'BANK / ACCOUNT (OPTIONAL)'),
               TextField(
                 controller: _detail,
-                style: TextStyle(color: d.text1, fontSize: 10.sp),
+                style: TextStyle(color: d.text1, fontSize: 12.sp),
                 decoration: _dec(d, hint: 'Meezan, HBL, wallet number…'),
               ),
               const SizedBox(height: 14),
@@ -231,7 +235,7 @@ class _PaymentDialogState extends ConsumerState<_PaymentDialog> {
               _label(d, 'TRANSACTION ID / TID (OPTIONAL)'),
               TextField(
                 controller: _ref,
-                style: TextStyle(color: d.text1, fontSize: 10.sp),
+                style: TextStyle(color: d.text1, fontSize: 12.sp),
                 decoration: _dec(d, hint: 'TID, cheque no, slip no'),
               ),
               const SizedBox(height: 14),
@@ -239,7 +243,7 @@ class _PaymentDialogState extends ConsumerState<_PaymentDialog> {
               _label(d, 'NOTE (OPTIONAL)'),
               TextField(
                 controller: _note,
-                style: TextStyle(color: d.text1, fontSize: 10.sp),
+                style: TextStyle(color: d.text1, fontSize: 12.sp),
                 decoration: _dec(d, hint: 'Partial payment, rest next visit…'),
               ),
 
@@ -247,7 +251,7 @@ class _PaymentDialogState extends ConsumerState<_PaymentDialog> {
                 const SizedBox(height: 12),
                 Text(
                   _error!,
-                  style: TextStyle(color: d.alert, fontSize: 9.sp),
+                  style: TextStyle(color: d.alert, fontSize: 12.sp),
                 ),
               ],
 
@@ -296,7 +300,7 @@ class _PaymentDialogState extends ConsumerState<_PaymentDialog> {
       ),
       child: Text(
         '$label · Rs ${_m(value)}',
-        style: TextStyle(color: d.text3, fontSize: 8.sp),
+        style: TextStyle(color: d.text3, fontSize: 10.sp),
       ),
     ),
   );
@@ -306,8 +310,8 @@ class _PaymentDialogState extends ConsumerState<_PaymentDialog> {
     child: Text(
       t,
       style: TextStyle(
-        color: d.text4,
-        fontSize: 7.sp,
+        color: d.text2,
+        fontSize: 10.sp,
         fontWeight: FontWeight.w700,
         letterSpacing: .5,
       ),
@@ -319,7 +323,7 @@ class _PaymentDialogState extends ConsumerState<_PaymentDialog> {
         isDense: true,
         hintText: hint,
         prefixText: prefix,
-        hintStyle: TextStyle(color: d.text4, fontSize: 9.5.sp),
+        hintStyle: TextStyle(color: d.text4, fontSize: 10.5.sp),
         filled: true,
         fillColor: d.surface2,
         contentPadding: const EdgeInsets.symmetric(

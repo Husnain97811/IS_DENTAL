@@ -149,10 +149,10 @@ class InvoiceDrawer extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
             child: Text(
-              'PAYMENTS',
+              'Received Payments',
               style: TextStyle(
-                color: d.text4,
-                fontSize: 7.sp,
+                color: d.text1,
+                fontSize: 11.sp,
                 fontWeight: FontWeight.w700,
                 letterSpacing: .5,
               ),
@@ -246,7 +246,7 @@ class InvoiceDrawer extends ConsumerWidget {
                   'Rs ${_m(p.amount)} · ${p.method}',
                   style: TextStyle(
                     color: d.text1,
-                    fontSize: 9.5.sp,
+                    fontSize: 10.5.sp,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -257,7 +257,7 @@ class InvoiceDrawer extends ConsumerWidget {
                     if ((p.reference ?? '').isNotEmpty) 'TID ${p.reference}',
                     if (p.receivedByName.isNotEmpty) 'by ${p.receivedByName}',
                   ].join(' · '),
-                  style: TextStyle(color: d.text4, fontSize: 7.5.sp),
+                  style: TextStyle(color: d.text4, fontSize: 9.5.sp),
                 ),
               ],
             ),
@@ -267,7 +267,7 @@ class InvoiceDrawer extends ConsumerWidget {
               tooltip: 'Remove payment',
               icon: Icon(
                 Icons.delete_outline_rounded,
-                size: 15,
+                size: 12.sp,
                 color: d.text4,
               ),
               onPressed: () async {

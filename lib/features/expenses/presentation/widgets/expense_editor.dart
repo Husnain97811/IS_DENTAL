@@ -139,7 +139,36 @@ class _ExpenseEditorState extends ConsumerState<_ExpenseEditor> {
     final methodNames = methods.isEmpty
         ? const ['Cash', 'Bank Transfer', 'Card', 'JazzCash', 'EasyPaisa']
         : methods.map((m) => m.name).toList();
-    if (!methodNames.contains(_method)) _method = methodNames.first;
+
+    // A DropdownButton asserts if its value is not among its items, and an
+    // old expense can easily point at something no longer listed: a hidden
+    // category, a deleted branch, a renamed method. Keep the stored value
+    // visible and selected rather than crashing or silently rewriting it.
+    List<(String, String)> withCurrent(
+      List<(String, String)> items,
+      String? current, {
+      required String missingLabel,
+    }) {
+      if (current == null || current.isEmpty) return items;
+      if (items.any((e) => e.$1 == current)) return items;
+      return [(current, missingLabel), ...items];
+    }
+
+    final catItems = withCurrent(
+      [for (final c in cats) (c.uuid, c.name)],
+      _categoryUuid,
+      missingLabel: 'No longer listed — pick a new category',
+    );
+    final branchItems = withCurrent(
+      [for (final b in branches) (b.uuid, b.name)],
+      _branchId,
+      missingLabel: 'No longer listed — pick a new branch',
+    );
+    final methodItems = withCurrent(
+      [for (final n in methodNames) (n, n)],
+      _method,
+      missingLabel: '$_method (no longer listed)',
+    );
 
     // Staff are locked to their own branch; the owner picks one explicitly
     // rather than silently inheriting "All branches".
@@ -147,6 +176,12 @@ class _ExpenseEditorState extends ConsumerState<_ExpenseEditor> {
         lockedBranch ??
         ref.read(activeBranchProvider) ??
         (branches.isNotEmpty ? branches.first.uuid : null);
+    // activeBranchProvider can hold a branch that was since removed.
+    if (_branchId != null &&
+        branches.isNotEmpty &&
+        !branches.any((b) => b.uuid == _branchId)) {
+      _branchId = branches.first.uuid;
+    }
 
     return Dialog(
       backgroundColor: d.surface,
@@ -241,7 +276,7 @@ class _ExpenseEditorState extends ConsumerState<_ExpenseEditor> {
                 d,
                 value: _categoryUuid,
                 hint: 'Pick a category',
-                items: [for (final c in cats) (c.uuid, c.name)],
+                items: catItems,
                 onChanged: (v) => setState(() => _categoryUuid = v),
               ),
               const SizedBox(height: 14),
@@ -274,7 +309,7 @@ class _ExpenseEditorState extends ConsumerState<_ExpenseEditor> {
                   d,
                   value: _branchId,
                   hint: 'Pick a branch',
-                  items: [for (final b in branches) (b.uuid, b.name)],
+                  items: branchItems,
                   onChanged: (v) => setState(() => _branchId = v),
                 ),
               const SizedBox(height: 14),
@@ -306,7 +341,7 @@ class _ExpenseEditorState extends ConsumerState<_ExpenseEditor> {
                         _dropdown<String>(
                           d,
                           value: _method,
-                          items: [for (final n in methodNames) (n, n)],
+                          items: methodItems,
                           onChanged: (v) =>
                               setState(() => _method = v ?? _method),
                         ),

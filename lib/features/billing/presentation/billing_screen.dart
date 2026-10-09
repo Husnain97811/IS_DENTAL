@@ -279,8 +279,8 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                   ),
                   if (inv.balance > 0 && inv.amountPaid > 0)
                     Text(
-                      'Rs ${_m(inv.balance)} due',
-                      style: AppTypography.mono(size: 8.sp, color: d.alert),
+                      '${_m(inv.balance)} due',
+                      style: AppTypography.mono(size: 9.5.sp, color: d.alert),
                     ),
                 ],
               ),

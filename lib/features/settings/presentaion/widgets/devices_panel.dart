@@ -54,7 +54,7 @@ class DevicesPanel extends ConsumerWidget {
               child: Text(
                 'Your plan allows $max computer${max == 1 ? '' : 's'}. '
                 'Remove one to free a slot.',
-                style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+                style: TextStyle(color: d.text4, fontSize: 9.5.sp),
               ),
             ),
         ],
@@ -125,7 +125,7 @@ class DevicesPanel extends ConsumerWidget {
                   ].join(' · '),
                   style: TextStyle(
                     color: stale ? d.warn : d.text4,
-                    fontSize: 8.sp,
+                    fontSize: 9.sp,
                   ),
                 ),
               ],

@@ -247,6 +247,7 @@ void _recordIssue({
   required String cloudPackage,
   required int maxBranches,
   required int maxUsers,
+  required int maxDevices,
   required DateTime issuedAt,
   required DateTime expiresAt,
   required bool isRenewal,
@@ -260,6 +261,7 @@ void _recordIssue({
     'cloudPackage': cloudPackage,
     'maxBranches': maxBranches,
     'maxUsers': maxUsers,
+    'maxDevices': maxDevices,
     'kind': isRenewal ? 'renewal' : 'new',
   };
 
@@ -272,6 +274,7 @@ void _recordIssue({
     r['cloudPackage'] = cloudPackage;
     r['maxBranches'] = maxBranches;
     r['maxUsers'] = maxUsers;
+    r['maxDevices'] = maxDevices;
     r['expiresAt'] = expiresAt.toIso8601String();
     r['lastIssuedAt'] = issuedAt.toIso8601String();
     (r['history'] as List).insert(0, issue);
@@ -285,6 +288,7 @@ void _recordIssue({
       'cloudPackage': cloudPackage,
       'maxBranches': maxBranches,
       'maxUsers': maxUsers,
+      'maxDevices': maxDevices,
       'firstIssuedAt': issuedAt.toIso8601String(),
       'lastIssuedAt': issuedAt.toIso8601String(),
       'expiresAt': expiresAt.toIso8601String(),
@@ -345,6 +349,7 @@ Future<void> _handleMint(HttpRequest req) async {
   final cloudPackage = (body['cloudPackage'] ?? 'cloud').toString();
   final maxBranches = int.tryParse('${body['maxBranches']}') ?? 1;
   final maxUsers = int.tryParse('${body['maxUsers']}') ?? 3;
+  final maxDevices = int.tryParse('${body['maxDevices']}') ?? 1;
   final days = int.tryParse('${body['validDays']}') ?? 365;
 
   if (clinicName.isEmpty) {
@@ -384,6 +389,13 @@ Future<void> _handleMint(HttpRequest req) async {
     'expiresAt': expiresAt,
     'machineFingerprint': 'ANY',
   });
+
+  // Attached AFTER signing, deliberately. _canonical() is the signed
+  // contract — adding a field there would invalidate every licence already
+  // in the field. Unsigned is safe because maxDevices is only ever read
+  // from the licence the OWNER's authenticated PC sends when minting a
+  // join code; a joining machine's copy is never trusted.
+  licence['maxDevices'] = maxDevices;
 
   final pretty = const JsonEncoder.withIndent('  ').convert(licence);
 
@@ -428,6 +440,7 @@ Future<void> _handleMint(HttpRequest req) async {
     cloudPackage: cloudPackage,
     maxBranches: maxBranches,
     maxUsers: maxUsers,
+    maxDevices: maxDevices,
     issuedAt: issuedAt,
     expiresAt: expiresAt,
     isRenewal: isRenewal,
@@ -680,8 +693,13 @@ const _html = r'''
         <div class="row3">
           <div><label>Branches</label><input id="maxBranches" type="number" min="1" value="1"></div>
           <div><label>Users</label><input id="maxUsers" type="number" min="1" value="3"></div>
-          <div><label>Valid (days)</label><input id="validDays" type="number" min="1" value="365"></div>
+          <div><label>Computers</label><input id="maxDevices" type="number" min="1" value="1"></div>
         </div>
+        <label>Valid (days)</label>
+        <input id="validDays" type="number" min="1" value="365">
+        <div class="note n-warn" id="devHint" style="display:none">
+          More than one computer needs the <b>Cloud</b> package — two offline
+          installs have no way to share data.</div>
         <div id="expiryHint" class="note n-ice" style="margin-top:12px"></div>
 
         <button class="btn" id="mintBtn" onclick="preflight()">Generate licence</button>
@@ -703,9 +721,9 @@ const _html = r'''
       <div class="list" id="list"></div>
     </div>
   </div>
-        <div class="list" id="list"></div>
-    </div>
-  </div>
+  //       <div class="list" id="list"></div>
+  //   </div>
+  // </div>
 
   <div class="card" style="margin-top:18px">
     <div class="ch"><div><h2>Owner password reset</h2>
@@ -811,8 +829,17 @@ function pickExisting(){
     $('cloudPackage').value = c.cloudPackage || 'cloud';
     $('maxBranches').value = c.maxBranches || 1;
     $('maxUsers').value = c.maxUsers || 3;
+    $('maxDevices').value = c.maxDevices || 1;
   }
 }
+
+function checkDevices(){
+  const n = parseInt($('maxDevices').value||'1',10);
+  const offline = $('cloudPackage').value === 'none';
+  $('devHint').style.display = (n > 1 && offline) ? 'block' : 'none';
+}
+$('maxDevices').addEventListener('input', checkDevices);
+$('cloudPackage').addEventListener('change', checkDevices);
 
 function esc(s){ return (s||'').replace(/[&<>"]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
 
@@ -902,6 +929,8 @@ function preflight(){
       warn.push(`Branch limit drops from <b>${c.maxBranches}</b> to <b>${$('maxBranches').value}</b>.`);
     if(c && parseInt($('maxUsers').value) < (c.maxUsers||1))
       warn.push(`User limit drops from <b>${c.maxUsers}</b> to <b>${$('maxUsers').value}</b>.`);
+    if(c && parseInt($('maxDevices').value) < (c.maxDevices||1))
+      warn.push(`Computer limit drops from <b>${c.maxDevices}</b> to <b>${$('maxDevices').value}</b> — extra computers stop syncing.`);
 
     if(warn.length){
       pending = true;
@@ -950,6 +979,7 @@ async function mint(){
     cloudPackage: $('cloudPackage').value,
     maxBranches: $('maxBranches').value,
     maxUsers: $('maxUsers').value,
+    maxDevices: $('maxDevices').value,
     validDays: $('validDays').value,
   };
   try{
@@ -983,9 +1013,9 @@ async function mint(){
 }
 
 function exportCsv(){
-  const head = 'clinicId,clinicName,city,email,tier,cloudPackage,maxBranches,maxUsers,firstIssuedAt,lastIssuedAt,expiresAt';
+  const head = 'clinicId,clinicName,city,email,tier,cloudPackage,maxBranches,maxUsers,maxDevices,firstIssuedAt,lastIssuedAt,expiresAt';
   const rows = clinics.map(c=>[c.clinicId,c.clinicName,c.city,c.email,c.tier,c.cloudPackage,
-    c.maxBranches,c.maxUsers,c.firstIssuedAt,c.lastIssuedAt,c.expiresAt]
+    c.maxBranches,c.maxUsers,c.maxDevices||1,c.firstIssuedAt,c.lastIssuedAt,c.expiresAt]
     .map(v=>`"${(v??'').toString().replace(/"/g,'""')}"`).join(','));
   const blob = new Blob([[head,...rows].join('\n')],{type:'text/csv'});
   const a = document.createElement('a');

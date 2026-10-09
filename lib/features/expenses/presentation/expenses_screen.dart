@@ -32,6 +32,16 @@ const _monShort = [
   'Dec',
 ];
 
+/// One source of truth for the table geometry. The header and the rows both
+/// read these, so a column can never drift out of alignment again.
+const _colDate = 62.0;
+const _colGap = 14.0;
+const _colAmount = 124.0;
+const _colActions = 88.0;
+const _flexCategory = 3;
+const _flexDetails = 5;
+const _flexMethod = 3;
+
 class ExpensesScreen extends ConsumerWidget {
   const ExpensesScreen({super.key});
 
@@ -153,7 +163,7 @@ class ExpensesScreen extends ConsumerWidget {
                               narrow
                                   ? _card(context, ref, d, e, names, canManage)
                                   : _row(context, ref, d, e, names, canManage),
-                            _footer(d, rows.length, shown),
+                            _footer(d, rows.length, shown, narrow),
                           ],
                         ),
                 ),
@@ -385,7 +395,7 @@ class ExpensesScreen extends ConsumerWidget {
           'NET PROFIT · ${p.label.toUpperCase()}',
           style: TextStyle(
             color: d.text4,
-            fontSize: 7.sp,
+            fontSize: 9.4.sp,
             fontWeight: FontWeight.w700,
             letterSpacing: 1,
           ),
@@ -845,29 +855,42 @@ class ExpensesScreen extends ConsumerWidget {
   // ── table ────────────────────────────────────────────────────────────────
   Widget _header(DentColors d) {
     TextStyle h() => TextStyle(
-      color: d.text4,
-      fontSize: 7.5.sp,
+      color: d.text3,
+      fontSize: 9.sp,
       fontWeight: FontWeight.w700,
       letterSpacing: .8,
     );
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       decoration: BoxDecoration(
         color: d.surface2,
         border: Border(bottom: BorderSide(color: d.line)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(width: 52, child: Text('DATE', style: h())),
-          const SizedBox(width: 14),
-          Expanded(flex: 3, child: Text('CATEGORY', style: h())),
-          Expanded(flex: 4, child: Text('DETAILS', style: h())),
-          Expanded(flex: 3, child: Text('METHOD', style: h())),
           SizedBox(
-            width: 110,
+            width: _colDate,
+            child: Text('DATE', style: h(), textAlign: TextAlign.center),
+          ),
+          const SizedBox(width: _colGap),
+          Expanded(
+            flex: _flexCategory,
+            child: Text('CATEGORY', style: h()),
+          ),
+          Expanded(
+            flex: _flexDetails,
+            child: Text('DETAILS', style: h()),
+          ),
+          Expanded(
+            flex: _flexMethod,
+            child: Text('METHOD', style: h()),
+          ),
+          SizedBox(
+            width: _colAmount,
             child: Text('AMOUNT', style: h(), textAlign: TextAlign.right),
           ),
-          const SizedBox(width: 88),
+          const SizedBox(width: _colActions),
         ],
       ),
     );
@@ -890,61 +913,71 @@ class ExpensesScreen extends ConsumerWidget {
           border: Border(bottom: BorderSide(color: d.line)),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(width: 52, child: _dateChip(d, e.paidAt)),
-            const SizedBox(width: 14),
+            SizedBox(width: _colDate, child: _dateChip(d, e.paidAt)),
+            const SizedBox(width: _colGap),
             Expanded(
-              flex: 3,
-              child: Text(
-                names[e.categoryUuid] ?? 'Uncategorised',
-                style: TextStyle(
-                  color: d.text1,
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w600,
+              flex: _flexCategory,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: Text(
+                  names[e.categoryUuid] ?? 'Uncategorised',
+                  style: TextStyle(
+                    color: d.text1,
+                    fontSize: 10.5.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ),
             Expanded(
-              flex: 4,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    e.description.isEmpty ? '—' : e.description,
-                    style: TextStyle(color: d.text2, fontSize: 9.5.sp),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if ((e.vendor ?? '').isNotEmpty ||
-                      (e.reference ?? '').isNotEmpty)
+              flex: _flexDetails,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      [
-                        if ((e.vendor ?? '').isNotEmpty) e.vendor!,
-                        if ((e.reference ?? '').isNotEmpty)
-                          'TID ${e.reference}',
-                      ].join(' · '),
-                      style: TextStyle(color: d.text4, fontSize: 7.5.sp),
+                      e.description.isEmpty ? '—' : e.description,
+                      style: TextStyle(color: d.text2, fontSize: 10.sp),
                       overflow: TextOverflow.ellipsis,
                     ),
-                ],
+                    if ((e.vendor ?? '').isNotEmpty ||
+                        (e.reference ?? '').isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          [
+                            if ((e.vendor ?? '').isNotEmpty) e.vendor!,
+                            if ((e.reference ?? '').isNotEmpty)
+                              'TID ${e.reference}',
+                          ].join(' · '),
+                          style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
-            Expanded(flex: 3, child: _methodPill(d, e)),
+            Expanded(flex: _flexMethod, child: _methodPill(d, e)),
             SizedBox(
-              width: 110,
+              width: _colAmount,
               child: Text(
-                'Rs ${_m(e.amount)}',
+                '${_m(e.amount)}',
                 textAlign: TextAlign.right,
                 style: AppTypography.mono(
-                  size: 10.sp,
+                  size: 11.5.sp,
                   color: d.text1,
                   weight: FontWeight.w600,
                 ),
               ),
             ),
             SizedBox(
-              width: 88,
+              width: _colActions,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -955,7 +988,7 @@ class ExpensesScreen extends ConsumerWidget {
                       visualDensity: VisualDensity.compact,
                       icon: Icon(
                         Icons.info_outline_rounded,
-                        size: 16,
+                        size: 12.5.sp,
                         color: d.text4,
                       ),
                       onPressed: () => showExpenseAudit(
@@ -970,7 +1003,7 @@ class ExpensesScreen extends ConsumerWidget {
                       visualDensity: VisualDensity.compact,
                       icon: Icon(
                         Icons.delete_outline_rounded,
-                        size: 16,
+                        size: 12.5.sp,
                         color: d.text4,
                       ),
                       onPressed: () => _delete(context, ref, e, names),
@@ -1103,8 +1136,8 @@ class ExpensesScreen extends ConsumerWidget {
   }
 
   Widget _dateChip(DentColors d, DateTime dt) => Container(
-    width: 46,
-    padding: const EdgeInsets.symmetric(vertical: 6),
+    width: _colDate,
+    padding: const EdgeInsets.symmetric(vertical: 7),
     decoration: BoxDecoration(
       color: d.surface2,
       borderRadius: BorderRadius.circular(9),
@@ -1126,7 +1159,7 @@ class ExpensesScreen extends ConsumerWidget {
           _monShort[dt.month - 1].toUpperCase(),
           style: TextStyle(
             color: d.text4,
-            fontSize: 6.5.sp,
+            fontSize: 8.sp,
             fontWeight: FontWeight.w700,
             letterSpacing: .5,
           ),
@@ -1135,31 +1168,41 @@ class ExpensesScreen extends ConsumerWidget {
     ),
   );
 
-  Widget _methodPill(DentColors d, ExpenseRow e) => Align(
-    alignment: Alignment.centerLeft,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        color: d.surface2,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: d.line),
-      ),
-      child: Text(
-        [
-          e.method,
-          if ((e.methodDetail ?? '').isNotEmpty) e.methodDetail!,
-        ].join(' · '),
-        style: TextStyle(
-          color: d.text3,
-          fontSize: 8.sp,
-          fontWeight: FontWeight.w600,
+  Widget _methodPill(DentColors d, ExpenseRow e) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: d.surface2,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: d.line),
         ),
-        overflow: TextOverflow.ellipsis,
+        child: Text(
+          e.method,
+          style: TextStyle(
+            color: d.text3,
+            fontSize: 9.5.sp,
+            fontWeight: FontWeight.w600,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
-    ),
+      // On its own line — a long bank name used to squash the method out.
+      if ((e.methodDetail ?? '').isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 3, left: 2),
+          child: Text(
+            e.methodDetail!,
+            style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+    ],
   );
 
-  Widget _footer(DentColors d, int count, int sum) => Container(
+  Widget _footer(DentColors d, int count, int sum, bool narrow) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
     decoration: BoxDecoration(
       color: d.surface2,
@@ -1169,26 +1212,33 @@ class ExpensesScreen extends ConsumerWidget {
       children: [
         Text(
           '$count ${count == 1 ? "entry" : "entries"}',
-          style: TextStyle(color: d.text4, fontSize: 9.sp),
+          style: TextStyle(color: d.text3, fontSize: 10.sp),
         ),
         const Spacer(),
         Text(
-          'Total  ',
+          'Total',
           style: TextStyle(
             color: d.text3,
-            fontSize: 9.5.sp,
+            fontSize: 10.5.sp,
             fontWeight: FontWeight.w600,
           ),
         ),
-        Text(
-          'Rs ${_m(sum)}',
-          style: TextStyle(
-            fontFamily: AppFonts.display,
-            color: d.text1,
-            fontSize: 12.sp,
-            fontWeight: FontWeight.w700,
+        const SizedBox(width: 12),
+        // Sits directly under the AMOUNT column it sums.
+        SizedBox(
+          width: narrow ? null : _colAmount,
+          child: Text(
+            'Rs ${_m(sum)}',
+            textAlign: narrow ? TextAlign.right : TextAlign.right,
+            style: TextStyle(
+              fontFamily: AppFonts.display,
+              color: d.text1,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
+        if (!narrow) const SizedBox(width: _colActions),
       ],
     ),
   );
