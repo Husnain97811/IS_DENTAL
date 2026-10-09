@@ -327,6 +327,10 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
       }
 
       if (mounted) setState(() => _progress = 'Finishing up…');
+      // The device rows just arrived with the restore. Take over the row
+      // for this letter if one exists rather than creating a duplicate —
+      // on a recovery that's the dead computer's row.
+      await ref.read(appDatabaseProvider).adoptDevice(letter);
       await ref
           .read(licenseControllerProvider.notifier)
           .completeJoin(
@@ -605,7 +609,10 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
                   _useCode = true;
                   _error = null;
                 }),
-          child: const Text("I don't have the cloud password"),
+          child: Text(
+            "I don't have the cloud password",
+            style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700),
+          ),
         ),
       ] else ...[
         _infoBox(

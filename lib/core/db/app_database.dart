@@ -967,6 +967,23 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setLocalDeviceLetter(String letter) =>
       setSetting(_kDeviceLetter, letter.toUpperCase());
 
+  /// A recovered computer REPLACES the dead one: adopt its device row
+  /// (same uuid, same letter) instead of inserting a second row with the
+  /// same letter, which the unique index would reject on every launch.
+  Future<void> adoptDevice(String letter) async {
+    final row =
+        await (select(devices)
+              ..where(
+                (t) =>
+                    t.letter.equals(letter.toUpperCase()) &
+                    t.isDeleted.equals(false),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    if (row != null) await setSetting(_kDeviceUuid, row.uuid);
+    await setLocalDeviceLetter(letter);
+  }
+
   /// Appended to every locally generated number. Empty on device A, so the
   /// first computer's numbering is unchanged forever.
   Future<String> numberSuffix() async {
@@ -1042,6 +1059,17 @@ class AppDatabase extends _$AppDatabase {
       ),
     );
   }
+
+  /// Mirror a successful revoke locally, straight away — otherwise the
+  /// panel keeps showing the device until the next sync pull.
+  Future<void> markDeviceRemoved(int id) =>
+      (update(devices)..where((t) => t.id.equals(id))).write(
+        DevicesCompanion(
+          isActive: const Value(false),
+          isDeleted: const Value(true),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
 
   /// Owner revoking a machine that was lost or replaced.
   Future<void> deactivateDevice(int id) =>

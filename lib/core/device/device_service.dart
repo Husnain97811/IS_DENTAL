@@ -23,11 +23,36 @@ class DeviceService {
 
   /// Makes sure this computer has a local identity and a row in the devices
   /// table. Safe to call on every launch — it only fills in what's missing.
+  /// Makes sure this computer has a local identity and a row in the devices
+  /// table. Safe to call on every launch — it only fills in what's missing.
+  ///
+  /// Self-heals recovery: if this install has no row of its own but an
+  /// active row already holds its letter, that row belongs to the computer
+  /// it replaced. Take it over instead of creating a duplicate — the server
+  /// only ever hands out free letters, so a live machine never shares one.
   Future<void> ensureRegistered({String? byUsername}) async {
     final clinicId = await _db.currentClinicId();
     if (clinicId == null || clinicId.isEmpty) return; // not set up yet
 
-    final d = await _db.localDevice();
+    var d = await _db.localDevice();
+
+    final mine = await (_db.select(
+      _db.devices,
+    )..where((t) => t.uuid.equals(d.uuid))).getSingleOrNull();
+    if (mine == null) {
+      final sameLetter =
+          await (_db.select(_db.devices)
+                ..where(
+                  (t) => t.letter.equals(d.letter) & t.isDeleted.equals(false),
+                )
+                ..limit(1))
+              .getSingleOrNull();
+      if (sameLetter != null) {
+        await _db.adoptDevice(sameLetter.letter);
+        d = await _db.localDevice();
+      }
+    }
+
     await _db.upsertDevice(
       uuid: d.uuid,
       clinicId: clinicId,

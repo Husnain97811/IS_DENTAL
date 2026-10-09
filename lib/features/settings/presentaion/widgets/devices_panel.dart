@@ -131,7 +131,9 @@ class DevicesPanel extends ConsumerWidget {
               ],
             ),
           ),
-          if (!isThis && r.letter != 'A')
+          // Every computer can be removed except the one you're using.
+          // After a recovery the dead machine IS letter A.
+          if (!isThis)
             IconButton(
               tooltip: 'Remove this computer',
               icon: Icon(Icons.link_off_rounded, size: 16, color: d.text4),
@@ -154,11 +156,17 @@ class DevicesPanel extends ConsumerWidget {
       context,
       kind: DentDialogKind.error,
       title: 'Remove ${r.name.isEmpty ? "Computer ${r.letter}" : r.name}?',
-      message:
-          'That computer loses access immediately and cannot sync again. '
-          'Anything it recorded and already synced is kept. Anything it '
-          'recorded but never synced is lost.\n\n'
-          'Letter ${r.letter} is freed for a replacement computer.',
+      message: r.letter == 'A'
+          // Computer A signs in with the clinic's own cloud account, not a
+          // device account, so there is nothing per-device to delete.
+          ? 'This removes it from the list.\n\n'
+                'Computer A uses the clinic\'s own cloud account, so if it is '
+                'lost or stolen it can still sync until you change the cloud '
+                'password. Do that too if the machine is not in your hands.'
+          : 'That computer loses access immediately and cannot sync again. '
+                'Anything it recorded and already synced is kept. Anything it '
+                'recorded but never synced is lost.\n\n'
+                'Letter ${r.letter} is freed for a replacement computer.',
       confirmLabel: 'Remove it',
       cancelLabel: 'Cancel',
     );
@@ -171,6 +179,7 @@ class DevicesPanel extends ConsumerWidget {
       );
       final data = res.data as Map?;
       if (data?['ok'] != true) throw Exception(data?['error'] ?? 'Failed');
+      await ref.read(appDatabaseProvider).markDeviceRemoved(r.id);
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
