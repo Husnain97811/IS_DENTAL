@@ -12,6 +12,15 @@ String _money(int v) => v.toString().replaceAllMapped(
   (m) => '${m[1]},',
 );
 
+// ── Topbar sizing ───────────────────────────────────────────────────────────
+// Everything inside the bar is a FIXED pixel size. The bar itself is a fixed
+// height on every monitor, so anything scaled with Sizer's .sp grows on a big
+// display while the bar does not — which is exactly what overflowed before.
+const double _kBarHeight = 68;
+const double _kBtn = 44;
+const double _kIcon = 21;
+const double _kRadius = 12;
+
 class _Notif {
   const _Notif(this.icon, this.label, this.route);
   final IconData icon;
@@ -54,6 +63,9 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
   final _searchLink = LayerLink();
   final _portal = OverlayPortalController();
   String _query = '';
+
+  /// Actual rendered width of the search box, so the dropdown matches it.
+  double _searchWidth = 420;
 
   @override
   void dispose() {
@@ -110,22 +122,6 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
   void _goReset(String route) {
     _resetSearch();
     if (widget.destination.route != route) context.go(route);
-  }
-
-  Future<void> _refresh(BuildContext context) async {
-    // pull latest from cloud, then rebuild the current screen's data
-    final msg = await syncNow(ref);
-    // invalidate the streams the screens watch so they re-read fresh
-    ref.invalidate(patientsStreamProvider);
-    ref.invalidate(invoicesStreamProvider);
-    ref.invalidate(inventoryStreamProvider);
-    ref.invalidate(treatmentsStreamProvider);
-    ref.invalidate(appointmentsForDayProvider);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg == 'Synced' ? 'Refreshed' : msg)),
-      );
-    }
   }
 
   String _hintFor(String route, String monthName) => switch (route) {
@@ -339,70 +335,120 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
         child: Container(
-          height: 64,
-          padding: const EdgeInsets.symmetric(horizontal: 22),
+          height: _kBarHeight,
           decoration: BoxDecoration(
             color: d.surface.withValues(alpha: .7),
             border: Border(bottom: BorderSide(color: d.line)),
           ),
-          child: Row(
-            children: [
-              _iconBtn(context, Icons.menu_rounded, widget.onToggleSidebar),
-              SizedBox(width: 3.w),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.destination.title,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    widget.destination.subtitle,
-                    style: TextStyle(color: d.text4, fontSize: 10.sp),
-                  ),
-                ],
-              ),
-              SizedBox(width: 3.w),
-              Expanded(child: _searchField(context, route, results, monthName)),
-              const SizedBox(width: 10),
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final w = c.maxWidth;
+              // Breakpoints measured on the BAR's width, not the screen's —
+              // so an expanded sidebar or a half-width window is handled too.
+              final compact = w < 980; // action labels → icon only
+              final hideTitle = w < 820; // screen title drops
+              final hideTheme =
+                  w < 700; // theme toggle drops (it's in Settings)
+              final gap = compact ? 8.0 : 10.0;
 
-              //remove switcher so no all screns need switcher
-              // const BranchSwitcher(),
-              // SizedBox(width: 2.w),
-              //         if (ref.watch(entitlementsProvider).sync) ...[
-              //   _RefreshButton(destination: widget.destination),
-              //   const SizedBox(width: 10),
-              // ],
-              _iconBtn(
-                context,
-                isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                () => ref.read(themeModeProvider.notifier).toggle(),
-              ),
-              const SizedBox(width: 10),
-              _notificationBell(context, notifs),
-              // DB status is a system detail — only where system settings live.
-              if (route == AppRoutes.dashboard ||
-                  route == AppRoutes.settings) ...[
-                const SizedBox(width: 10),
-                _DbStatusButton(destination: widget.destination),
-              ],
-              if (route == AppRoutes.expenses)
-                ..._expenseActions(context, ref)
-              else if (_showPrimary(ref)) ...[
-                const SizedBox(width: 10),
-                _primaryButton(context, ref),
-              ],
-            ],
+              return Padding(
+                padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 22),
+                child: Row(
+                  children: [
+                    // ── LEFT: fixed-size, never stretches ──
+                    _iconBtn(
+                      context,
+                      Icons.menu_rounded,
+                      widget.onToggleSidebar,
+                      tooltip: 'Toggle sidebar',
+                    ),
+                    if (!hideTitle) ...[
+                      const SizedBox(width: 16),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: w >= 1400 ? 300 : 220,
+                        ),
+                        child: _title(context, d),
+                      ),
+                    ],
+                    const SizedBox(width: 20),
+
+                    // ── MIDDLE: the ONLY flexible child ──
+                    // It takes all free space; the search sits left-aligned
+                    // inside it and stops at 560px. Because nothing else
+                    // flexes, everything after it is pinned to the right edge.
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: _searchField(context, route, results, monthName),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+
+                    // ── RIGHT: actions, always at the end ──
+                    if (!hideTheme) ...[
+                      _iconBtn(
+                        context,
+                        isDark
+                            ? Icons.light_mode_rounded
+                            : Icons.dark_mode_rounded,
+                        () => ref.read(themeModeProvider.notifier).toggle(),
+                        tooltip: isDark ? 'Light mode' : 'Dark mode',
+                      ),
+                      SizedBox(width: gap),
+                    ],
+                    _notificationBell(context, notifs),
+                    // DB status is a system detail — only where system
+                    // settings live.
+                    if (route == AppRoutes.dashboard ||
+                        route == AppRoutes.settings) ...[
+                      SizedBox(width: gap),
+                      _DbStatusButton(destination: widget.destination),
+                    ],
+                    if (route == AppRoutes.expenses)
+                      ..._expenseActions(context, ref, compact: compact)
+                    else if (_showPrimary(ref)) ...[
+                      SizedBox(width: gap),
+                      _primaryButton(context, ref, compact: compact),
+                    ],
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ),
     );
   }
 
+  Widget _title(BuildContext context, DentColors d) => Column(
+    mainAxisSize: MainAxisSize.min,
+    mainAxisAlignment: MainAxisAlignment.center,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        widget.destination.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontFamily: AppFonts.display,
+          color: d.text1,
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
+        ),
+      ),
+      if (widget.destination.subtitle.isNotEmpty)
+        Text(
+          widget.destination.subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: d.text4, fontSize: 12.5, height: 1.3),
+        ),
+    ],
+  );
+
+  // ── search ────────────────────────────────────────────────────────────────
   Widget _searchField(
     BuildContext context,
     String route,
@@ -410,44 +456,65 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
     String monthName,
   ) {
     final d = context.dent;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: CompositedTransformTarget(
-          link: _searchLink,
-          child: OverlayPortal(
-            controller: _portal,
-            overlayChildBuilder: (ctx) => _searchOverlay(ctx, results),
-            child: TextField(
-              controller: _searchCtrl,
-              focusNode: _searchFocus,
-              onChanged: _onSearch,
-              style: TextStyle(fontSize: 13.5.sp, color: d.text1),
-              decoration: InputDecoration(
-                isDense: true,
-                hintText: _hintFor(route, monthName),
-                hintStyle: TextStyle(color: d.text4, fontSize: 12.sp),
-                prefixIcon: Icon(
-                  Icons.search_rounded,
-                  color: d.text4,
-                  size: 13.5.sp,
-                ),
-                filled: true,
-                fillColor: d.surface2,
-                contentPadding: const EdgeInsets.symmetric(vertical: 11),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: d.line),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: d.ice, width: 1.5),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 560),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          // Remember the real width so the dropdown lines up with the box.
+          _searchWidth = c.maxWidth;
+          return CompositedTransformTarget(
+            link: _searchLink,
+            child: OverlayPortal(
+              controller: _portal,
+              overlayChildBuilder: (ctx) => _searchOverlay(ctx, results),
+              child: SizedBox(
+                height: _kBtn,
+                child: TextField(
+                  controller: _searchCtrl,
+                  focusNode: _searchFocus,
+                  onChanged: _onSearch,
+                  textAlignVertical: TextAlignVertical.center,
+                  style: TextStyle(fontSize: 15, color: d.text1),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: _hintFor(route, monthName),
+                    hintStyle: TextStyle(color: d.text4, fontSize: 14),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: d.text4,
+                      size: _kIcon,
+                    ),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Clear',
+                            icon: Icon(
+                              Icons.close_rounded,
+                              size: 18,
+                              color: d.text4,
+                            ),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              _onSearch('');
+                            },
+                          ),
+                    filled: true,
+                    fillColor: d.surface2,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(_kRadius),
+                      borderSide: BorderSide(color: d.line),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(_kRadius),
+                      borderSide: BorderSide(color: d.ice, width: 1.5),
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -473,11 +540,11 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
             child: Material(
               color: Colors.transparent,
               child: Container(
-                width: 420,
-                constraints: const BoxConstraints(maxHeight: 360),
+                width: _searchWidth,
+                constraints: const BoxConstraints(maxHeight: 400),
                 decoration: BoxDecoration(
                   color: d.surface,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(_kRadius),
                   border: Border.all(color: d.line),
                   boxShadow: [
                     BoxShadow(
@@ -489,10 +556,10 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
                 ),
                 child: results.isEmpty
                     ? Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(18),
                         child: Text(
                           'No results for “${_query.trim()}”.',
-                          style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+                          style: TextStyle(color: d.text4, fontSize: 13.5),
                         ),
                       )
                     : ListView(
@@ -504,13 +571,13 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
                               onTap: r.onTap,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 9,
+                                  horizontal: 14,
+                                  vertical: 10,
                                 ),
                                 child: Row(
                                   children: [
                                     _leading(d, r),
-                                    const SizedBox(width: 11),
+                                    const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -521,16 +588,19 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
                                             style: TextStyle(
                                               color: d.text1,
                                               fontWeight: FontWeight.w600,
-                                              fontSize: 9.sp,
+                                              fontSize: 14,
                                             ),
+                                            maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
+                                          const SizedBox(height: 2),
                                           Text(
                                             r.subtitle,
                                             style: TextStyle(
                                               color: d.text4,
-                                              fontSize: 7.5.sp,
+                                              fontSize: 12,
                                             ),
+                                            maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ],
@@ -538,7 +608,7 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
                                     ),
                                     Icon(
                                       Icons.north_east_rounded,
-                                      size: 9.sp,
+                                      size: 16,
                                       color: d.text4,
                                     ),
                                   ],
@@ -558,43 +628,45 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
   Widget _leading(DentColors d, _Result r) {
     if (r.initials != null) {
       return Container(
-        width: 32,
-        height: 32,
+        width: 36,
+        height: 36,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: const Color(0x2638BDF8),
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
           r.initials!,
-          style: TextStyle(
-            color: const Color(0xFF38BDF8),
+          style: const TextStyle(
+            color: Color(0xFF38BDF8),
             fontWeight: FontWeight.w700,
-            fontSize: 8.sp,
+            fontSize: 13,
           ),
         ),
       );
     }
     return Container(
-      width: 32,
-      height: 32,
+      width: 36,
+      height: 36,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: d.ice.withValues(alpha: .14),
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(r.icon ?? Icons.search_rounded, color: d.ice, size: 10.sp),
+      child: Icon(r.icon ?? Icons.search_rounded, color: d.ice, size: 18),
     );
   }
 
+  // ── notifications ─────────────────────────────────────────────────────────
   Widget _notificationBell(BuildContext context, List<_Notif> notifs) {
+    final d = context.dent;
     return MenuAnchor(
       alignmentOffset: const Offset(-240, 10),
       style: MenuStyle(
-        backgroundColor: WidgetStatePropertyAll(context.dent.surface),
-        side: WidgetStatePropertyAll(BorderSide(color: context.dent.line)),
+        backgroundColor: WidgetStatePropertyAll(d.surface),
+        side: WidgetStatePropertyAll(BorderSide(color: d.line)),
         shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(_kRadius)),
         ),
       ),
       menuChildren: notifs.isEmpty
@@ -602,10 +674,13 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
               MenuItemButton(
                 onPressed: null,
                 child: SizedBox(
-                  width: 25.w,
+                  width: 260,
                   child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 6),
-                    child: Text('No new notifications'),
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text(
+                      'No new notifications',
+                      style: TextStyle(fontSize: 14, color: d.text3),
+                    ),
                   ),
                 ),
               ),
@@ -613,9 +688,12 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
           : [
               for (final n in notifs)
                 MenuItemButton(
-                  leadingIcon: Icon(n.icon, size: 10.sp),
+                  leadingIcon: Icon(n.icon, size: 19),
                   onPressed: () => context.go(n.route),
-                  child: SizedBox(width: 220, child: Text(n.label)),
+                  child: SizedBox(
+                    width: 240,
+                    child: Text(n.label, style: const TextStyle(fontSize: 14)),
+                  ),
                 ),
             ],
       builder: (context, controller, child) => _iconBtn(
@@ -623,38 +701,41 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
         Icons.notifications_none_rounded,
         () => controller.isOpen ? controller.close() : controller.open(),
         dot: notifs.isNotEmpty,
+        tooltip: 'Notifications',
       ),
     );
   }
 
+  // ── shared button ────────────────────────────────────────────────────────
   Widget _iconBtn(
     BuildContext context,
     IconData icon,
     VoidCallback onTap, {
     bool dot = false,
+    String? tooltip,
   }) {
     final d = context.dent;
-    return Material(
+    final btn = Material(
       color: d.surface,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(_kRadius),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(_kRadius),
         onTap: onTap,
         child: Container(
-          width: 20.sp,
-          height: 20.sp,
+          width: _kBtn,
+          height: _kBtn,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(_kRadius),
             border: Border.all(color: d.line),
           ),
           child: Stack(
             alignment: Alignment.center,
             children: [
-              Icon(icon, size: 14.sp, color: d.text3),
+              Icon(icon, size: _kIcon, color: d.text3),
               if (dot)
                 Positioned(
-                  top: 9,
-                  right: 10,
+                  top: 10,
+                  right: 11,
                   child: Container(
                     width: 8,
                     height: 8,
@@ -670,64 +751,32 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
         ),
       ),
     );
+    return tooltip == null ? btn : Tooltip(message: tooltip, child: btn);
   }
 
-  /// Expenses needs three actions, not one, so it bypasses _primaryButton.
-  List<Widget> _expenseActions(BuildContext context, WidgetRef ref) {
-    if (!ref.watch(canProvider(Perm.manageExpenses))) return const [];
+  /// Gradient call-to-action. Collapses to an icon with a tooltip when the
+  /// bar is narrow, instead of overflowing.
+  Widget _accentButton(
+    BuildContext context, {
+    required String label,
+    required VoidCallback onTap,
+    required bool compact,
+  }) {
     final d = context.dent;
-    final period = ref.watch(expensePeriodProvider);
-
-    return [
-      // Copying forward only makes sense while viewing a single month.
-      if (period.mode == PeriodMode.month) ...[
-        const SizedBox(width: 10),
-        Material(
-          color: d.surface,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => copyLastMonthFlow(context, ref, period),
-            child: Container(
-              height: 42,
-              padding: EdgeInsets.symmetric(horizontal: 8.sp),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: d.line),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.copy_all_rounded, size: 14.sp, color: d.text3),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Copy last month',
-                    style: TextStyle(
-                      fontFamily: AppFonts.body,
-                      color: d.text2,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 10.5.sp,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-      const SizedBox(width: 10),
-      _iconBtn(context, Icons.tune_rounded, () => showListsManager(context)),
-      const SizedBox(width: 10),
-      Material(
+    return Tooltip(
+      message: compact ? label : '',
+      child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => showExpenseEditor(context),
+          borderRadius: BorderRadius.circular(_kRadius),
+          onTap: onTap,
           child: Container(
-            height: 42,
-            padding: EdgeInsets.all(8.sp),
+            height: _kBtn,
+            constraints: BoxConstraints(minWidth: compact ? _kBtn : 0),
+            padding: EdgeInsets.symmetric(horizontal: compact ? 0 : 16),
             decoration: BoxDecoration(
               gradient: d.accentGradient,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(_kRadius),
               boxShadow: [
                 BoxShadow(
                   color: d.teal.withValues(alpha: .35),
@@ -737,26 +786,104 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
               ],
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
+                const Icon(
                   Icons.add_rounded,
                   color: AppPalette.onAccent,
-                  size: 15.5.sp,
+                  size: 22,
                 ),
-                const SizedBox(width: 4),
-                Text(
-                  'Add Expense',
-                  style: TextStyle(
-                    fontFamily: AppFonts.body,
-                    color: AppPalette.onAccent,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11.sp,
+                if (!compact) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontFamily: AppFonts.body,
+                      color: AppPalette.onAccent,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14.5,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // ── expenses: three actions ──────────────────────────────────────────────
+  List<Widget> _expenseActions(
+    BuildContext context,
+    WidgetRef ref, {
+    required bool compact,
+  }) {
+    if (!ref.watch(canProvider(Perm.manageExpenses))) return const [];
+    final d = context.dent;
+    final period = ref.watch(expensePeriodProvider);
+    final gap = compact ? 8.0 : 10.0;
+
+    return [
+      // Copying forward only makes sense while viewing a single month.
+      if (period.mode == PeriodMode.month) ...[
+        SizedBox(width: gap),
+        Tooltip(
+          message: 'Copy last month',
+          child: Material(
+            color: d.surface,
+            borderRadius: BorderRadius.circular(_kRadius),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(_kRadius),
+              onTap: () => copyLastMonthFlow(context, ref, period),
+              child: Container(
+                height: _kBtn,
+                constraints: BoxConstraints(minWidth: compact ? _kBtn : 0),
+                padding: EdgeInsets.symmetric(horizontal: compact ? 0 : 14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(_kRadius),
+                  border: Border.all(color: d.line),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.copy_all_rounded, size: _kIcon, color: d.text3),
+                    if (!compact) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        'Copy last month',
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontFamily: AppFonts.body,
+                          color: d.text2,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+      SizedBox(width: gap),
+      _iconBtn(
+        context,
+        Icons.tune_rounded,
+        () => showListsManager(context),
+        tooltip: 'Manage categories & methods',
+      ),
+      SizedBox(width: gap),
+      _accentButton(
+        context,
+        label: 'Add Expense',
+        onTap: () => showExpenseEditor(context),
+        compact: compact,
       ),
     ];
   }
@@ -766,6 +893,7 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
     final r = widget.destination.route;
     if (r == AppRoutes.settings) return false;
     if (r == AppRoutes.expenses) return false; // handled by _expenseActions
+    if (widget.destination.primaryAction.isEmpty) return false;
     // "+ New Offer" — Premium only
     if (r == AppRoutes.whatsapp) return ref.watch(entitlementsProvider).offers;
     // "Export Report" — financial data
@@ -775,50 +903,16 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
     return true;
   }
 
-  Widget _primaryButton(BuildContext context, WidgetRef ref) {
-    final d = context.dent;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _onPrimary(context, ref),
-        child: Container(
-          height: 42,
-          padding: EdgeInsets.all(8.sp),
-          decoration: BoxDecoration(
-            gradient: d.accentGradient,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: d.teal.withValues(alpha: .35),
-                blurRadius: 22,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.add_rounded,
-                color: AppPalette.onAccent,
-                size: 15.5.sp,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                widget.destination.primaryAction,
-                style: TextStyle(
-                  fontFamily: AppFonts.body,
-                  color: AppPalette.onAccent,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11.sp,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget _primaryButton(
+    BuildContext context,
+    WidgetRef ref, {
+    required bool compact,
+  }) => _accentButton(
+    context,
+    label: widget.destination.primaryAction,
+    onTap: () => _onPrimary(context, ref),
+    compact: compact,
+  );
 
   void _onPrimary(BuildContext context, WidgetRef ref) {
     switch (widget.destination.route) {
@@ -868,6 +962,10 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+//  DB STATUS
+// ═════════════════════════════════════════════════════════════════════════════
+
 class _DbStatusButton extends ConsumerWidget {
   const _DbStatusButton({required this.destination});
   final NavDestination destination;
@@ -884,20 +982,23 @@ class _DbStatusButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final d = context.dent;
-    return Material(
-      color: d.surface,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _showDialog(context, ref),
-        child: Container(
-          width: 20.sp,
-          height: 20.sp,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: d.line),
+    return Tooltip(
+      message: 'Database status',
+      child: Material(
+        color: d.surface,
+        borderRadius: BorderRadius.circular(_kRadius),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(_kRadius),
+          onTap: () => _showDialog(context, ref),
+          child: Container(
+            width: _kBtn,
+            height: _kBtn,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(_kRadius),
+              border: Border.all(color: d.line),
+            ),
+            child: Icon(Icons.storage_rounded, size: _kIcon, color: d.text3),
           ),
-          child: Icon(Icons.storage_rounded, size: 14.sp, color: d.text3),
         ),
       ),
     );
@@ -921,8 +1022,8 @@ class _DbStatusButton extends ConsumerWidget {
         backgroundColor: d.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         contentPadding: EdgeInsets.zero,
-        content: SizedBox(
-          width: 40.w,
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520, minWidth: 380),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -935,8 +1036,8 @@ class _DbStatusButton extends ConsumerWidget {
                 child: Row(
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
                         color: d.ice.withValues(alpha: .13),
                         borderRadius: BorderRadius.circular(11),
@@ -944,7 +1045,7 @@ class _DbStatusButton extends ConsumerWidget {
                       child: Icon(
                         Icons.storage_rounded,
                         color: d.ice,
-                        size: 14.sp,
+                        size: 21,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -955,14 +1056,14 @@ class _DbStatusButton extends ConsumerWidget {
                           'Database Status',
                           style: TextStyle(
                             fontFamily: AppFonts.display,
-                            fontSize: 14.sp,
+                            fontSize: 17,
                             fontWeight: FontWeight.w600,
                             color: d.text1,
                           ),
                         ),
                         Text(
                           'DentOS local + cloud',
-                          style: TextStyle(color: d.text4, fontSize: 10.sp),
+                          style: TextStyle(color: d.text4, fontSize: 13),
                         ),
                       ],
                     ),
@@ -1000,21 +1101,18 @@ class _DbStatusButton extends ConsumerWidget {
                       _timeAgo(lastSync),
                       lastSync == null ? d.text4 : d.ok,
                     ),
-                    if (lastSync != null) ...[
-                      // const SizedBox(height: 4),
+                    if (lastSync != null)
                       Align(
                         alignment: Alignment.centerRight,
                         child: Text(
                           lastSync.toString().split('.').first,
                           style: TextStyle(
                             color: d.text4,
-                            fontSize: 8.5.sp,
+                            fontSize: 12,
                             fontFamily: AppFonts.mono,
                           ),
                         ),
                       ),
-                    ],
-
                     const SizedBox(height: 14),
                     _row(
                       d,
@@ -1043,7 +1141,7 @@ class _DbStatusButton extends ConsumerWidget {
                           '$skippedWhat',
                           style: TextStyle(
                             color: d.text3,
-                            fontSize: 8.sp,
+                            fontSize: 12.5,
                             height: 1.4,
                           ),
                         ),
@@ -1071,7 +1169,7 @@ class _DbStatusButton extends ConsumerWidget {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: d.warn,
                           side: BorderSide(color: d.line),
-                          minimumSize: const Size.fromHeight(40),
+                          minimumSize: const Size.fromHeight(42),
                         ),
                         onPressed: () async {
                           Navigator.pop(ctx);
@@ -1091,7 +1189,7 @@ class _DbStatusButton extends ConsumerWidget {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: d.text2,
                           side: BorderSide(color: d.line),
-                          minimumSize: const Size.fromHeight(40),
+                          minimumSize: const Size.fromHeight(42),
                         ),
                         onPressed: () => Navigator.pop(ctx),
                         child: const Text('Close'),
@@ -1103,13 +1201,13 @@ class _DbStatusButton extends ConsumerWidget {
                         style: FilledButton.styleFrom(
                           backgroundColor: d.ice,
                           foregroundColor: AppPalette.onAccent,
-                          minimumSize: const Size.fromHeight(40),
+                          minimumSize: const Size.fromHeight(42),
                         ),
                         onPressed: () {
                           Navigator.pop(ctx);
                           context.go(AppRoutes.settings);
                         },
-                        icon: const Icon(Icons.settings_rounded, size: 16),
+                        icon: const Icon(Icons.settings_rounded, size: 17),
                         label: const Text('Settings'),
                       ),
                     ),
@@ -1133,13 +1231,13 @@ class _DbStatusButton extends ConsumerWidget {
     return Row(
       children: [
         Container(
-          width: 34,
-          height: 34,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
             color: iconColor.withValues(alpha: .12),
             borderRadius: BorderRadius.circular(9),
           ),
-          child: Icon(icon, color: iconColor, size: 16),
+          child: Icon(icon, color: iconColor, size: 18),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -1150,7 +1248,7 @@ class _DbStatusButton extends ConsumerWidget {
                 label,
                 style: TextStyle(
                   color: d.text3,
-                  fontSize: 11.sp,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1158,7 +1256,7 @@ class _DbStatusButton extends ConsumerWidget {
                 value,
                 style: TextStyle(
                   color: d.text1,
-                  fontSize: 9.5.sp,
+                  fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),

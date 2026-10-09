@@ -325,6 +325,8 @@ Future<void> main() async {
           await _handleMint(req);
         case 'POST /api/reset':
           await _handleReset(req);
+        case 'POST /api/recover':
+          await _handleRecover(req);
         default:
           req.response.statusCode = 404;
           await req.response.close();
@@ -505,6 +507,56 @@ Future<void> _handleReset(HttpRequest req) async {
   final pretty = const JsonEncoder.withIndent('  ').convert(token);
 
   stdout.writeln('RESET  $clinicId  ·  expires ${expiresAt.toIso8601String()}');
+  _json(req, {'ok': true, 'token': pretty, 'clinicId': clinicId});
+}
+
+/// Signed, single-use code that lets a clinic set a NEW cloud password while
+/// recovering on a replacement computer. Same key and canonical shape as the
+/// owner reset token — only `action` differs, so neither can stand in for
+/// the other.
+Future<void> _handleRecover(HttpRequest req) async {
+  final body =
+      jsonDecode(await utf8.decoder.bind(req).join()) as Map<String, dynamic>;
+  final clinicId = (body['clinicId'] ?? '').toString().trim();
+  final hours = int.tryParse('${body['validHours']}') ?? 24;
+  if (clinicId.isEmpty) {
+    return _json(req, {'ok': false, 'error': 'Select a clinic.'});
+  }
+
+  final rnd = Random.secure();
+  final nonce = List.generate(
+    16,
+    (_) => rnd.nextInt(256),
+  ).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  final issuedAt = DateTime.now();
+  final expiresAt = issuedAt.add(Duration(hours: hours));
+
+  // Field order is the contract with redeem-recovery-code.
+  final payload = jsonEncode({
+    'action': 'cloudRecover',
+    'clinicId': clinicId,
+    'nonce': nonce,
+    'issuedAt': issuedAt.toUtc().toIso8601String(),
+    'expiresAt': expiresAt.toUtc().toIso8601String(),
+  });
+
+  final pair = _loadOrCreateKeys();
+  final priv = pair.privateKey as RSAPrivateKey;
+  final signer = RSASigner(SHA256Digest(), '0609608648016503040201')
+    ..init(true, PrivateKeyParameter<RSAPrivateKey>(priv));
+  final sig = signer.generateSignature(
+    Uint8List.fromList(utf8.encode(payload)),
+  );
+
+  final token = {
+    ...jsonDecode(payload) as Map<String, dynamic>,
+    'signature': base64.encode(sig.bytes),
+  };
+  final pretty = const JsonEncoder.withIndent('  ').convert(token);
+
+  stdout.writeln(
+    'RECOVER  $clinicId  ·  expires ${expiresAt.toIso8601String()}',
+  );
   _json(req, {'ok': true, 'token': pretty, 'clinicId': clinicId});
 }
 
@@ -744,6 +796,25 @@ const _html = r'''
 </div>
 </div>
 
+<div class="wrap">
+  <div class="card" style="margin-top:18px">
+    <div class="ch"><div><h2>Cloud recovery code</h2>
+      <div class="s">For an owner restoring on a new computer who forgot the cloud password</div></div></div>
+    <div class="body">
+      <div class="note n-alert">This code lets someone set a new cloud password
+        and download every patient record of that clinic. Verify the caller
+        first — call back on the number you have on file, never the number
+        that called you.</div>
+      <label>Clinic</label>
+      <select id="rcClinic"><option value="">— select —</option></select>
+      <label>Valid for (hours)</label>
+      <input id="rcHours" type="number" min="1" value="24">
+      <button class="btn" onclick="genRecover()">Generate recovery code</button>
+      <div id="rcOut"></div>
+    </div>
+  </div>
+</div>
+
 <!-- confirmation modal -->
 <div class="mask" id="mask">
   <div class="modal">
@@ -960,10 +1031,33 @@ function preflight(){
   mint();
 }
 function fillResetClinics(){
-  const s = document.getElementById('rsClinic');
-  if(!s) return;
-  s.innerHTML = '<option value="">— select —</option>' +
+  const opts = '<option value="">— select —</option>' +
     clinics.map(c=>`<option value="${c.clinicId}">${esc(c.clinicName)} · ${c.clinicId}</option>`).join('');
+  for (const id of ['rsClinic','rcClinic']) {
+    const s = document.getElementById(id);
+    if (s) s.innerHTML = opts;
+  }
+}
+
+async function genRecover(){
+  const clinicId = document.getElementById('rcClinic').value;
+  if(!clinicId){ alert('Select the clinic.'); return; }
+  const out = document.getElementById('rcOut');
+  out.innerHTML = '<div class="note n-ice" style="margin-top:14px">Signing…</div>';
+  try{
+    const r = await fetch('/api/recover', {method:'POST', body: JSON.stringify({
+      clinicId, validHours: document.getElementById('rcHours').value })});
+    const j = await r.json();
+    if(!j.ok){ out.innerHTML = '<div class="note n-alert" style="margin-top:14px">'+esc(j.error)+'</div>'; return; }
+    window._lastRecover = j.token;
+    out.innerHTML =
+      '<div class="note n-ok" style="margin-top:14px">Recovery code for <b>'+esc(j.clinicId)+
+      '</b> — single use, send it to the owner.</div>' +
+      '<div style="margin:10px 0"><button class="copy" onclick="navigator.clipboard.writeText(window._lastRecover||\'\')">Copy recovery code</button></div>' +
+      '<pre>'+esc(j.token)+'</pre>';
+  }catch(e){
+    out.innerHTML = '<div class="note n-alert" style="margin-top:14px">'+e+'</div>';
+  }
 }
 
 async function mint(){

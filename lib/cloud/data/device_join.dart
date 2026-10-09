@@ -70,6 +70,44 @@ class DeviceJoin {
     }
   }
 
+  /// Exchanges a vendor-issued recovery code for a NEW cloud password on the
+  /// clinic's account. Returns the account email so the caller can sign in.
+  Future<({bool ok, String? error, String? email})> redeemRecovery({
+    required Map<String, dynamic> license,
+    required String token,
+    required String newPassword,
+  }) async {
+    final sb = Supabase.instance.client;
+    try {
+      final res = await sb.functions.invoke(
+        'redeem-recovery-code',
+        body: {'license': license, 'token': token, 'newPassword': newPassword},
+      );
+      final data = res.data;
+      if (data is Map && data['ok'] == true) {
+        return (ok: true, error: null, email: data['email']?.toString());
+      }
+      return (
+        ok: false,
+        error:
+            (data is Map ? data['error']?.toString() : null) ??
+            'That recovery code could not be used.',
+        email: null,
+      );
+    } on FunctionException catch (e) {
+      final d = e.details;
+      return (
+        ok: false,
+        error:
+            (d is Map ? d['error']?.toString() : null) ??
+            'Recovery failed (${e.status}).',
+        email: null,
+      );
+    } catch (e) {
+      return (ok: false, error: '$e', email: null);
+    }
+  }
+
   /// Signs in with the owner's cloud credentials for the RECOVER path,
   /// then checks the account really belongs to this licence's clinic.
   Future<({bool ok, String? error})> signInAsOwner({

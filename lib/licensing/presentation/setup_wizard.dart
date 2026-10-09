@@ -32,6 +32,12 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
   final _joinCode = TextEditingController();
   final _recoverEmail = TextEditingController();
   final _recoverPass = TextEditingController();
+  final _recoveryCode = TextEditingController();
+  final _newCloudPass = TextEditingController();
+  final _newCloudPass2 = TextEditingController();
+
+  /// Recover with a vendor code instead of the cloud password.
+  bool _useCode = false;
 
   @override
   void dispose() {
@@ -46,6 +52,9 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
       _joinCode,
       _recoverEmail,
       _recoverPass,
+      _recoveryCode,
+      _newCloudPass,
+      _newCloudPass2,
     ]) {
       c.dispose();
     }
@@ -204,6 +213,70 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
     await _restoreAndFinish(
       email: email,
       password: _recoverPass.text,
+      letter: 'A',
+    );
+  }
+
+  // ── step 2: recover with a vendor code ────────────────────────────────
+  Future<void> _finishRecoverWithCode() async {
+    final lic = _lic;
+    if (lic == null) return;
+    if (_recoveryCode.text.trim().isEmpty) {
+      setState(() => _error = 'Paste the recovery code from Inover Studio.');
+      return;
+    }
+    if (_newCloudPass.text.length < 8) {
+      setState(
+        () => _error = 'Choose a cloud password of at least 8 characters.',
+      );
+      return;
+    }
+    if (_newCloudPass.text != _newCloudPass2.text) {
+      setState(() => _error = 'The two passwords do not match.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+      _progress = 'Checking the recovery code…';
+    });
+
+    final join = ref.read(deviceJoinProvider);
+    final r = await join.redeemRecovery(
+      license: lic.toJson(),
+      token: _recoveryCode.text.trim(),
+      newPassword: _newCloudPass.text,
+    );
+    if (!r.ok || r.email == null) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _progress = null;
+          _error = r.error;
+        });
+      }
+      return;
+    }
+
+    final s = await join.signInAsOwner(
+      email: r.email!,
+      password: _newCloudPass.text,
+      clinicId: lic.clinicId,
+    );
+    if (!s.ok) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _progress = null;
+          _error = s.error;
+        });
+      }
+      return;
+    }
+
+    await _restoreAndFinish(
+      email: r.email!,
+      password: _newCloudPass.text,
       letter: 'A',
     );
   }
@@ -512,23 +585,66 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
           'Everything up to your last sync will be restored to this computer.',
         ),
       const SizedBox(height: 14),
-      AuthField(
-        label: 'Cloud account email',
-        controller: _recoverEmail,
-        hint: 'the email you set when you first installed DentOS',
-      ),
-      AuthField(
-        label: 'Cloud account password',
-        controller: _recoverPass,
-        obscure: true,
-        hint: 'NOT your daily login — the one set at first install',
-        onSubmit: _busy ? null : _finishRecover,
-      ),
-      _infoBox(
-        d,
-        'Don\'t have these? Call Inover Studio and quote your clinic ID '
-        '${lic?.clinicId ?? ""} — we can issue a recovery code.',
-      ),
+      if (!_useCode) ...[
+        AuthField(
+          label: 'Cloud account email',
+          controller: _recoverEmail,
+          hint: 'the email you set when you first installed DentOS',
+        ),
+        AuthField(
+          label: 'Cloud account password',
+          controller: _recoverPass,
+          obscure: true,
+          hint: 'NOT your daily login — the one set at first install',
+          onSubmit: _busy ? null : _finishRecover,
+        ),
+        TextButton(
+          onPressed: _busy
+              ? null
+              : () => setState(() {
+                  _useCode = true;
+                  _error = null;
+                }),
+          child: const Text("I don't have the cloud password"),
+        ),
+      ] else ...[
+        _infoBox(
+          d,
+          'Call Inover Studio and quote your clinic ID:\n\n'
+          '${lic?.clinicId ?? ""}\n\n'
+          'After confirming you are the owner, we will send you a recovery '
+          'code. Paste it below and choose a new cloud password — write it '
+          'down and keep it safe.',
+        ),
+        const SizedBox(height: 14),
+        AuthField(
+          label: 'Recovery code',
+          controller: _recoveryCode,
+          hint: 'Paste the full code you received',
+          maxLines: 5,
+        ),
+        AuthField(
+          label: 'New cloud password',
+          controller: _newCloudPass,
+          obscure: true,
+          hint: 'at least 8 characters',
+        ),
+        AuthField(
+          label: 'Repeat new cloud password',
+          controller: _newCloudPass2,
+          obscure: true,
+          onSubmit: _busy ? null : _finishRecoverWithCode,
+        ),
+        TextButton(
+          onPressed: _busy
+              ? null
+              : () => setState(() {
+                  _useCode = false;
+                  _error = null;
+                }),
+          child: const Text('I have the cloud password after all'),
+        ),
+      ],
     ],
   );
 
@@ -569,7 +685,7 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
       };
       onPressed = switch (_mode) {
         _Mode.join => _finishJoin,
-        _Mode.recover => _finishRecover,
+        _Mode.recover => _useCode ? _finishRecoverWithCode : _finishRecover,
         _ => _finishNew,
       };
     }

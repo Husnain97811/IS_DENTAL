@@ -217,7 +217,7 @@ class AuthBrand extends StatelessWidget {
   }
 }
 
-class AuthField extends StatelessWidget {
+class AuthField extends StatefulWidget {
   const AuthField({
     super.key,
     required this.label,
@@ -233,16 +233,28 @@ class AuthField extends StatelessWidget {
   final bool obscure;
   final int maxLines;
   final VoidCallback? onSubmit;
+
+  @override
+  State<AuthField> createState() => _AuthFieldState();
+}
+
+class _AuthFieldState extends State<AuthField> {
+  /// Obscured by default — a password must never start visible, in case
+  /// someone is standing at reception.
+  bool _hidden = true;
+
   @override
   Widget build(BuildContext context) {
     final d = context.dent;
+    final isPassword = widget.obscure;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 14.4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            label.toUpperCase(),
+            widget.label.toUpperCase(),
             style: TextStyle(
               color: d.text2,
               fontSize: 10.5.sp,
@@ -252,21 +264,54 @@ class AuthField extends StatelessWidget {
           ),
           const SizedBox(height: 7.2),
           TextField(
-            controller: controller,
-            obscureText: obscure,
-            maxLines: obscure ? 1 : maxLines,
-            onSubmitted: (_) => onSubmit?.call(),
+            controller: widget.controller,
+            obscureText: isPassword && _hidden,
+            maxLines: isPassword ? 1 : widget.maxLines,
+            onSubmitted: (_) => widget.onSubmit?.call(),
             style: TextStyle(fontSize: 13.8.sp, color: d.text1),
             decoration: InputDecoration(
-              hintText: hint,
+              hintText: widget.hint,
               hintStyle: TextStyle(color: d.text4, fontSize: 10.8.sp),
               filled: true,
               fillColor: d.surface2.withValues(alpha: 0.55),
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 15.6,
-                vertical: 14.4,
+              contentPadding: EdgeInsets.only(
+                left: 15.6,
+                right: isPassword ? 6 : 15.6,
+                top: 14.4,
+                bottom: 14.4,
               ),
+              suffixIcon: isPassword
+                  ? Semantics(
+                      // Screen readers announce the ACTION, not the state.
+                      button: true,
+                      label: _hidden ? 'Show password' : 'Hide password',
+                      child: IconButton(
+                        tooltip: _hidden ? 'Show password' : 'Hide password',
+                        splashRadius: 20,
+                        visualDensity: VisualDensity.compact,
+                        icon: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 160),
+                          transitionBuilder: (child, anim) => FadeTransition(
+                            opacity: anim,
+                            child: ScaleTransition(scale: anim, child: child),
+                          ),
+                          child: Icon(
+                            _hidden
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            key: ValueKey(_hidden),
+                            size: 19,
+                            color: _hidden ? d.text4 : d.ice,
+                          ),
+                        ),
+                        onPressed: () => setState(() => _hidden = !_hidden),
+                      ),
+                    )
+                  : null,
+              suffixIconConstraints: isPassword
+                  ? const BoxConstraints(minWidth: 46, minHeight: 46)
+                  : null,
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(13.2),
                 borderSide: BorderSide(color: d.line.withValues(alpha: .7)),
