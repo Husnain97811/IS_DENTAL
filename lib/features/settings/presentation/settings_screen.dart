@@ -1207,52 +1207,52 @@ class _S extends ConsumerState<SettingsScreen> {
           // ),
 
           // ── Cloud Sync ──
-          if (ent.cloud && canBackup)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: d.line)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Cloud Sync',
-                          style: TextStyle(
-                            color: d.text1,
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          'Push all local data to Cloud',
-                          style: TextStyle(color: d.text3, fontSize: 9.sp),
-                        ),
-                      ],
-                    ),
-                  ),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: d.ice,
-                      foregroundColor: AppPalette.onAccent,
-                    ),
-                    onPressed: () async {
-                      final msg = await syncNow(ref);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text(msg)));
-                      }
-                    },
-                    icon: const Icon(Icons.cloud_sync_rounded, size: 16),
-                    label: const Text('Sync now'),
-                  ),
-                ],
-              ),
+          // if (ent.cloud && canBackup)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: d.line)),
             ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Cloud Sync',
+                        style: TextStyle(
+                          color: d.text1,
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Push all local data to Cloud',
+                        style: TextStyle(color: d.text3, fontSize: 9.sp),
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: d.ice,
+                    foregroundColor: AppPalette.onAccent,
+                  ),
+                  onPressed: () async {
+                    final msg = await syncNow(ref);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(msg)));
+                    }
+                  },
+                  icon: const Icon(Icons.cloud_sync_rounded, size: 16),
+                  label: const Text('Sync now'),
+                ),
+              ],
+            ),
+          ),
 
           // ── Restore / Export ──
           if (ent.cloud && canBackup)
