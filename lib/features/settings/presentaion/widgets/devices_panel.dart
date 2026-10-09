@@ -276,12 +276,19 @@ class _JoinCodeDialogState extends ConsumerState<_JoinCodeDialog> {
                 )
               else ...[
                 Text(
-                  'On the new computer, install DentOS, paste the same '
-                  'licence, choose "Add this computer to an existing '
-                  'clinic", and enter this code.',
+                  'Steps to setup software on second pc/laptop \n1.On the new computer download & install DentOS\n2.paste the same licence key\n3.Choose "Add this computer to an existing clinic"\n4.Enter the generated code.',
                   style: TextStyle(
-                    color: d.text3,
-                    fontSize: 9.5.sp,
+                    color: d.text2,
+                    fontSize: 10.5.sp,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Note: Dont close this dialog until the joinig process completed',
+                  style: TextStyle(
+                    color: d.text2,
+                    fontSize: 10.5.sp,
                     height: 1.5,
                   ),
                 ),
@@ -312,7 +319,11 @@ class _JoinCodeDialogState extends ConsumerState<_JoinCodeDialog> {
                   'computer $_letter, and its patient and invoice numbers '
                   'will end in -$_letter',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: d.text4, fontSize: 8.sp, height: 1.5),
+                  style: TextStyle(
+                    color: d.text4,
+                    fontSize: 9.5.sp,
+                    height: 1.5,
+                  ),
                 ),
                 const SizedBox(height: 18),
                 OutlinedButton.icon(

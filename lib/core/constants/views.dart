@@ -110,3 +110,5 @@ export 'package:is_dental/features/patients/domain/treatment_plan.dart';
 export '../../../core/constants/views.dart';
 export '../../../core/widgets/kpi_card.dart';
 export '../../../core/widgets/stat_bar.dart';
+export 'package:is_dental/cloud/data/cloud_registration.dart';
+export 'package:is_dental/cloud/data/device_join.dart';

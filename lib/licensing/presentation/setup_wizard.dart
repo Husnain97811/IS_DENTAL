@@ -1,16 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:is_dental/cloud/data/cloud_registration.dart';
-import 'package:is_dental/cloud/data/device_join.dart';
-import 'package:is_dental/cloud/data/sync_engine.dart';
-import 'package:is_dental/core/db/app_database.dart';
-import 'package:is_dental/core/device/device_service.dart';
-import 'package:is_dental/core/shell/auth_shell.dart';
 import 'package:sizer/sizer.dart';
 import 'dart:io';
-import '../../core/theme/dent_colors.dart';
-import '../domain/license.dart';
-import 'license_controller.dart';
+import '../../core/constants/views.dart';
 
 /// What this install is doing. A joining or recovering computer follows a
 /// completely different path from a new clinic — it must never create an
@@ -224,7 +216,6 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
   }) async {
     final lic = _lic!;
     try {
-      // Credentials first — restoreFromCloud signs in with them.
       final db = ref.read(appDatabaseProvider);
       await db.setSetting('cloud_email', email);
       await db.setSetting('cloud_password', password);
@@ -232,8 +223,35 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
       // yet", never "new clinic".
       await db.setSeedAllowed(false);
 
+      // MUST sign in first. restoreFromCloud does not do it itself — it
+      // just queries, and without a session RLS returns zero rows for
+      // every table. The restore then "succeeds" having downloaded
+      // nothing, and the app sits on the setup screen forever because
+      // userCount() is 0.
+      if (mounted) setState(() => _progress = 'Connecting…');
+      await ref.read(cloudServiceProvider).ensureSignedIn();
+
       if (mounted) setState(() => _progress = 'Downloading your clinic…');
       await ref.read(syncEngineProvider).restoreFromCloud(lic.clinicId);
+
+      // A restore that pulled no staff cannot be finished: nobody could
+      // log in, and resolveLicense() would keep reporting setup as
+      // incomplete. Fail loudly instead of hanging.
+      final staff = await db.userCount();
+      if (staff == 0) {
+        if (mounted) {
+          setState(() {
+            _busy = false;
+            _progress = null;
+            _error =
+                'The download finished but no staff accounts came through.\n\n'
+                'This usually means this computer could not read the '
+                'clinic\'s data. Check that PC 1 has synced at least once, '
+                'then try the code again.';
+          });
+        }
+        return;
+      }
 
       if (mounted) setState(() => _progress = 'Finishing up…');
       await ref
@@ -330,7 +348,7 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
                   const SizedBox(width: 10),
                   Text(
                     _progress!,
-                    style: TextStyle(color: d.text3, fontSize: 9.sp),
+                    style: TextStyle(color: d.text3, fontSize: 10.sp),
                   ),
                 ],
               ),
@@ -341,7 +359,7 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
               padding: const EdgeInsets.only(top: 6),
               child: Text(
                 _error!,
-                style: TextStyle(color: d.alert, fontSize: 8.5.sp, height: 1.5),
+                style: TextStyle(color: d.alert, fontSize: 10.sp, height: 1.5),
               ),
             ),
 
@@ -436,7 +454,7 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
                       title,
                       style: TextStyle(
                         color: d.text1,
-                        fontSize: 10.5.sp,
+                        fontSize: 12.sp,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -444,8 +462,8 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
                     Text(
                       body,
                       style: TextStyle(
-                        color: d.text3,
-                        fontSize: 8.5.sp,
+                        color: d.text2,
+                        fontSize: 9.5.sp,
                         height: 1.45,
                       ),
                     ),
@@ -522,7 +540,7 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
     ),
     child: SelectableText(
       text,
-      style: TextStyle(color: d.text3, fontSize: 8.5.sp, height: 1.5),
+      style: TextStyle(color: d.text2, fontSize: 9.5.sp, height: 1.5),
     ),
   );
 
