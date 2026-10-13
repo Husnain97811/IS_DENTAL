@@ -845,7 +845,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'main${_compact(total.round())}',
+                    '${_compact(total.round())}',
                     style: TextStyle(
                       fontFamily: AppFonts.display,
                       color: d.text1,

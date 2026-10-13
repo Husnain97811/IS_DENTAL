@@ -10586,6 +10586,88 @@ class $PatientXraysTable extends PatientXrays
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isEncryptedMeta = const VerificationMeta(
+    'isEncrypted',
+  );
+  @override
+  late final GeneratedColumn<bool> isEncrypted = GeneratedColumn<bool>(
+    'is_encrypted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_encrypted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _sha256Meta = const VerificationMeta('sha256');
+  @override
+  late final GeneratedColumn<String> sha256 = GeneratedColumn<String>(
+    'sha256',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _byteSizeMeta = const VerificationMeta(
+    'byteSize',
+  );
+  @override
+  late final GeneratedColumn<int> byteSize = GeneratedColumn<int>(
+    'byte_size',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _keyIdMeta = const VerificationMeta('keyId');
+  @override
+  late final GeneratedColumn<String> keyId = GeneratedColumn<String>(
+    'key_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isLocalMeta = const VerificationMeta(
+    'isLocal',
+  );
+  @override
+  late final GeneratedColumn<bool> isLocal = GeneratedColumn<bool>(
+    'is_local',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_local" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _originDeviceMeta = const VerificationMeta(
+    'originDevice',
+  );
+  @override
+  late final GeneratedColumn<String> originDevice = GeneratedColumn<String>(
+    'origin_device',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -10601,6 +10683,13 @@ class $PatientXraysTable extends PatientXrays
     takenAt,
     createdAt,
     isDeleted,
+    isEncrypted,
+    sha256,
+    byteSize,
+    updatedAt,
+    keyId,
+    isLocal,
+    originDevice,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -10704,6 +10793,54 @@ class $PatientXraysTable extends PatientXrays
         isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
       );
     }
+    if (data.containsKey('is_encrypted')) {
+      context.handle(
+        _isEncryptedMeta,
+        isEncrypted.isAcceptableOrUnknown(
+          data['is_encrypted']!,
+          _isEncryptedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sha256')) {
+      context.handle(
+        _sha256Meta,
+        sha256.isAcceptableOrUnknown(data['sha256']!, _sha256Meta),
+      );
+    }
+    if (data.containsKey('byte_size')) {
+      context.handle(
+        _byteSizeMeta,
+        byteSize.isAcceptableOrUnknown(data['byte_size']!, _byteSizeMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('key_id')) {
+      context.handle(
+        _keyIdMeta,
+        keyId.isAcceptableOrUnknown(data['key_id']!, _keyIdMeta),
+      );
+    }
+    if (data.containsKey('is_local')) {
+      context.handle(
+        _isLocalMeta,
+        isLocal.isAcceptableOrUnknown(data['is_local']!, _isLocalMeta),
+      );
+    }
+    if (data.containsKey('origin_device')) {
+      context.handle(
+        _originDeviceMeta,
+        originDevice.isAcceptableOrUnknown(
+          data['origin_device']!,
+          _originDeviceMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -10765,6 +10902,34 @@ class $PatientXraysTable extends PatientXrays
         DriftSqlType.bool,
         data['${effectivePrefix}is_deleted'],
       )!,
+      isEncrypted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_encrypted'],
+      )!,
+      sha256: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sha256'],
+      ),
+      byteSize: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}byte_size'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+      keyId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key_id'],
+      ),
+      isLocal: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_local'],
+      )!,
+      originDevice: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}origin_device'],
+      ),
     );
   }
 
@@ -10788,6 +10953,25 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
   final DateTime takenAt;
   final DateTime createdAt;
   final bool isDeleted;
+  final bool isEncrypted;
+
+  /// Fingerprint of the ORIGINAL image — verifies transfers in Phase 3.
+  final String? sha256;
+  final int byteSize;
+
+  /// Nullable on purpose: SQLite can't add a column whose default is the
+  /// current time, so the migration would fail. Set in code instead.
+  final DateTime? updatedAt;
+
+  /// Which key in the keyring opens this file.
+  final String? keyId;
+
+  /// False = the file is on another computer; this row is a placeholder
+  /// that arrived with the synced list.
+  final bool isLocal;
+
+  /// Device uuid of the computer that took it.
+  final String? originDevice;
   const XrayRow({
     required this.id,
     required this.uuid,
@@ -10802,6 +10986,13 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
     required this.takenAt,
     required this.createdAt,
     required this.isDeleted,
+    required this.isEncrypted,
+    this.sha256,
+    required this.byteSize,
+    this.updatedAt,
+    this.keyId,
+    required this.isLocal,
+    this.originDevice,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -10821,6 +11012,21 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
     map['taken_at'] = Variable<DateTime>(takenAt);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['is_deleted'] = Variable<bool>(isDeleted);
+    map['is_encrypted'] = Variable<bool>(isEncrypted);
+    if (!nullToAbsent || sha256 != null) {
+      map['sha256'] = Variable<String>(sha256);
+    }
+    map['byte_size'] = Variable<int>(byteSize);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    if (!nullToAbsent || keyId != null) {
+      map['key_id'] = Variable<String>(keyId);
+    }
+    map['is_local'] = Variable<bool>(isLocal);
+    if (!nullToAbsent || originDevice != null) {
+      map['origin_device'] = Variable<String>(originDevice);
+    }
     return map;
   }
 
@@ -10841,6 +11047,21 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
       takenAt: Value(takenAt),
       createdAt: Value(createdAt),
       isDeleted: Value(isDeleted),
+      isEncrypted: Value(isEncrypted),
+      sha256: sha256 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sha256),
+      byteSize: Value(byteSize),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+      keyId: keyId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(keyId),
+      isLocal: Value(isLocal),
+      originDevice: originDevice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originDevice),
     );
   }
 
@@ -10863,6 +11084,13 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
       takenAt: serializer.fromJson<DateTime>(json['takenAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      isEncrypted: serializer.fromJson<bool>(json['isEncrypted']),
+      sha256: serializer.fromJson<String?>(json['sha256']),
+      byteSize: serializer.fromJson<int>(json['byteSize']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+      keyId: serializer.fromJson<String?>(json['keyId']),
+      isLocal: serializer.fromJson<bool>(json['isLocal']),
+      originDevice: serializer.fromJson<String?>(json['originDevice']),
     );
   }
   @override
@@ -10882,6 +11110,13 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
       'takenAt': serializer.toJson<DateTime>(takenAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
+      'isEncrypted': serializer.toJson<bool>(isEncrypted),
+      'sha256': serializer.toJson<String?>(sha256),
+      'byteSize': serializer.toJson<int>(byteSize),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+      'keyId': serializer.toJson<String?>(keyId),
+      'isLocal': serializer.toJson<bool>(isLocal),
+      'originDevice': serializer.toJson<String?>(originDevice),
     };
   }
 
@@ -10899,6 +11134,13 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
     DateTime? takenAt,
     DateTime? createdAt,
     bool? isDeleted,
+    bool? isEncrypted,
+    Value<String?> sha256 = const Value.absent(),
+    int? byteSize,
+    Value<DateTime?> updatedAt = const Value.absent(),
+    Value<String?> keyId = const Value.absent(),
+    bool? isLocal,
+    Value<String?> originDevice = const Value.absent(),
   }) => XrayRow(
     id: id ?? this.id,
     uuid: uuid ?? this.uuid,
@@ -10913,6 +11155,13 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
     takenAt: takenAt ?? this.takenAt,
     createdAt: createdAt ?? this.createdAt,
     isDeleted: isDeleted ?? this.isDeleted,
+    isEncrypted: isEncrypted ?? this.isEncrypted,
+    sha256: sha256.present ? sha256.value : this.sha256,
+    byteSize: byteSize ?? this.byteSize,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+    keyId: keyId.present ? keyId.value : this.keyId,
+    isLocal: isLocal ?? this.isLocal,
+    originDevice: originDevice.present ? originDevice.value : this.originDevice,
   );
   XrayRow copyWithCompanion(PatientXraysCompanion data) {
     return XrayRow(
@@ -10931,6 +11180,17 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
       takenAt: data.takenAt.present ? data.takenAt.value : this.takenAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      isEncrypted: data.isEncrypted.present
+          ? data.isEncrypted.value
+          : this.isEncrypted,
+      sha256: data.sha256.present ? data.sha256.value : this.sha256,
+      byteSize: data.byteSize.present ? data.byteSize.value : this.byteSize,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      keyId: data.keyId.present ? data.keyId.value : this.keyId,
+      isLocal: data.isLocal.present ? data.isLocal.value : this.isLocal,
+      originDevice: data.originDevice.present
+          ? data.originDevice.value
+          : this.originDevice,
     );
   }
 
@@ -10949,7 +11209,14 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
           ..write('caption: $caption, ')
           ..write('takenAt: $takenAt, ')
           ..write('createdAt: $createdAt, ')
-          ..write('isDeleted: $isDeleted')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('isEncrypted: $isEncrypted, ')
+          ..write('sha256: $sha256, ')
+          ..write('byteSize: $byteSize, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('keyId: $keyId, ')
+          ..write('isLocal: $isLocal, ')
+          ..write('originDevice: $originDevice')
           ..write(')'))
         .toString();
   }
@@ -10969,6 +11236,13 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
     takenAt,
     createdAt,
     isDeleted,
+    isEncrypted,
+    sha256,
+    byteSize,
+    updatedAt,
+    keyId,
+    isLocal,
+    originDevice,
   );
   @override
   bool operator ==(Object other) =>
@@ -10986,7 +11260,14 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
           other.caption == this.caption &&
           other.takenAt == this.takenAt &&
           other.createdAt == this.createdAt &&
-          other.isDeleted == this.isDeleted);
+          other.isDeleted == this.isDeleted &&
+          other.isEncrypted == this.isEncrypted &&
+          other.sha256 == this.sha256 &&
+          other.byteSize == this.byteSize &&
+          other.updatedAt == this.updatedAt &&
+          other.keyId == this.keyId &&
+          other.isLocal == this.isLocal &&
+          other.originDevice == this.originDevice);
 }
 
 class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
@@ -11003,6 +11284,13 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
   final Value<DateTime> takenAt;
   final Value<DateTime> createdAt;
   final Value<bool> isDeleted;
+  final Value<bool> isEncrypted;
+  final Value<String?> sha256;
+  final Value<int> byteSize;
+  final Value<DateTime?> updatedAt;
+  final Value<String?> keyId;
+  final Value<bool> isLocal;
+  final Value<String?> originDevice;
   const PatientXraysCompanion({
     this.id = const Value.absent(),
     this.uuid = const Value.absent(),
@@ -11017,6 +11305,13 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
     this.takenAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
+    this.isEncrypted = const Value.absent(),
+    this.sha256 = const Value.absent(),
+    this.byteSize = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.keyId = const Value.absent(),
+    this.isLocal = const Value.absent(),
+    this.originDevice = const Value.absent(),
   });
   PatientXraysCompanion.insert({
     this.id = const Value.absent(),
@@ -11032,6 +11327,13 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
     this.takenAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
+    this.isEncrypted = const Value.absent(),
+    this.sha256 = const Value.absent(),
+    this.byteSize = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.keyId = const Value.absent(),
+    this.isLocal = const Value.absent(),
+    this.originDevice = const Value.absent(),
   }) : uuid = Value(uuid),
        clinicId = Value(clinicId),
        patientId = Value(patientId),
@@ -11052,6 +11354,13 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
     Expression<DateTime>? takenAt,
     Expression<DateTime>? createdAt,
     Expression<bool>? isDeleted,
+    Expression<bool>? isEncrypted,
+    Expression<String>? sha256,
+    Expression<int>? byteSize,
+    Expression<DateTime>? updatedAt,
+    Expression<String>? keyId,
+    Expression<bool>? isLocal,
+    Expression<String>? originDevice,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -11067,6 +11376,13 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
       if (takenAt != null) 'taken_at': takenAt,
       if (createdAt != null) 'created_at': createdAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
+      if (isEncrypted != null) 'is_encrypted': isEncrypted,
+      if (sha256 != null) 'sha256': sha256,
+      if (byteSize != null) 'byte_size': byteSize,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (keyId != null) 'key_id': keyId,
+      if (isLocal != null) 'is_local': isLocal,
+      if (originDevice != null) 'origin_device': originDevice,
     });
   }
 
@@ -11084,6 +11400,13 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
     Value<DateTime>? takenAt,
     Value<DateTime>? createdAt,
     Value<bool>? isDeleted,
+    Value<bool>? isEncrypted,
+    Value<String?>? sha256,
+    Value<int>? byteSize,
+    Value<DateTime?>? updatedAt,
+    Value<String?>? keyId,
+    Value<bool>? isLocal,
+    Value<String?>? originDevice,
   }) {
     return PatientXraysCompanion(
       id: id ?? this.id,
@@ -11099,6 +11422,13 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
       takenAt: takenAt ?? this.takenAt,
       createdAt: createdAt ?? this.createdAt,
       isDeleted: isDeleted ?? this.isDeleted,
+      isEncrypted: isEncrypted ?? this.isEncrypted,
+      sha256: sha256 ?? this.sha256,
+      byteSize: byteSize ?? this.byteSize,
+      updatedAt: updatedAt ?? this.updatedAt,
+      keyId: keyId ?? this.keyId,
+      isLocal: isLocal ?? this.isLocal,
+      originDevice: originDevice ?? this.originDevice,
     );
   }
 
@@ -11144,6 +11474,27 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
     if (isDeleted.present) {
       map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
+    if (isEncrypted.present) {
+      map['is_encrypted'] = Variable<bool>(isEncrypted.value);
+    }
+    if (sha256.present) {
+      map['sha256'] = Variable<String>(sha256.value);
+    }
+    if (byteSize.present) {
+      map['byte_size'] = Variable<int>(byteSize.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (keyId.present) {
+      map['key_id'] = Variable<String>(keyId.value);
+    }
+    if (isLocal.present) {
+      map['is_local'] = Variable<bool>(isLocal.value);
+    }
+    if (originDevice.present) {
+      map['origin_device'] = Variable<String>(originDevice.value);
+    }
     return map;
   }
 
@@ -11162,7 +11513,14 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
           ..write('caption: $caption, ')
           ..write('takenAt: $takenAt, ')
           ..write('createdAt: $createdAt, ')
-          ..write('isDeleted: $isDeleted')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('isEncrypted: $isEncrypted, ')
+          ..write('sha256: $sha256, ')
+          ..write('byteSize: $byteSize, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('keyId: $keyId, ')
+          ..write('isLocal: $isLocal, ')
+          ..write('originDevice: $originDevice')
           ..write(')'))
         .toString();
   }
@@ -18110,6 +18468,329 @@ class DevicesCompanion extends UpdateCompanion<DeviceRow> {
   }
 }
 
+class $DeviceInventoriesTable extends DeviceInventories
+    with TableInfo<$DeviceInventoriesTable, DeviceInventoryRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeviceInventoriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _deviceUuidMeta = const VerificationMeta(
+    'deviceUuid',
+  );
+  @override
+  late final GeneratedColumn<String> deviceUuid = GeneratedColumn<String>(
+    'device_uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _clinicIdMeta = const VerificationMeta(
+    'clinicId',
+  );
+  @override
+  late final GeneratedColumn<String> clinicId = GeneratedColumn<String>(
+    'clinic_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _xrayUuidsMeta = const VerificationMeta(
+    'xrayUuids',
+  );
+  @override
+  late final GeneratedColumn<String> xrayUuids = GeneratedColumn<String>(
+    'xray_uuids',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    deviceUuid,
+    clinicId,
+    xrayUuids,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'device_inventories';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeviceInventoryRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('device_uuid')) {
+      context.handle(
+        _deviceUuidMeta,
+        deviceUuid.isAcceptableOrUnknown(data['device_uuid']!, _deviceUuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceUuidMeta);
+    }
+    if (data.containsKey('clinic_id')) {
+      context.handle(
+        _clinicIdMeta,
+        clinicId.isAcceptableOrUnknown(data['clinic_id']!, _clinicIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('xray_uuids')) {
+      context.handle(
+        _xrayUuidsMeta,
+        xrayUuids.isAcceptableOrUnknown(data['xray_uuids']!, _xrayUuidsMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {deviceUuid};
+  @override
+  DeviceInventoryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeviceInventoryRow(
+      deviceUuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_uuid'],
+      )!,
+      clinicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clinic_id'],
+      )!,
+      xrayUuids: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}xray_uuids'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DeviceInventoriesTable createAlias(String alias) {
+    return $DeviceInventoriesTable(attachedDatabase, alias);
+  }
+}
+
+class DeviceInventoryRow extends DataClass
+    implements Insertable<DeviceInventoryRow> {
+  final String deviceUuid;
+  final String clinicId;
+
+  /// JSON array of X-ray uuids present on that computer.
+  final String xrayUuids;
+  final DateTime updatedAt;
+  const DeviceInventoryRow({
+    required this.deviceUuid,
+    required this.clinicId,
+    required this.xrayUuids,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['device_uuid'] = Variable<String>(deviceUuid);
+    map['clinic_id'] = Variable<String>(clinicId);
+    map['xray_uuids'] = Variable<String>(xrayUuids);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  DeviceInventoriesCompanion toCompanion(bool nullToAbsent) {
+    return DeviceInventoriesCompanion(
+      deviceUuid: Value(deviceUuid),
+      clinicId: Value(clinicId),
+      xrayUuids: Value(xrayUuids),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DeviceInventoryRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeviceInventoryRow(
+      deviceUuid: serializer.fromJson<String>(json['deviceUuid']),
+      clinicId: serializer.fromJson<String>(json['clinicId']),
+      xrayUuids: serializer.fromJson<String>(json['xrayUuids']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'deviceUuid': serializer.toJson<String>(deviceUuid),
+      'clinicId': serializer.toJson<String>(clinicId),
+      'xrayUuids': serializer.toJson<String>(xrayUuids),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DeviceInventoryRow copyWith({
+    String? deviceUuid,
+    String? clinicId,
+    String? xrayUuids,
+    DateTime? updatedAt,
+  }) => DeviceInventoryRow(
+    deviceUuid: deviceUuid ?? this.deviceUuid,
+    clinicId: clinicId ?? this.clinicId,
+    xrayUuids: xrayUuids ?? this.xrayUuids,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DeviceInventoryRow copyWithCompanion(DeviceInventoriesCompanion data) {
+    return DeviceInventoryRow(
+      deviceUuid: data.deviceUuid.present
+          ? data.deviceUuid.value
+          : this.deviceUuid,
+      clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      xrayUuids: data.xrayUuids.present ? data.xrayUuids.value : this.xrayUuids,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeviceInventoryRow(')
+          ..write('deviceUuid: $deviceUuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('xrayUuids: $xrayUuids, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(deviceUuid, clinicId, xrayUuids, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeviceInventoryRow &&
+          other.deviceUuid == this.deviceUuid &&
+          other.clinicId == this.clinicId &&
+          other.xrayUuids == this.xrayUuids &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DeviceInventoriesCompanion extends UpdateCompanion<DeviceInventoryRow> {
+  final Value<String> deviceUuid;
+  final Value<String> clinicId;
+  final Value<String> xrayUuids;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const DeviceInventoriesCompanion({
+    this.deviceUuid = const Value.absent(),
+    this.clinicId = const Value.absent(),
+    this.xrayUuids = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DeviceInventoriesCompanion.insert({
+    required String deviceUuid,
+    required String clinicId,
+    this.xrayUuids = const Value.absent(),
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : deviceUuid = Value(deviceUuid),
+       clinicId = Value(clinicId),
+       updatedAt = Value(updatedAt);
+  static Insertable<DeviceInventoryRow> custom({
+    Expression<String>? deviceUuid,
+    Expression<String>? clinicId,
+    Expression<String>? xrayUuids,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (deviceUuid != null) 'device_uuid': deviceUuid,
+      if (clinicId != null) 'clinic_id': clinicId,
+      if (xrayUuids != null) 'xray_uuids': xrayUuids,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DeviceInventoriesCompanion copyWith({
+    Value<String>? deviceUuid,
+    Value<String>? clinicId,
+    Value<String>? xrayUuids,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return DeviceInventoriesCompanion(
+      deviceUuid: deviceUuid ?? this.deviceUuid,
+      clinicId: clinicId ?? this.clinicId,
+      xrayUuids: xrayUuids ?? this.xrayUuids,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (deviceUuid.present) {
+      map['device_uuid'] = Variable<String>(deviceUuid.value);
+    }
+    if (clinicId.present) {
+      map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (xrayUuids.present) {
+      map['xray_uuids'] = Variable<String>(xrayUuids.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeviceInventoriesCompanion(')
+          ..write('deviceUuid: $deviceUuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('xrayUuids: $xrayUuids, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -18152,6 +18833,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $DevicesTable devices = $DevicesTable(this);
+  late final $DeviceInventoriesTable deviceInventories =
+      $DeviceInventoriesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -18185,6 +18868,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     expenses,
     invoicePayments,
     devices,
+    deviceInventories,
   ];
 }
 
@@ -24657,6 +25341,13 @@ typedef $$PatientXraysTableCreateCompanionBuilder =
       Value<DateTime> takenAt,
       Value<DateTime> createdAt,
       Value<bool> isDeleted,
+      Value<bool> isEncrypted,
+      Value<String?> sha256,
+      Value<int> byteSize,
+      Value<DateTime?> updatedAt,
+      Value<String?> keyId,
+      Value<bool> isLocal,
+      Value<String?> originDevice,
     });
 typedef $$PatientXraysTableUpdateCompanionBuilder =
     PatientXraysCompanion Function({
@@ -24673,6 +25364,13 @@ typedef $$PatientXraysTableUpdateCompanionBuilder =
       Value<DateTime> takenAt,
       Value<DateTime> createdAt,
       Value<bool> isDeleted,
+      Value<bool> isEncrypted,
+      Value<String?> sha256,
+      Value<int> byteSize,
+      Value<DateTime?> updatedAt,
+      Value<String?> keyId,
+      Value<bool> isLocal,
+      Value<String?> originDevice,
     });
 
 class $$PatientXraysTableFilterComposer
@@ -24746,6 +25444,41 @@ class $$PatientXraysTableFilterComposer
 
   ColumnFilters<bool> get isDeleted => $composableBuilder(
     column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isEncrypted => $composableBuilder(
+    column: $table.isEncrypted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sha256 => $composableBuilder(
+    column: $table.sha256,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get byteSize => $composableBuilder(
+    column: $table.byteSize,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get keyId => $composableBuilder(
+    column: $table.keyId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isLocal => $composableBuilder(
+    column: $table.isLocal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get originDevice => $composableBuilder(
+    column: $table.originDevice,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -24823,6 +25556,41 @@ class $$PatientXraysTableOrderingComposer
     column: $table.isDeleted,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isEncrypted => $composableBuilder(
+    column: $table.isEncrypted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sha256 => $composableBuilder(
+    column: $table.sha256,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get byteSize => $composableBuilder(
+    column: $table.byteSize,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get keyId => $composableBuilder(
+    column: $table.keyId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isLocal => $composableBuilder(
+    column: $table.isLocal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get originDevice => $composableBuilder(
+    column: $table.originDevice,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PatientXraysTableAnnotationComposer
@@ -24874,6 +25642,31 @@ class $$PatientXraysTableAnnotationComposer
 
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get isEncrypted => $composableBuilder(
+    column: $table.isEncrypted,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sha256 =>
+      $composableBuilder(column: $table.sha256, builder: (column) => column);
+
+  GeneratedColumn<int> get byteSize =>
+      $composableBuilder(column: $table.byteSize, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get keyId =>
+      $composableBuilder(column: $table.keyId, builder: (column) => column);
+
+  GeneratedColumn<bool> get isLocal =>
+      $composableBuilder(column: $table.isLocal, builder: (column) => column);
+
+  GeneratedColumn<String> get originDevice => $composableBuilder(
+    column: $table.originDevice,
+    builder: (column) => column,
+  );
 }
 
 class $$PatientXraysTableTableManager
@@ -24917,6 +25710,13 @@ class $$PatientXraysTableTableManager
                 Value<DateTime> takenAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
+                Value<bool> isEncrypted = const Value.absent(),
+                Value<String?> sha256 = const Value.absent(),
+                Value<int> byteSize = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<String?> keyId = const Value.absent(),
+                Value<bool> isLocal = const Value.absent(),
+                Value<String?> originDevice = const Value.absent(),
               }) => PatientXraysCompanion(
                 id: id,
                 uuid: uuid,
@@ -24931,6 +25731,13 @@ class $$PatientXraysTableTableManager
                 takenAt: takenAt,
                 createdAt: createdAt,
                 isDeleted: isDeleted,
+                isEncrypted: isEncrypted,
+                sha256: sha256,
+                byteSize: byteSize,
+                updatedAt: updatedAt,
+                keyId: keyId,
+                isLocal: isLocal,
+                originDevice: originDevice,
               ),
           createCompanionCallback:
               ({
@@ -24947,6 +25754,13 @@ class $$PatientXraysTableTableManager
                 Value<DateTime> takenAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
+                Value<bool> isEncrypted = const Value.absent(),
+                Value<String?> sha256 = const Value.absent(),
+                Value<int> byteSize = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<String?> keyId = const Value.absent(),
+                Value<bool> isLocal = const Value.absent(),
+                Value<String?> originDevice = const Value.absent(),
               }) => PatientXraysCompanion.insert(
                 id: id,
                 uuid: uuid,
@@ -24961,6 +25775,13 @@ class $$PatientXraysTableTableManager
                 takenAt: takenAt,
                 createdAt: createdAt,
                 isDeleted: isDeleted,
+                isEncrypted: isEncrypted,
+                sha256: sha256,
+                byteSize: byteSize,
+                updatedAt: updatedAt,
+                keyId: keyId,
+                isLocal: isLocal,
+                originDevice: originDevice,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -28501,6 +29322,202 @@ typedef $$DevicesTableProcessedTableManager =
       DeviceRow,
       PrefetchHooks Function()
     >;
+typedef $$DeviceInventoriesTableCreateCompanionBuilder =
+    DeviceInventoriesCompanion Function({
+      required String deviceUuid,
+      required String clinicId,
+      Value<String> xrayUuids,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$DeviceInventoriesTableUpdateCompanionBuilder =
+    DeviceInventoriesCompanion Function({
+      Value<String> deviceUuid,
+      Value<String> clinicId,
+      Value<String> xrayUuids,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$DeviceInventoriesTableFilterComposer
+    extends Composer<_$AppDatabase, $DeviceInventoriesTable> {
+  $$DeviceInventoriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get deviceUuid => $composableBuilder(
+    column: $table.deviceUuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get xrayUuids => $composableBuilder(
+    column: $table.xrayUuids,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DeviceInventoriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DeviceInventoriesTable> {
+  $$DeviceInventoriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get deviceUuid => $composableBuilder(
+    column: $table.deviceUuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get xrayUuids => $composableBuilder(
+    column: $table.xrayUuids,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DeviceInventoriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DeviceInventoriesTable> {
+  $$DeviceInventoriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get deviceUuid => $composableBuilder(
+    column: $table.deviceUuid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get clinicId =>
+      $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<String> get xrayUuids =>
+      $composableBuilder(column: $table.xrayUuids, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$DeviceInventoriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DeviceInventoriesTable,
+          DeviceInventoryRow,
+          $$DeviceInventoriesTableFilterComposer,
+          $$DeviceInventoriesTableOrderingComposer,
+          $$DeviceInventoriesTableAnnotationComposer,
+          $$DeviceInventoriesTableCreateCompanionBuilder,
+          $$DeviceInventoriesTableUpdateCompanionBuilder,
+          (
+            DeviceInventoryRow,
+            BaseReferences<
+              _$AppDatabase,
+              $DeviceInventoriesTable,
+              DeviceInventoryRow
+            >,
+          ),
+          DeviceInventoryRow,
+          PrefetchHooks Function()
+        > {
+  $$DeviceInventoriesTableTableManager(
+    _$AppDatabase db,
+    $DeviceInventoriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeviceInventoriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DeviceInventoriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DeviceInventoriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> deviceUuid = const Value.absent(),
+                Value<String> clinicId = const Value.absent(),
+                Value<String> xrayUuids = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DeviceInventoriesCompanion(
+                deviceUuid: deviceUuid,
+                clinicId: clinicId,
+                xrayUuids: xrayUuids,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String deviceUuid,
+                required String clinicId,
+                Value<String> xrayUuids = const Value.absent(),
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DeviceInventoriesCompanion.insert(
+                deviceUuid: deviceUuid,
+                clinicId: clinicId,
+                xrayUuids: xrayUuids,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DeviceInventoriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DeviceInventoriesTable,
+      DeviceInventoryRow,
+      $$DeviceInventoriesTableFilterComposer,
+      $$DeviceInventoriesTableOrderingComposer,
+      $$DeviceInventoriesTableAnnotationComposer,
+      $$DeviceInventoriesTableCreateCompanionBuilder,
+      $$DeviceInventoriesTableUpdateCompanionBuilder,
+      (
+        DeviceInventoryRow,
+        BaseReferences<
+          _$AppDatabase,
+          $DeviceInventoriesTable,
+          DeviceInventoryRow
+        >,
+      ),
+      DeviceInventoryRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -28561,4 +29578,6 @@ class $AppDatabaseManager {
       $$InvoicePaymentsTableTableManager(_db, _db.invoicePayments);
   $$DevicesTableTableManager get devices =>
       $$DevicesTableTableManager(_db, _db.devices);
+  $$DeviceInventoriesTableTableManager get deviceInventories =>
+      $$DeviceInventoriesTableTableManager(_db, _db.deviceInventories);
 }

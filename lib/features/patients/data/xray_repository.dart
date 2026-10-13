@@ -1,7 +1,8 @@
+import 'dart:io';
 import 'package:drift/drift.dart';
 import '../../../core/db/app_database.dart';
 import '../../../core/utils/uuids.dart';
-import 'xray_storage.dart';
+import 'xray_vault.dart';
 
 /// Basic tier: max this many X-rays stored per SUBSCRIPTION year.
 const int kBasicXrayYearlyLimit = 100;
@@ -15,12 +16,13 @@ const int kBasicXrayYearlyLimit = 100;
 }
 
 class XrayRepository {
-  XrayRepository(this._db);
+  XrayRepository(this._db) : _vault = XrayVault(_db);
   final AppDatabase _db;
+  final XrayVault _vault;
 
   Stream<List<XrayRow>> watch(int patientId) => _db.watchXrays(patientId);
 
-  /// Usage within the CURRENT subscription year (basic tier only).
+  /// Usage within the CURRENT subscription year (limited tiers only).
   Future<({int used, int limit, int left})> usage({
     required DateTime expiresAt,
   }) async {
@@ -35,6 +37,7 @@ class XrayRepository {
   }
 
   /// Add an X-ray. Returns an error string, or null on success.
+  /// The picked file is read once and only an ENCRYPTED copy is stored.
   Future<String?> add({
     required int patientId,
     required String patientUuid,
@@ -42,26 +45,27 @@ class XrayRepository {
     required String fileName,
     String caption = '',
     DateTime? takenAt,
-    required bool isLimited, // true only for basic tier
-    DateTime? expiresAt, // subscription end; required if isLimited
+    required bool isLimited,
+    DateTime? expiresAt,
   }) async {
     if (isLimited && expiresAt != null) {
       final p = subscriptionPeriod(expiresAt);
       final used = await _db.xrayCountBetween(p.start, p.end);
       if (used >= kBasicXrayYearlyLimit) {
         final resets = '${p.end.day}/${p.end.month}/${p.end.year}';
-        return 'Your Basic plan allows $kBasicXrayYearlyLimit X-rays per '
-            'subscription year. You have used $used. This resets on $resets — '
-            'or upgrade to Standard/Premium for unlimited storage.';
+        return 'Your plan allows $kBasicXrayYearlyLimit X-rays per '
+            'subscription year. You have used $used. This resets on $resets '
+            '— or upgrade to Standard/Premium for unlimited storage.';
       }
     }
 
     final uuid = Uuids.v4();
-    final stored = await XrayStorage.store(
+    final stored = await _vault.storeNew(
       patientUuid: patientUuid,
+      uuid: uuid,
       sourcePath: sourcePath,
-      newBaseName: uuid,
     );
+    final now = DateTime.now();
 
     await _db
         .into(_db.patientXrays)
@@ -72,18 +76,34 @@ class XrayRepository {
             branchId: Value(await _db.currentBranchId()),
             patientId: patientId,
             patientUuid: patientUuid,
-            filePath: stored,
+            filePath: stored.path,
             fileName: fileName,
-            fileType: Value(XrayStorage.isPdf(stored) ? 'pdf' : 'image'),
+            fileType: Value(
+              sourcePath.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image',
+            ),
             caption: Value(caption),
-            takenAt: Value(takenAt ?? DateTime.now()),
+            takenAt: Value(takenAt ?? now),
+            isEncrypted: const Value(true),
+            sha256: Value(stored.sha),
+            byteSize: Value(stored.size),
+            keyId: Value(stored.keyId),
+            isLocal: const Value(true),
+            originDevice: Value((await _db.localDevice()).uuid),
+            updatedAt: Value(now),
           ),
         );
     return null;
   }
 
+  /// Soft-deletes the record (so the deletion syncs to every computer) and
+  /// removes this computer's encrypted file.
   Future<void> delete(XrayRow row) async {
+    _vault.forget(row.uuid);
     await _db.softDeleteXray(row.id);
-    await XrayStorage.deleteFile(row.filePath);
+    if (row.isLocal && row.filePath.isNotEmpty) {
+      try {
+        await File(row.filePath).delete();
+      } catch (_) {}
+    }
   }
 }

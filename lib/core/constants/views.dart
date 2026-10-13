@@ -112,3 +112,6 @@ export '../../../core/widgets/kpi_card.dart';
 export '../../../core/widgets/stat_bar.dart';
 export 'package:is_dental/cloud/data/cloud_registration.dart';
 export 'package:is_dental/cloud/data/device_join.dart';
+export 'package:is_dental/features/patients/data/xray_vault.dart';
+export 'package:is_dental/core/utils/uuids.dart';
+export 'package:is_dental/features/patients/data/xray_crypto.dart';

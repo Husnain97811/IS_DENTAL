@@ -1,9 +1,12 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:is_dental/cloud/data/cloud_service.dart';
-import 'package:is_dental/core/utils/uuids.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/constants/views.dart';
 import '../../core/db/app_database.dart';
 
 class SyncEngine {
@@ -37,6 +40,9 @@ class SyncEngine {
     }
 
     await step('patients', () => _syncPatients(clinicId));
+    // The X-ray LIST only — images never leave the computer.
+    await step('xrays', () => _syncXrays(clinicId));
+    await step('xray_inventories', () => _syncInventories(clinicId));
     await step('branches', () => _syncBranches(clinicId));
     await step('treatments', () => _syncTreatments(clinicId));
     await step('medicines', () => _syncMedicines(clinicId));
@@ -144,10 +150,14 @@ class SyncEngine {
       'push_expenses',
       'pull_devices',
       'push_devices',
+      'pull_xrays',
+      'push_xrays',
+      'pull_inventories',
     ];
     for (final k in cursorKeys) {
       await _db.setSetting('sync_$k', '');
     }
+    await _db.setSetting('xray_inv_hash', ''); // re-announce what we hold
 
     // 3. pull everything fresh from cloud (parents before children)
     _skipped.clear();
@@ -176,6 +186,9 @@ class SyncEngine {
     await part('devices', () => _restoreDevices(clinicId));
     await part('expenses', () => _restoreExpenses(clinicId));
     await part('payments', () => _restorePayments(clinicId)); // after invoices
+    await part('xray_relink', () => _db.relinkXrayPatients());
+    await part('xrays', () => _restoreXrays(clinicId));
+    await part('xray_inventories', () => _restoreInventories(clinicId));
     // amountPaid and patients.balance are CACHES. The restored values came
     // from whichever machine pushed last; rebuild them from the payments
     // that actually landed here.
@@ -1219,6 +1232,10 @@ class SyncEngine {
           'invoice_no': inv.invoiceNo,
           'issued_at': _iso(inv.issuedAt),
           'status': inv.status,
+          // Pull and restore already read these; without them here the
+          // other computers learn THAT it was cancelled but not who or when.
+          'cancelled_by': inv.cancelledBy,
+          'cancelled_at': _iso(inv.cancelledAt),
           'appointment_uuid': inv.appointmentId == null
               ? null
               : await _appointmentUuid(inv.appointmentId!),
@@ -1552,6 +1569,211 @@ class SyncEngine {
             );
         if (u.isAfter(pullSince)) await _setCur('pull_expenses', u);
       });
+    }
+  }
+
+  // ================= X-RAY LIST (metadata only) =================
+  /// Shared by pull and restore. A row for an X-ray this computer doesn't
+  /// have becomes a placeholder (isLocal = false). A deletion from another
+  /// computer removes the local encrypted file too.
+  Future<void> _applyXray(
+    Map<String, dynamic> r,
+    String clinicId, {
+    required bool force,
+  }) async {
+    final u = DateTime.parse(r['updated_at']);
+    final existing = await (_db.select(
+      _db.patientXrays,
+    )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+    if (!force &&
+        existing?.updatedAt != null &&
+        !u.isAfter(existing!.updatedAt!)) {
+      return;
+    }
+    final pid = await _patientId(r['patient_uuid']);
+    if (pid == null) return; // patient not here yet; next round
+
+    DateTime? dt(String k) => r[k] == null ? null : DateTime.parse(r[k]);
+    final deleted = r['is_deleted'] ?? false;
+
+    if (existing == null) {
+      if (deleted) return; // nothing to show, nothing to remove
+      await _db
+          .into(_db.patientXrays)
+          .insert(
+            PatientXraysCompanion.insert(
+              uuid: r['uuid'],
+              clinicId: clinicId,
+              branchId: Value(r['branch_id']),
+              patientId: pid,
+              patientUuid: r['patient_uuid'],
+              filePath: '',
+              fileName: r['file_name'] ?? '',
+              fileType: Value(r['file_type'] ?? 'image'),
+              caption: Value(r['caption'] ?? ''),
+              takenAt: Value(dt('taken_at') ?? DateTime.now()),
+              createdAt: Value(dt('created_at') ?? DateTime.now()),
+              isEncrypted: const Value(true),
+              sha256: Value(r['sha256']),
+              byteSize: Value((r['byte_size'] as num?)?.toInt() ?? 0),
+              keyId: Value(r['key_id']),
+              isLocal: const Value(false),
+              originDevice: Value(r['origin_device']),
+              updatedAt: Value(u),
+            ),
+          );
+      return;
+    }
+
+    if (deleted && existing.isLocal && existing.filePath.isNotEmpty) {
+      try {
+        await File(existing.filePath).delete();
+      } catch (_) {}
+    }
+    await (_db.update(
+      _db.patientXrays,
+    )..where((t) => t.id.equals(existing.id))).write(
+      PatientXraysCompanion(
+        patientId: Value(pid),
+        branchId: Value(r['branch_id']),
+        fileName: Value(r['file_name'] ?? existing.fileName),
+        fileType: Value(r['file_type'] ?? existing.fileType),
+        caption: Value(r['caption'] ?? ''),
+        takenAt: Value(dt('taken_at') ?? existing.takenAt),
+        isDeleted: Value(deleted),
+        sha256: Value(r['sha256'] ?? existing.sha256),
+        byteSize: Value((r['byte_size'] as num?)?.toInt() ?? existing.byteSize),
+        keyId: Value(r['key_id'] ?? existing.keyId),
+        originDevice: Value(r['origin_device'] ?? existing.originDevice),
+        isLocal: deleted ? const Value(false) : const Value.absent(),
+        filePath: deleted ? const Value('') : const Value.absent(),
+        updatedAt: Value(u),
+      ),
+    );
+  }
+
+  Future<void> _syncXrays(String clinicId) async {
+    final since = await _cur('push_xrays');
+    final changed = await (_db.select(
+      _db.patientXrays,
+    )..where((t) => t.updatedAt.isBiggerThanValue(since))).get();
+    if (changed.isNotEmpty) {
+      // Not-yet-encrypted rows wait — migration bumps them when done.
+      final rows = [
+        for (final x in changed)
+          if (x.isEncrypted || x.isDeleted)
+            {
+              'uuid': x.uuid,
+              'clinic_id': clinicId,
+              'branch_id': x.branchId,
+              'patient_uuid': x.patientUuid,
+              'file_name': x.fileName,
+              'file_type': x.fileType,
+              'caption': x.caption,
+              'taken_at': _iso(x.takenAt),
+              'created_at': _iso(x.createdAt),
+              'sha256': x.sha256,
+              'byte_size': x.byteSize,
+              'key_id': x.keyId,
+              'origin_device': x.originDevice,
+              'is_deleted': x.isDeleted,
+              'updated_at': _iso(x.updatedAt),
+            },
+      ];
+      if (rows.isNotEmpty) {
+        await _sb.from('xrays').upsert(rows, onConflict: 'uuid');
+      }
+      await _setCur('push_xrays', _max(changed.map((e) => e.updatedAt!)));
+    }
+
+    final pullSince = await _cur('pull_xrays');
+    for (final r in await _pull('xrays', clinicId, pullSince)) {
+      await _row('xrays', r['uuid'], () async {
+        await _applyXray(r, clinicId, force: false);
+        final u = DateTime.parse(r['updated_at']);
+        if (u.isAfter(pullSince)) await _setCur('pull_xrays', u);
+      });
+    }
+  }
+
+  /// Announces which X-rays THIS computer holds, and learns what the others
+  /// hold — so a transfer can contain exactly what the target is missing.
+  Future<void> _syncInventories(String clinicId) async {
+    final me = await _db.localDevice();
+    final rows =
+        await (_db.select(_db.patientXrays)..where(
+              (t) =>
+                  t.isLocal.equals(true) &
+                  t.isDeleted.equals(false) &
+                  t.isEncrypted.equals(true),
+            ))
+            .get();
+    final ids = rows.map((r) => r.uuid).toList()..sort();
+    final json = jsonEncode(ids);
+    final hash = XrayCrypto.sha256Hex(Uint8List.fromList(utf8.encode(json)));
+
+    if (await _db.getSetting('xray_inv_hash') != hash) {
+      final now = DateTime.now();
+      await _sb.from('device_inventories').upsert({
+        'device_uuid': me.uuid,
+        'clinic_id': clinicId,
+        'xray_uuids': ids,
+        'updated_at': _iso(now),
+      }, onConflict: 'device_uuid');
+      await _db
+          .into(_db.deviceInventories)
+          .insertOnConflictUpdate(
+            DeviceInventoriesCompanion.insert(
+              deviceUuid: me.uuid,
+              clinicId: clinicId,
+              xrayUuids: Value(json),
+              updatedAt: now,
+            ),
+          );
+      await _db.setSetting('xray_inv_hash', hash);
+    }
+
+    final pullSince = await _cur('pull_inventories');
+    for (final r in await _pull('device_inventories', clinicId, pullSince)) {
+      await _row('device_inventories', r['device_uuid'], () async {
+        final u = DateTime.parse(r['updated_at']);
+        await _db
+            .into(_db.deviceInventories)
+            .insertOnConflictUpdate(
+              DeviceInventoriesCompanion.insert(
+                deviceUuid: r['device_uuid'],
+                clinicId: clinicId,
+                xrayUuids: Value(jsonEncode(r['xray_uuids'] ?? const [])),
+                updatedAt: u,
+              ),
+            );
+        if (u.isAfter(pullSince)) await _setCur('pull_inventories', u);
+      });
+    }
+  }
+
+  Future<void> _restoreXrays(String clinicId) async {
+    for (final r in await _pullAll('xrays', clinicId)) {
+      await _row(
+        'xrays',
+        r['uuid'],
+        () => _applyXray(r, clinicId, force: true),
+      );
+    }
+  }
+
+  Future<void> _restoreInventories(String clinicId) async {
+    for (final r in await _pullAll('device_inventories', clinicId)) {
+      await _db
+          .into(_db.deviceInventories)
+          .insertOnConflictUpdate(
+            DeviceInventoriesCompanion.insert(
+              deviceUuid: r['device_uuid'],
+              clinicId: clinicId,
+              xrayUuids: Value(jsonEncode(r['xray_uuids'] ?? const [])),
+              updatedAt: DateTime.parse(r['updated_at']),
+            ),
+          );
     }
   }
 

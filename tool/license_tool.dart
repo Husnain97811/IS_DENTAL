@@ -327,6 +327,8 @@ Future<void> main() async {
           await _handleReset(req);
         case 'POST /api/recover':
           await _handleRecover(req);
+        case 'POST /api/xray-recover':
+          await _handleXrayRecover(req);
         default:
           req.response.statusCode = 404;
           await req.response.close();
@@ -558,6 +560,80 @@ Future<void> _handleRecover(HttpRequest req) async {
     'RECOVER  $clinicId  ·  expires ${expiresAt.toIso8601String()}',
   );
   _json(req, {'ok': true, 'token': pretty, 'clinicId': clinicId});
+}
+
+/// Unlocks an X-ray transfer file's key with the vendor PRIVATE key and
+/// issues a signed, single-file recovery code — optionally for a DIFFERENT
+/// clinic id (re-minted clinic, new licence).
+Future<void> _handleXrayRecover(HttpRequest req) async {
+  final body =
+      jsonDecode(await utf8.decoder.bind(req).join()) as Map<String, dynamic>;
+  final request = (body['request'] ?? '').toString().trim();
+  final targetClinic = (body['clinicId'] ?? '').toString().trim();
+  final hours = int.tryParse('${body['validHours']}') ?? 24;
+  if (request.isEmpty || targetClinic.isEmpty) {
+    return _json(req, {
+      'ok': false,
+      'error': 'Paste the request and pick the clinic.',
+    });
+  }
+
+  Map<String, dynamic> r;
+  try {
+    r =
+        jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(request))))
+            as Map<String, dynamic>;
+  } catch (_) {
+    return _json(req, {
+      'ok': false,
+      'error': 'That is not a DentOS recovery request.',
+    });
+  }
+
+  final priv = _loadOrCreateKeys().privateKey as RSAPrivateKey;
+  Uint8List bundleKey;
+  try {
+    final rsa = OAEPEncoding(RSAEngine())
+      ..init(false, PrivateKeyParameter<RSAPrivateKey>(priv));
+    bundleKey = rsa.process(base64.decode(r['escrow'] as String));
+  } catch (_) {
+    return _json(req, {
+      'ok': false,
+      'error': 'Could not unlock — wrong key or damaged request.',
+    });
+  }
+
+  final issuedAt = DateTime.now();
+  final expiresAt = issuedAt.add(Duration(hours: hours));
+  // Field order is the contract with XrayTransfer.receive.
+  final payload = jsonEncode({
+    'action': 'xrayRecover',
+    'clinicId': targetClinic,
+    'bundleId': r['bundleId'],
+    'bundleKey': base64.encode(bundleKey),
+    'issuedAt': issuedAt.toUtc().toIso8601String(),
+    'expiresAt': expiresAt.toUtc().toIso8601String(),
+  });
+  final signer = RSASigner(SHA256Digest(), '0609608648016503040201')
+    ..init(true, PrivateKeyParameter<RSAPrivateKey>(priv));
+  final sig = signer.generateSignature(
+    Uint8List.fromList(utf8.encode(payload)),
+  );
+
+  final token = jsonEncode({
+    ...jsonDecode(payload) as Map<String, dynamic>,
+    'signature': base64.encode(sig.bytes),
+  });
+
+  stdout.writeln(
+    'XRAY RECOVER  ${r['sourceClinicId']} → $targetClinic  ·  bundle ${r['bundleId']}',
+  );
+  _json(req, {
+    'ok': true,
+    'token': token,
+    'sourceClinicId': r['sourceClinicId'],
+    'clinicId': targetClinic,
+  });
 }
 
 void _send(HttpRequest req, String body, {String type = 'text/plain'}) {
@@ -815,6 +891,25 @@ const _html = r'''
   </div>
 </div>
 
+<div class="wrap">
+  <div class="card" style="margin-top:18px">
+    <div class="ch"><div><h2>X-ray recovery</h2>
+      <div class="s">Lost transfer code, dead computer, or clinic ID changed</div></div></div>
+    <div class="body">
+      <div class="note n-alert">This unlocks every X-ray in that transfer file.
+        Verify the owner first — call back on the number you have on file.</div>
+      <label>Recovery request (from the clinic's Receive screen)</label>
+      <input id="xrReq" placeholder="Paste the request text">
+      <label>Issue for clinic</label>
+      <select id="xrClinic"><option value="">— select —</option></select>
+      <label>Valid for (hours)</label>
+      <input id="xrHours" type="number" min="1" value="24">
+      <button class="btn" onclick="genXray()">Generate X-ray recovery code</button>
+      <div id="xrOut"></div>
+    </div>
+  </div>
+</div>
+
 <!-- confirmation modal -->
 <div class="mask" id="mask">
   <div class="modal">
@@ -1033,7 +1128,7 @@ function preflight(){
 function fillResetClinics(){
   const opts = '<option value="">— select —</option>' +
     clinics.map(c=>`<option value="${c.clinicId}">${esc(c.clinicName)} · ${c.clinicId}</option>`).join('');
-  for (const id of ['rsClinic','rcClinic']) {
+  for (const id of ['rsClinic','rcClinic','xrClinic']) {
     const s = document.getElementById(id);
     if (s) s.innerHTML = opts;
   }
@@ -1054,6 +1149,29 @@ async function genRecover(){
       '<div class="note n-ok" style="margin-top:14px">Recovery code for <b>'+esc(j.clinicId)+
       '</b> — single use, send it to the owner.</div>' +
       '<div style="margin:10px 0"><button class="copy" onclick="navigator.clipboard.writeText(window._lastRecover||\'\')">Copy recovery code</button></div>' +
+      '<pre>'+esc(j.token)+'</pre>';
+  }catch(e){
+    out.innerHTML = '<div class="note n-alert" style="margin-top:14px">'+e+'</div>';
+  }
+}
+
+async function genXray(){
+  const clinicId = document.getElementById('xrClinic').value;
+  const request = document.getElementById('xrReq').value.trim();
+  if(!request || !clinicId){ alert('Paste the request and select the clinic.'); return; }
+  const out = document.getElementById('xrOut');
+  out.innerHTML = '<div class="note n-ice" style="margin-top:14px">Unlocking…</div>';
+  try{
+    const r = await fetch('/api/xray-recover', {method:'POST', body: JSON.stringify({
+      request, clinicId, validHours: document.getElementById('xrHours').value })});
+    const j = await r.json();
+    if(!j.ok){ out.innerHTML = '<div class="note n-alert" style="margin-top:14px">'+esc(j.error)+'</div>'; return; }
+    window._lastXray = j.token;
+    const moved = j.sourceClinicId !== j.clinicId
+      ? '<br>File is from <b>'+esc(j.sourceClinicId)+'</b> — issued for <b>'+esc(j.clinicId)+'</b>.' : '';
+    out.innerHTML =
+      '<div class="note n-ok" style="margin-top:14px">X-ray recovery code ready.'+moved+'</div>' +
+      '<div style="margin:10px 0"><button class="copy" onclick="navigator.clipboard.writeText(window._lastXray||\'\')">Copy code</button></div>' +
       '<pre>'+esc(j.token)+'</pre>';
   }catch(e){
     out.innerHTML = '<div class="note n-alert" style="margin-top:14px">'+e+'</div>';

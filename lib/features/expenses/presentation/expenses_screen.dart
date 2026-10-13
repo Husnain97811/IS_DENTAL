@@ -9,7 +9,7 @@ String _m(int v) => v.toString().replaceAllMapped(
   (m) => '${m[1]},',
 );
 
-/// Rs 1,250,000 reads badly in a KPI card — Rs 12.5L does not.
+/// Rs 1,250,000 reads badly in a narrow cell — Rs 12.50L does not.
 String _compact(int v) {
   final a = v.abs();
   if (a >= 10000000) return '${(v / 10000000).toStringAsFixed(2)}Cr';
@@ -32,15 +32,25 @@ const _monShort = [
   'Dec',
 ];
 
-/// One source of truth for the table geometry. The header and the rows both
-/// read these, so a column can never drift out of alignment again.
-const _colDate = 62.0;
-const _colGap = 14.0;
-const _colAmount = 124.0;
-const _colActions = 88.0;
-const _flexCategory = 3;
-const _flexDetails = 5;
-const _flexMethod = 3;
+/// Row action buttons are a fixed tap target. A default IconButton reserves
+/// ~48px even when "compact", which is what overflowed the old 88px column.
+const double _kActionBox = 34;
+
+/// Table geometry, scaled with Sizer but clamped so a 1366px laptop and a
+/// 27" monitor both read well. The header, every row and the footer all use
+/// the SAME instance, so columns cannot drift out of alignment.
+class _Cols {
+  _Cols({required int actionCount})
+    : date = (4.2.w).clamp(58.0, 80.0),
+      gap = (1.0.w).clamp(10.0, 18.0),
+      amount = (8.5.w).clamp(104.0, 150.0),
+      actions = actionCount == 0 ? 0 : actionCount * _kActionBox + 6;
+
+  final double date, gap, amount, actions;
+  static const flexCategory = 3;
+  static const flexDetails = 5;
+  static const flexMethod = 3;
+}
 
 class ExpensesScreen extends ConsumerWidget {
   const ExpensesScreen({super.key});
@@ -49,20 +59,26 @@ class ExpensesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final d = context.dent;
 
-    // Guard first — the header must not render for someone without access.
-    if (!ref.watch(canProvider(Perm.viewExpenses))) {
-      return _locked(d);
-    }
+    final canView = ref.watch(canProvider(Perm.viewExpenses)); // totals
+    final canAdd = ref.watch(canProvider(Perm.manageExpenses)); // add
+    final canEdit = ref.watch(canProvider(Perm.editExpenses)); // edit/delete
 
-    final canManage = ref.watch(canProvider(Perm.manageExpenses));
-    final canFin = ref.watch(canProvider(Perm.viewFinancials));
+    // Guard first — nothing renders for someone with none of the three.
+    if (!canView && !canAdd && !canEdit) return _locked(d);
+
+    // Profit leaks revenue, so it needs expense totals AND financial access.
+    final canFin = canView && ref.watch(canProvider(Perm.viewFinancials));
+    final isOwner = ref.watch(authControllerProvider)?.role == AppRole.owner;
+
     final period = ref.watch(expensePeriodProvider);
     final rowsAsync = ref.watch(expensesInPeriodProvider);
     final collected = ref.watch(collectedInPeriodProvider).value ?? 0;
     final filter = ref.watch(expenseCategoryFilterProvider);
     final names = ref.watch(categoryNamesProvider);
 
+    // Everyone with access sees every entry; only the TOTALS are gated.
     final all = rowsAsync.value ?? const <ExpenseRow>[];
+
     final q = ref.watch(expenseSearchProvider).trim().toLowerCase();
     final rows = all.where((e) {
       if (filter != null && e.categoryUuid != filter) return false;
@@ -78,61 +94,76 @@ class ExpensesScreen extends ConsumerWidget {
       ].any((f) => f.toLowerCase().contains(q));
     }).toList();
 
-    // KPIs always describe the whole period — a search narrows the table,
-    // never the totals, so profit can't silently change while you type.
+    // Totals always describe the whole period — a search narrows the table,
+    // never the figures, so profit can't silently change while you type.
     final total = all.fold<int>(0, (s, e) => s + e.amount);
     final shown = rows.fold<int>(0, (s, e) => s + e.amount);
     final profit = collected - total;
     final filtering = filter != null || q.isNotEmpty;
 
+    final cols = _Cols(actionCount: (isOwner ? 1 : 0) + (canEdit ? 1 : 0));
+
     return LayoutBuilder(
       builder: (context, c) {
         final wide = c.maxWidth >= 1080;
         final narrow = c.maxWidth < 760;
-        final pad = narrow ? 16.0 : 26.0;
+        final pad = narrow
+            ? (3.w).clamp(12.0, 18.0)
+            : (1.9.w).clamp(18.0, 34.0);
+        final gapV = (1.8.h).clamp(14.0, 22.0);
+        final showYear = canView && period.mode == PeriodMode.year;
 
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(pad, 22, pad, 44),
+          padding: EdgeInsets.fromLTRB(pad, gapV, pad, gapV * 2.4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _periodBar(context, ref, d, period, narrow),
-              const SizedBox(height: 18),
+              SizedBox(height: gapV),
 
-              if (canFin)
+              if (!canView)
+                _noTotalsNote(d)
+              else if (canFin)
                 _summaryHero(d, collected, total, profit, period, narrow)
               else
                 _plainTotals(d, total, all.length, period),
-              const SizedBox(height: 18),
+              SizedBox(height: gapV),
 
-              // Side by side when there's room; stacked when there isn't.
-              if (wide && period.mode == PeriodMode.year)
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: _yearPanel(ref, d, canFin)),
-                      const SizedBox(width: 18),
-                      Expanded(flex: 2, child: _categoryPanel(ref, d, filter)),
-                    ],
-                  ),
-                )
-              else ...[
-                if (period.mode == PeriodMode.year) ...[
-                  _yearPanel(ref, d, canFin),
-                  const SizedBox(height: 18),
+              if (canView) ...[
+                if (wide && showYear)
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(flex: 3, child: _yearPanel(ref, d, canFin)),
+                        SizedBox(width: gapV),
+                        Expanded(
+                          flex: 2,
+                          child: _categoryPanel(ref, d, filter),
+                        ),
+                      ],
+                    ),
+                  )
+                else ...[
+                  if (showYear) ...[
+                    _yearPanel(ref, d, canFin),
+                    SizedBox(height: gapV),
+                  ],
+                  _categoryPanel(ref, d, filter),
                 ],
-                _categoryPanel(ref, d, filter),
+                SizedBox(height: gapV),
               ],
-              const SizedBox(height: 18),
 
               DentPanel(
                 title: filter == null
                     ? 'Expenses'
                     : names[filter] ?? 'Expenses',
+                // Sums are totals too — hidden without View.
                 subtitle: filtering
-                    ? '${rows.length} of ${all.length} shown · Rs ${_m(shown)}'
-                    : '${all.length} entries · Rs ${_m(total)}',
+                    ? '${rows.length} of ${all.length} shown'
+                          '${canView ? " · Rs ${_m(shown)}" : ""}'
+                    : '${all.length} entries'
+                          '${canView ? " · Rs ${_m(total)}" : ""}',
                 trailing: filtering
                     ? PanelLink(
                         'Clear filter',
@@ -155,15 +186,41 @@ class ExpensesScreen extends ConsumerWidget {
                     child: Text('$e', style: TextStyle(color: d.alert)),
                   ),
                   data: (_) => rows.isEmpty
-                      ? _empty(d, period, filtering, canManage, context)
+                      ? _empty(d, period, filtering, canAdd, canView, context)
                       : Column(
                           children: [
-                            if (!narrow) _header(d),
+                            if (!narrow) _header(d, cols),
+                            // `canManage` inside _row/_card/_actions now
+                            // means "may edit and delete".
                             for (final e in rows)
                               narrow
-                                  ? _card(context, ref, d, e, names, canManage)
-                                  : _row(context, ref, d, e, names, canManage),
-                            _footer(d, rows.length, shown, narrow),
+                                  ? _card(
+                                      context,
+                                      ref,
+                                      d,
+                                      e,
+                                      names,
+                                      canManage: canEdit,
+                                      isOwner: isOwner,
+                                    )
+                                  : _row(
+                                      context,
+                                      ref,
+                                      d,
+                                      e,
+                                      names,
+                                      cols,
+                                      canManage: canEdit,
+                                      isOwner: isOwner,
+                                    ),
+                            _footer(
+                              d,
+                              rows.length,
+                              shown,
+                              narrow,
+                              cols,
+                              showTotal: canView,
+                            ),
                           ],
                         ),
                 ),
@@ -186,15 +243,37 @@ class ExpensesScreen extends ConsumerWidget {
           const SizedBox(height: 14),
           Text(
             'Expenses are not available for your role.',
-            style: TextStyle(color: d.text3, fontSize: 11.sp),
+            style: TextStyle(color: d.text3, fontSize: 12.sp),
           ),
           const SizedBox(height: 4),
           Text(
             'Ask the clinic owner if you need access.',
-            style: TextStyle(color: d.text4, fontSize: 9.5.sp),
+            style: TextStyle(color: d.text4, fontSize: 10.5.sp),
           ),
         ],
       ),
+    ),
+  );
+
+  Widget _noTotalsNote(DentColors d) => Container(
+    padding: EdgeInsets.all((1.3.w).clamp(14.0, 20.0)),
+    decoration: BoxDecoration(
+      color: d.ice.withValues(alpha: .08),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: d.ice.withValues(alpha: .3)),
+    ),
+    child: Row(
+      children: [
+        Icon(Icons.info_outline_rounded, color: d.ice, size: 22),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            'You can see every expense. Totals, the category breakdown and '
+            'profit are visible to people with "View expense totals".',
+            style: TextStyle(color: d.text2, fontSize: 10.5.sp, height: 1.5),
+          ),
+        ),
+      ],
     ),
   );
 
@@ -203,14 +282,15 @@ class ExpensesScreen extends ConsumerWidget {
     Period p,
     bool filtering,
     bool canManage,
+    bool canView,
     BuildContext context,
   ) => Padding(
     padding: const EdgeInsets.fromLTRB(20, 48, 20, 52),
     child: Column(
       children: [
         Container(
-          width: 58,
-          height: 58,
+          width: 60,
+          height: 60,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: d.surface2,
@@ -220,7 +300,7 @@ class ExpensesScreen extends ConsumerWidget {
             filtering
                 ? Icons.search_off_rounded
                 : Icons.account_balance_wallet_outlined,
-            size: 26,
+            size: 27,
             color: d.text4,
           ),
         ),
@@ -230,18 +310,20 @@ class ExpensesScreen extends ConsumerWidget {
           style: TextStyle(
             fontFamily: AppFonts.display,
             color: d.text1,
-            fontSize: 12.sp,
+            fontSize: 12.5.sp,
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 6),
         Text(
           filtering
               ? 'Try a different search or clear the category filter.'
-              : 'Rent, salaries, lab fees and supplies for ${p.label} '
-                    'will appear here.',
+              : canView
+              ? 'Rent, salaries, lab fees and supplies for ${p.label} '
+                    'will appear here.'
+              : 'Expenses you record for ${p.label} will appear here.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: d.text4, fontSize: 9.5.sp, height: 1.5),
+          style: TextStyle(color: d.text4, fontSize: 10.5.sp, height: 1.5),
         ),
         if (!filtering && canManage) ...[
           const SizedBox(height: 18),
@@ -249,12 +331,15 @@ class ExpensesScreen extends ConsumerWidget {
             style: FilledButton.styleFrom(
               backgroundColor: d.ice,
               foregroundColor: AppPalette.onAccent,
-              minimumSize: const Size(0, 42),
+              minimumSize: const Size(0, 44),
               padding: const EdgeInsets.symmetric(horizontal: 20),
             ),
             onPressed: () => showExpenseEditor(context),
-            icon: const Icon(Icons.add_rounded, size: 17),
-            label: const Text('Add the first one'),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: Text(
+              canView ? 'Add the first one' : 'Record an expense',
+              style: TextStyle(fontSize: 10.5.sp),
+            ),
           ),
         ],
       ],
@@ -271,7 +356,7 @@ class ExpensesScreen extends ConsumerWidget {
     bool narrow,
   ) {
     final stepper = Container(
-      height: 42,
+      height: 44,
       decoration: BoxDecoration(
         color: d.surface,
         borderRadius: BorderRadius.circular(12),
@@ -283,21 +368,31 @@ class ExpensesScreen extends ConsumerWidget {
           _stepBtn(d, Icons.chevron_left_rounded, 'Previous', () {
             ref.read(expensePeriodProvider.notifier).state = p.shift(-1);
           }),
-          Container(width: 1, height: 20, color: d.line),
-          SizedBox(
-            width: narrow ? 120 : 150,
-            child: Text(
-              p.label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: AppFonts.display,
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w600,
-                color: d.text1,
+          Container(width: 1, height: 22, color: d.line),
+          // Grows with the label instead of wrapping: "September 2026" is
+          // the longest month and needs about twice the width of "May 2026".
+          // The minimum keeps the arrows from jumping on short months.
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: narrow ? 130 : (11.w).clamp(150.0, 200.0),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Text(
+                p.label,
+                maxLines: 1,
+                softWrap: false,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: AppFonts.display,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w600,
+                  color: d.text1,
+                ),
               ),
             ),
           ),
-          Container(width: 1, height: 20, color: d.line),
+          Container(width: 1, height: 22, color: d.line),
           _stepBtn(
             d,
             Icons.chevron_right_rounded,
@@ -328,7 +423,7 @@ class ExpensesScreen extends ConsumerWidget {
       style: TextButton.styleFrom(foregroundColor: d.ice),
       child: Text(
         p.mode == PeriodMode.month ? 'This month' : 'This year',
-        style: TextStyle(fontSize: 9.5.sp, fontWeight: FontWeight.w600),
+        style: TextStyle(fontSize: 10.5.sp, fontWeight: FontWeight.w600),
       ),
     );
 
@@ -365,9 +460,9 @@ class ExpensesScreen extends ConsumerWidget {
       borderRadius: BorderRadius.circular(11),
       onTap: onTap,
       child: SizedBox(
-        width: 40,
-        height: 42,
-        child: Icon(icon, size: 19, color: onTap == null ? d.line : d.text2),
+        width: 42,
+        height: 44,
+        child: Icon(icon, size: 21, color: onTap == null ? d.line : d.text2),
       ),
     ),
   );
@@ -395,21 +490,21 @@ class ExpensesScreen extends ConsumerWidget {
           'NET PROFIT · ${p.label.toUpperCase()}',
           style: TextStyle(
             color: d.text4,
-            fontSize: 9.4.sp,
+            fontSize: 9.sp,
             fontWeight: FontWeight.w700,
             letterSpacing: 1,
           ),
         ),
-        const SizedBox(height: 7),
+        const SizedBox(height: 8),
         Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
             Text(
-              up ? '' : '– ',
+              up ? 'Rs ' : '– Rs ',
               style: TextStyle(
-                color: d.text2,
-                fontSize: 18.sp,
+                color: d.text3,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -422,7 +517,7 @@ class ExpensesScreen extends ConsumerWidget {
                   style: TextStyle(
                     fontFamily: AppFonts.display,
                     color: up ? d.text1 : d.alert,
-                    fontSize: 22.sp,
+                    fontSize: 24.sp,
                     fontWeight: FontWeight.w700,
                     height: 1,
                   ),
@@ -431,9 +526,9 @@ class ExpensesScreen extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
           decoration: BoxDecoration(
             color: (up ? d.ok : d.alert).withValues(alpha: .11),
             borderRadius: BorderRadius.circular(20),
@@ -443,15 +538,15 @@ class ExpensesScreen extends ConsumerWidget {
             children: [
               Icon(
                 up ? Icons.trending_up_rounded : Icons.trending_down_rounded,
-                size: 13.sp,
+                size: 16,
                 color: up ? d.ok : d.alert,
               ),
-              const SizedBox(width: 5),
+              const SizedBox(width: 6),
               Text(
                 '${(margin * 100).toStringAsFixed(1)}% margin',
                 style: TextStyle(
                   color: up ? d.ok : d.alert,
-                  fontSize: 8.5.sp,
+                  fontSize: 9.5.sp,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -478,19 +573,20 @@ class ExpensesScreen extends ConsumerWidget {
             valueColor: AlwaysStoppedAnimation(d.warn),
           ),
         ),
-        const SizedBox(height: 7),
+        const SizedBox(height: 8),
         Text(
           collected == 0
               ? 'Nothing collected in this period yet.'
               : '${(spentShare * 100).round()}% of what you collected '
                     'went back out.',
-          style: TextStyle(color: d.text4, fontSize: 8.sp),
+          style: TextStyle(color: d.text4, fontSize: 9.5.sp),
         ),
       ],
     );
 
+    final pad = narrow ? 18.0 : (1.7.w).clamp(20.0, 30.0);
     return Container(
-      padding: EdgeInsets.all(narrow ? 18 : 24),
+      padding: EdgeInsets.all(pad),
       decoration: BoxDecoration(
         color: d.surface,
         borderRadius: BorderRadius.circular(18),
@@ -512,9 +608,9 @@ class ExpensesScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(flex: 4, child: hero),
-                  const SizedBox(width: 20),
+                  const SizedBox(width: 22),
                   VerticalDivider(color: d.line, width: 1),
-                  const SizedBox(width: 20),
+                  const SizedBox(width: 22),
                   Expanded(flex: 5, child: split),
                 ],
               ),
@@ -531,22 +627,22 @@ class ExpensesScreen extends ConsumerWidget {
   ) => Row(
     children: [
       Container(
-        width: 32,
-        height: 32,
+        width: 34,
+        height: 34,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: tone.withValues(alpha: .13),
           borderRadius: BorderRadius.circular(9),
         ),
-        child: Icon(icon, size: 15, color: tone),
+        child: Icon(icon, size: 16, color: tone),
       ),
-      const SizedBox(width: 11),
+      const SizedBox(width: 12),
       Expanded(
         child: Text(
           label,
           style: TextStyle(
             color: d.text3,
-            fontSize: 10.sp,
+            fontSize: 11.sp,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -556,18 +652,18 @@ class ExpensesScreen extends ConsumerWidget {
         style: TextStyle(
           fontFamily: AppFonts.display,
           color: d.text1,
-          fontSize: 12.sp,
+          fontSize: 13.sp,
           fontWeight: FontWeight.w700,
         ),
       ),
     ],
   );
 
-  /// Someone with viewExpenses but not viewFinancials sees spending only —
-  /// never collected revenue, never profit.
+  /// viewExpenses without viewFinancials: spending only — never collected
+  /// revenue, never profit.
   Widget _plainTotals(DentColors d, int total, int count, Period p) =>
       Container(
-        padding: const EdgeInsets.all(22),
+        padding: EdgeInsets.all((1.6.w).clamp(18.0, 26.0)),
         decoration: BoxDecoration(
           color: d.surface,
           borderRadius: BorderRadius.circular(18),
@@ -576,8 +672,8 @@ class ExpensesScreen extends ConsumerWidget {
         child: Row(
           children: [
             Container(
-              width: 46,
-              height: 46,
+              width: 48,
+              height: 48,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: d.warn.withValues(alpha: .13),
@@ -586,7 +682,7 @@ class ExpensesScreen extends ConsumerWidget {
               child: Icon(
                 Icons.account_balance_wallet_rounded,
                 color: d.warn,
-                size: 21,
+                size: 22,
               ),
             ),
             const SizedBox(width: 16),
@@ -598,20 +694,24 @@ class ExpensesScreen extends ConsumerWidget {
                     'TOTAL SPENT · ${p.label.toUpperCase()}',
                     style: TextStyle(
                       color: d.text4,
-                      fontSize: 7.sp,
+                      fontSize: 8.5.sp,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Rs ${_m(total)}',
-                    style: TextStyle(
-                      fontFamily: AppFonts.display,
-                      color: d.text1,
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w700,
-                      height: 1,
+                  const SizedBox(height: 5),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Rs ${_m(total)}',
+                      style: TextStyle(
+                        fontFamily: AppFonts.display,
+                        color: d.text1,
+                        fontSize: 19.sp,
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                      ),
                     ),
                   ),
                 ],
@@ -619,7 +719,7 @@ class ExpensesScreen extends ConsumerWidget {
             ),
             Text(
               '$count ${count == 1 ? "entry" : "entries"}',
-              style: TextStyle(color: d.text4, fontSize: 9.5.sp),
+              style: TextStyle(color: d.text4, fontSize: 10.5.sp),
             ),
           ],
         ),
@@ -636,6 +736,7 @@ class ExpensesScreen extends ConsumerWidget {
     final thisMonth = DateTime.now().month;
     final year = ref.watch(expensePeriodProvider).anchor.year;
     final isThisYear = DateTime.now().year == year;
+    final valW = (6.w).clamp(80.0, 110.0);
 
     return DentPanel(
       title: 'Month by month',
@@ -650,6 +751,11 @@ class ExpensesScreen extends ConsumerWidget {
                   _legendDot(d, d.teal, 'Collected'),
                   const SizedBox(width: 16),
                   _legendDot(d, d.warn, 'Expenses'),
+                  const Spacer(),
+                  Text(
+                    'spent  ·  net',
+                    style: TextStyle(color: d.text4, fontSize: 9.sp),
+                  ),
                 ],
               ),
               const SizedBox(height: 14),
@@ -664,11 +770,11 @@ class ExpensesScreen extends ConsumerWidget {
                   child: Row(
                     children: [
                       SizedBox(
-                        width: 32,
+                        width: 38,
                         child: Text(
                           _monShort[i],
                           style: AppTypography.mono(
-                            size: 8.5.sp,
+                            size: 9.5.sp,
                             color: i + 1 == thisMonth && isThisYear
                                 ? d.ice
                                 : d.text3,
@@ -688,12 +794,12 @@ class ExpensesScreen extends ConsumerWidget {
                       ),
                       const SizedBox(width: 12),
                       SizedBox(
-                        width: 78,
+                        width: valW,
                         child: Text(
-                          'Rs ${_compact(exp[i])}',
+                          _compact(exp[i]),
                           textAlign: TextAlign.right,
                           style: AppTypography.mono(
-                            size: 8.5.sp,
+                            size: 9.5.sp,
                             color: d.text2,
                           ),
                         ),
@@ -701,13 +807,13 @@ class ExpensesScreen extends ConsumerWidget {
                       if (canFin) ...[
                         const SizedBox(width: 10),
                         SizedBox(
-                          width: 86,
+                          width: valW,
                           child: Text(
-                            '${inc[i] - exp[i] < 0 ? "– " : ""}Rs '
+                            '${inc[i] - exp[i] < 0 ? "– " : ""}'
                             '${_compact((inc[i] - exp[i]).abs())}',
                             textAlign: TextAlign.right,
                             style: AppTypography.mono(
-                              size: 8.5.sp,
+                              size: 9.5.sp,
                               color: inc[i] - exp[i] < 0 ? d.alert : d.teal,
                             ),
                           ),
@@ -727,8 +833,8 @@ class ExpensesScreen extends ConsumerWidget {
     mainAxisSize: MainAxisSize.min,
     children: [
       Container(
-        width: 9,
-        height: 9,
+        width: 10,
+        height: 10,
         decoration: BoxDecoration(
           color: c,
           borderRadius: BorderRadius.circular(3),
@@ -737,7 +843,7 @@ class ExpensesScreen extends ConsumerWidget {
       const SizedBox(width: 6),
       Text(
         label,
-        style: TextStyle(color: d.text4, fontSize: 8.sp),
+        style: TextStyle(color: d.text3, fontSize: 9.5.sp),
       ),
     ],
   );
@@ -798,20 +904,20 @@ class ExpensesScreen extends ConsumerWidget {
                           Row(
                             children: [
                               Container(
-                                width: 9,
-                                height: 9,
+                                width: 10,
+                                height: 10,
                                 decoration: BoxDecoration(
                                   color: tone,
                                   borderRadius: BorderRadius.circular(3),
                                 ),
                               ),
-                              const SizedBox(width: 9),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
                                   r.name,
                                   style: TextStyle(
                                     color: on ? d.ice : d.text1,
-                                    fontSize: 9.5.sp,
+                                    fontSize: 10.5.sp,
                                     fontWeight: FontWeight.w600,
                                   ),
                                   overflow: TextOverflow.ellipsis,
@@ -819,26 +925,26 @@ class ExpensesScreen extends ConsumerWidget {
                               ),
                               const SizedBox(width: 10),
                               Text(
-                                'Rs ${_m(r.total)}',
+                                _m(r.total),
                                 style: AppTypography.mono(
-                                  size: 9.sp,
+                                  size: 10.sp,
                                   color: d.text1,
                                 ),
                               ),
                               SizedBox(
-                                width: 44,
+                                width: 50,
                                 child: Text(
                                   '${(r.share * 100).round()}%',
                                   textAlign: TextAlign.right,
                                   style: AppTypography.mono(
-                                    size: 8.sp,
+                                    size: 9.sp,
                                     color: d.text4,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 7),
+                          const SizedBox(height: 8),
                           _bar(d, r.share, tone),
                         ],
                       ),
@@ -853,7 +959,7 @@ class ExpensesScreen extends ConsumerWidget {
   }
 
   // ── table ────────────────────────────────────────────────────────────────
-  Widget _header(DentColors d) {
+  Widget _header(DentColors d, _Cols cols) {
     TextStyle h() => TextStyle(
       color: d.text3,
       fontSize: 9.sp,
@@ -867,30 +973,29 @@ class ExpensesScreen extends ConsumerWidget {
         border: Border(bottom: BorderSide(color: d.line)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: _colDate,
+            width: cols.date,
             child: Text('DATE', style: h(), textAlign: TextAlign.center),
           ),
-          const SizedBox(width: _colGap),
+          SizedBox(width: cols.gap),
           Expanded(
-            flex: _flexCategory,
+            flex: _Cols.flexCategory,
             child: Text('CATEGORY', style: h()),
           ),
           Expanded(
-            flex: _flexDetails,
+            flex: _Cols.flexDetails,
             child: Text('DETAILS', style: h()),
           ),
           Expanded(
-            flex: _flexMethod,
+            flex: _Cols.flexMethod,
             child: Text('METHOD', style: h()),
           ),
           SizedBox(
-            width: _colAmount,
-            child: Text('AMOUNT', style: h(), textAlign: TextAlign.right),
+            width: cols.amount,
+            child: Text('AMOUNT (RS)', style: h(), textAlign: TextAlign.right),
           ),
-          const SizedBox(width: _colActions),
+          SizedBox(width: cols.actions),
         ],
       ),
     );
@@ -902,73 +1007,75 @@ class ExpensesScreen extends ConsumerWidget {
     DentColors d,
     ExpenseRow e,
     Map<String, String> names,
-    bool canManage,
-  ) {
-    final isOwner = ref.watch(authControllerProvider)?.role == AppRole.owner;
-    return InkWell(
-      onTap: canManage ? () => showExpenseEditor(context, existing: e) : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: d.line)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(width: _colDate, child: _dateChip(d, e.paidAt)),
-            const SizedBox(width: _colGap),
-            Expanded(
-              flex: _flexCategory,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: Text(
-                  names[e.categoryUuid] ?? 'Uncategorised',
-                  style: TextStyle(
-                    color: d.text1,
-                    fontSize: 10.5.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            Expanded(
-              flex: _flexDetails,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      e.description.isEmpty ? '—' : e.description,
-                      style: TextStyle(color: d.text2, fontSize: 10.sp),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if ((e.vendor ?? '').isNotEmpty ||
-                        (e.reference ?? '').isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          [
-                            if ((e.vendor ?? '').isNotEmpty) e.vendor!,
-                            if ((e.reference ?? '').isNotEmpty)
-                              'TID ${e.reference}',
-                          ].join(' · '),
-                          style: TextStyle(color: d.text4, fontSize: 8.5.sp),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            Expanded(flex: _flexMethod, child: _methodPill(d, e)),
-            SizedBox(
-              width: _colAmount,
+    _Cols cols, {
+    required bool canManage,
+    required bool isOwner,
+  }) => InkWell(
+    onTap: canManage ? () => showExpenseEditor(context, existing: e) : null,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: d.line)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(width: cols.date, child: _dateChip(d, e.paidAt, cols.date)),
+          SizedBox(width: cols.gap),
+          Expanded(
+            flex: _Cols.flexCategory,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 10),
               child: Text(
-                '${_m(e.amount)}',
-                textAlign: TextAlign.right,
+                names[e.categoryUuid] ?? 'Uncategorised',
+                style: TextStyle(
+                  color: d.text1,
+                  fontSize: 10.5.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: _Cols.flexDetails,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    e.description.isEmpty ? '—' : e.description,
+                    style: TextStyle(color: d.text2, fontSize: 10.sp),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if ((e.vendor ?? '').isNotEmpty ||
+                      (e.reference ?? '').isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        [
+                          if ((e.vendor ?? '').isNotEmpty) e.vendor!,
+                          if ((e.reference ?? '').isNotEmpty)
+                            'TID ${e.reference}',
+                        ].join(' · '),
+                        style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(flex: _Cols.flexMethod, child: _methodPill(d, e)),
+          SizedBox(
+            width: cols.amount,
+            child: FittedBox(
+              // A seven-figure amount scales down instead of overflowing.
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                _m(e.amount),
                 style: AppTypography.mono(
                   size: 11.5.sp,
                   color: d.text1,
@@ -976,46 +1083,26 @@ class ExpensesScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            SizedBox(
-              width: _colActions,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  // Owner only — staff shouldn't be auditing each other.
-                  if (isOwner)
-                    IconButton(
-                      tooltip: 'Who added this',
-                      visualDensity: VisualDensity.compact,
-                      icon: Icon(
-                        Icons.info_outline_rounded,
-                        size: 12.5.sp,
-                        color: d.text4,
-                      ),
-                      onPressed: () => showExpenseAudit(
-                        context,
-                        e,
-                        names[e.categoryUuid] ?? 'Uncategorised',
-                      ),
-                    ),
-                  if (canManage)
-                    IconButton(
-                      tooltip: 'Delete',
-                      visualDensity: VisualDensity.compact,
-                      icon: Icon(
-                        Icons.delete_outline_rounded,
-                        size: 12.5.sp,
-                        color: d.text4,
-                      ),
-                      onPressed: () => _delete(context, ref, e, names),
-                    ),
-                ],
+          ),
+          SizedBox(
+            width: cols.actions,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: _actions(
+                context,
+                ref,
+                d,
+                e,
+                names,
+                canManage: canManage,
+                isOwner: isOwner,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 
   /// Narrow layout: the same row as a stacked card, so nothing truncates.
   Widget _card(
@@ -1023,120 +1110,146 @@ class ExpensesScreen extends ConsumerWidget {
     WidgetRef ref,
     DentColors d,
     ExpenseRow e,
-    Map<String, String> names,
-    bool canManage,
-  ) {
-    final isOwner = ref.watch(authControllerProvider)?.role == AppRole.owner;
-    return InkWell(
-      onTap: canManage ? () => showExpenseEditor(context, existing: e) : null,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 13, 10, 13),
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: d.line)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _dateChip(d, e.paidAt),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          names[e.categoryUuid] ?? 'Uncategorised',
-                          style: TextStyle(
-                            color: d.text1,
-                            fontSize: 10.5.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Rs ${_m(e.amount)}',
-                        style: AppTypography.mono(
-                          size: 10.5.sp,
+    Map<String, String> names, {
+    required bool canManage,
+    required bool isOwner,
+  }) => InkWell(
+    onTap: canManage ? () => showExpenseEditor(context, existing: e) : null,
+    child: Container(
+      padding: const EdgeInsets.fromLTRB(16, 13, 8, 13),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: d.line)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _dateChip(d, e.paidAt, 58),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        names[e.categoryUuid] ?? 'Uncategorised',
+                        style: TextStyle(
                           color: d.text1,
-                          weight: FontWeight.w700,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w600,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                  ),
-                  if (e.description.isNotEmpty) ...[
-                    const SizedBox(height: 3),
+                    ),
+                    const SizedBox(width: 10),
                     Text(
-                      e.description,
-                      style: TextStyle(color: d.text2, fontSize: 9.5.sp),
+                      'Rs ${_m(e.amount)}',
+                      style: AppTypography.mono(
+                        size: 11.sp,
+                        color: d.text1,
+                        weight: FontWeight.w700,
+                      ),
                     ),
                   ],
-                  const SizedBox(height: 7),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      _methodPill(d, e),
-                      if ((e.vendor ?? '').isNotEmpty)
-                        Text(
-                          e.vendor!,
-                          style: TextStyle(color: d.text4, fontSize: 8.sp),
-                        ),
-                      if ((e.reference ?? '').isNotEmpty)
-                        Text(
-                          'TID ${e.reference}',
-                          style: AppTypography.mono(
-                            size: 7.5.sp,
-                            color: d.text4,
-                          ),
-                        ),
-                    ],
+                ),
+                if (e.description.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    e.description,
+                    style: TextStyle(color: d.text2, fontSize: 10.sp),
                   ),
                 ],
-              ),
-            ),
-            Column(
-              children: [
-                if (isOwner)
-                  IconButton(
-                    tooltip: 'Who added this',
-                    visualDensity: VisualDensity.compact,
-                    icon: Icon(
-                      Icons.info_outline_rounded,
-                      size: 16,
-                      color: d.text4,
-                    ),
-                    onPressed: () => showExpenseAudit(
-                      context,
-                      e,
-                      names[e.categoryUuid] ?? 'Uncategorised',
-                    ),
-                  ),
-                if (canManage)
-                  IconButton(
-                    tooltip: 'Delete',
-                    visualDensity: VisualDensity.compact,
-                    icon: Icon(
-                      Icons.delete_outline_rounded,
-                      size: 16,
-                      color: d.text4,
-                    ),
-                    onPressed: () => _delete(context, ref, e, names),
-                  ),
+                const SizedBox(height: 7),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _methodPill(d, e),
+                    if ((e.vendor ?? '').isNotEmpty)
+                      Text(
+                        e.vendor!,
+                        style: TextStyle(color: d.text4, fontSize: 9.sp),
+                      ),
+                    if ((e.reference ?? '').isNotEmpty)
+                      Text(
+                        'TID ${e.reference}',
+                        style: AppTypography.mono(size: 8.5.sp, color: d.text4),
+                      ),
+                  ],
+                ),
               ],
             ),
-          ],
+          ),
+          Column(
+            children: _actions(
+              context,
+              ref,
+              d,
+              e,
+              names,
+              canManage: canManage,
+              isOwner: isOwner,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  List<Widget> _actions(
+    BuildContext context,
+    WidgetRef ref,
+    DentColors d,
+    ExpenseRow e,
+    Map<String, String> names, {
+    required bool canManage,
+    required bool isOwner,
+  }) => [
+    // Owner only — staff shouldn't be auditing each other.
+    if (isOwner)
+      _actionIcon(
+        d,
+        Icons.info_outline_rounded,
+        'Who added this',
+        () => showExpenseAudit(
+          context,
+          e,
+          names[e.categoryUuid] ?? 'Uncategorised',
         ),
       ),
-    );
-  }
+    if (canManage)
+      _actionIcon(
+        d,
+        Icons.delete_outline_rounded,
+        'Delete',
+        () => _delete(context, ref, e, names),
+      ),
+  ];
 
-  Widget _dateChip(DentColors d, DateTime dt) => Container(
-    width: _colDate,
+  /// Fixed tap target. A stock IconButton reserves ~48px even in compact
+  /// density, which is what overflowed the old actions column.
+  Widget _actionIcon(
+    DentColors d,
+    IconData icon,
+    String tip,
+    VoidCallback onTap,
+  ) => Tooltip(
+    message: tip,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(9),
+      onTap: onTap,
+      child: SizedBox(
+        width: _kActionBox,
+        height: _kActionBox,
+        child: Icon(icon, size: (11.sp).clamp(17.0, 21.0), color: d.text4),
+      ),
+    ),
+  );
+
+  Widget _dateChip(DentColors d, DateTime dt, double width) => Container(
+    width: width,
     padding: const EdgeInsets.symmetric(vertical: 7),
     decoration: BoxDecoration(
       color: d.surface2,
@@ -1149,17 +1262,17 @@ class ExpensesScreen extends ConsumerWidget {
           style: TextStyle(
             fontFamily: AppFonts.display,
             color: d.text1,
-            fontSize: 11.sp,
+            fontSize: 12.sp,
             fontWeight: FontWeight.w700,
             height: 1,
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 3),
         Text(
           _monShort[dt.month - 1].toUpperCase(),
           style: TextStyle(
             color: d.text4,
-            fontSize: 8.sp,
+            fontSize: 8.5.sp,
             fontWeight: FontWeight.w700,
             letterSpacing: .5,
           ),
@@ -1202,7 +1315,14 @@ class ExpensesScreen extends ConsumerWidget {
     ],
   );
 
-  Widget _footer(DentColors d, int count, int sum, bool narrow) => Container(
+  Widget _footer(
+    DentColors d,
+    int count,
+    int sum,
+    bool narrow,
+    _Cols cols, {
+    required bool showTotal,
+  }) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
     decoration: BoxDecoration(
       color: d.surface2,
@@ -1215,30 +1335,47 @@ class ExpensesScreen extends ConsumerWidget {
           style: TextStyle(color: d.text3, fontSize: 10.sp),
         ),
         const Spacer(),
-        Text(
-          'Total',
-          style: TextStyle(
-            color: d.text3,
-            fontSize: 10.5.sp,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(width: 12),
-        // Sits directly under the AMOUNT column it sums.
-        SizedBox(
-          width: narrow ? null : _colAmount,
-          child: Text(
-            'Rs ${_m(sum)}',
-            textAlign: narrow ? TextAlign.right : TextAlign.right,
+        if (showTotal) ...[
+          Text(
+            'Total',
             style: TextStyle(
-              fontFamily: AppFonts.display,
-              color: d.text1,
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w700,
+              color: d.text3,
+              fontSize: 10.5.sp,
+              fontWeight: FontWeight.w600,
             ),
           ),
-        ),
-        if (!narrow) const SizedBox(width: _colActions),
+          const SizedBox(width: 12),
+          // Sits directly under the AMOUNT column it sums.
+          if (narrow)
+            Text(
+              'Rs ${_m(sum)}',
+              style: TextStyle(
+                fontFamily: AppFonts.display,
+                color: d.text1,
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            )
+          else ...[
+            SizedBox(
+              width: cols.amount,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  'Rs ${_m(sum)}',
+                  style: TextStyle(
+                    fontFamily: AppFonts.display,
+                    color: d.text1,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: cols.actions),
+          ],
+        ],
       ],
     ),
   );

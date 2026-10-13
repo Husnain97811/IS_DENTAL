@@ -816,19 +816,25 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
   }
 
   // ── expenses: three actions ──────────────────────────────────────────────
+  // ── expenses: up to three actions, each behind its own permission ────────
   List<Widget> _expenseActions(
     BuildContext context,
     WidgetRef ref, {
     required bool compact,
   }) {
-    if (!ref.watch(canProvider(Perm.manageExpenses))) return const [];
+    final canAdd = ref.watch(canProvider(Perm.manageExpenses));
+    final canEdit = ref.watch(canProvider(Perm.editExpenses));
+    final canView = ref.watch(canProvider(Perm.viewExpenses));
+    if (!canAdd && !canEdit) return const [];
+
     final d = context.dent;
     final period = ref.watch(expensePeriodProvider);
     final gap = compact ? 8.0 : 10.0;
 
     return [
-      // Copying forward only makes sense while viewing a single month.
-      if (period.mode == PeriodMode.month) ...[
+      // Creates entries (needs Add) and previews last month's total (needs
+      // View), and only makes sense while viewing a single month.
+      if (canAdd && canView && period.mode == PeriodMode.month) ...[
         SizedBox(width: gap),
         Tooltip(
           message: 'Copy last month',
@@ -871,20 +877,25 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
           ),
         ),
       ],
-      SizedBox(width: gap),
-      _iconBtn(
-        context,
-        Icons.tune_rounded,
-        () => showListsManager(context),
-        tooltip: 'Manage categories & methods',
-      ),
-      SizedBox(width: gap),
-      _accentButton(
-        context,
-        label: 'Add Expense',
-        onTap: () => showExpenseEditor(context),
-        compact: compact,
-      ),
+      // Editing the lists changes how existing entries are labelled.
+      if (canEdit) ...[
+        SizedBox(width: gap),
+        _iconBtn(
+          context,
+          Icons.tune_rounded,
+          () => showListsManager(context),
+          tooltip: 'Manage categories & methods',
+        ),
+      ],
+      if (canAdd) ...[
+        SizedBox(width: gap),
+        _accentButton(
+          context,
+          label: 'Add Expense',
+          onTap: () => showExpenseEditor(context),
+          compact: compact,
+        ),
+      ],
     ];
   }
 

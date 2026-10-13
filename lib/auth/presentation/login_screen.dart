@@ -75,7 +75,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final mmss = '${two(rem.inMinutes)}:${two(rem.inSeconds % 60)}';
 
     return AuthShell(
-      maxWidth: 410,
+      maxWidth: 30.w,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

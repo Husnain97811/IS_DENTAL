@@ -73,6 +73,7 @@ class Users extends Table {
     Expenses,
     InvoicePayments,
     Devices,
+    DeviceInventories,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -80,7 +81,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 26;
+  int get schemaVersion => 28;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -308,8 +309,21 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> softDeleteXray(int id) =>
       (update(patientXrays)..where((t) => t.id.equals(id))).write(
-        const PatientXraysCompanion(isDeleted: Value(true)),
+        PatientXraysCompanion(
+          isDeleted: const Value(true),
+          updatedAt: Value(DateTime.now()),
+        ),
       );
+
+  /// Restore re-creates patients with new local ids. X-ray rows are kept
+  /// (their files are local-only), so point them back at the right patient
+  /// by uuid — otherwise every X-ray shows on the wrong record.
+  Future<void> relinkXrayPatients() => customStatement(
+    'UPDATE patient_xrays SET patient_id = '
+    '(SELECT id FROM patients WHERE patients.uuid = patient_xrays.patient_uuid) '
+    'WHERE EXISTS '
+    '(SELECT 1 FROM patients WHERE patients.uuid = patient_xrays.patient_uuid)',
+  );
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -498,6 +512,41 @@ class AppDatabase extends _$AppDatabase {
           await customStatement(
             'CREATE UNIQUE INDEX IF NOT EXISTS idx_device_letter '
             'ON devices(clinic_id, letter) WHERE is_deleted = 0;',
+          );
+        } catch (_) {}
+      }
+      if (from < 27) {
+        try {
+          await m.addColumn(patientXrays, patientXrays.isEncrypted);
+        } catch (_) {}
+        try {
+          await m.addColumn(patientXrays, patientXrays.sha256);
+        } catch (_) {}
+        try {
+          await m.addColumn(patientXrays, patientXrays.byteSize);
+        } catch (_) {}
+        try {
+          await m.addColumn(patientXrays, patientXrays.updatedAt);
+        } catch (_) {}
+      }
+      if (from < 28) {
+        for (final c in <GeneratedColumn>[
+          patientXrays.keyId,
+          patientXrays.isLocal,
+          patientXrays.originDevice,
+        ]) {
+          try {
+            await m.addColumn(patientXrays, c);
+          } catch (_) {}
+        }
+        try {
+          await m.createTable(deviceInventories);
+        } catch (_) {}
+        // Rows from before v27 have no updatedAt, so they'd never sync.
+        try {
+          await customStatement(
+            'UPDATE patient_xrays SET updated_at = created_at '
+            'WHERE updated_at IS NULL',
           );
         } catch (_) {}
       }
@@ -898,16 +947,25 @@ class AppDatabase extends _$AppDatabase {
       'Other',
     ];
 
+    // Deterministic, never random: the same clinic + list + name always
+    // produces the same uuid. However many times or on however many
+    // computers the defaults get seeded, sync sees ONE row, not copies.
+    // The clinic id is part of it because lookup_lists.uuid is the primary
+    // key across every clinic in the shared cloud table.
+    String seedUuid(String kind, String name) =>
+        'seed:$clinicId:$kind:${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}';
+
     Future<void> add(String kind, String name, int order) =>
         into(lookupLists).insert(
           LookupListsCompanion.insert(
-            uuid: Uuids.v4(),
+            uuid: seedUuid(kind, name),
             clinicId: clinicId,
             kind: kind,
             name: name,
             sortOrder: Value(order),
             isSystem: const Value(true),
           ),
+          mode: InsertMode.insertOrIgnore,
         );
 
     for (var i = 0; i < categories.length; i++) {
@@ -918,7 +976,57 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  /// Collapses lookup rows that share kind + name — left behind when a list
+  /// was seeded on one machine and restored from another. Keeps one row,
+  /// repoints expenses at it, and hides the rest (soft delete, so the
+  /// clean-up syncs to every computer).
+  ///
+  /// The row kept is chosen by sortOrder then uuid, never by local id, so
+  /// two computers cleaning up independently keep the SAME row instead of
+  /// each hiding the other's.
+  ///
+  /// Idempotent and cheap when there's nothing to do.
+  Future<int> dedupeLookups() async {
+    final rows =
+        await (select(lookupLists)
+              ..where((t) => t.isDeleted.equals(false))
+              ..orderBy([
+                (t) => OrderingTerm.asc(t.sortOrder),
+                (t) => OrderingTerm.asc(t.uuid),
+              ]))
+            .get();
+
+    final keep = <String, LookupRow>{};
+    var removed = 0;
+    await transaction(() async {
+      for (final r in rows) {
+        final key = '${r.kind}|${r.name.trim().toLowerCase()}';
+        final kept = keep[key];
+        if (kept == null) {
+          keep[key] = r;
+          continue;
+        }
+        if (r.kind == 'expense_category') {
+          await (update(
+            expenses,
+          )..where((t) => t.categoryUuid.equals(r.uuid))).write(
+            ExpensesCompanion(
+              categoryUuid: Value(kept.uuid),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
+        }
+        await (update(lookupLists)..where((t) => t.id.equals(r.id))).write(
+          LookupListsCompanion(
+            isDeleted: const Value(true),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
+        removed++;
+      }
+    });
+    return removed;
+  }
 
   // ───────────────────────── v26: device identity ──────────────────────────
 

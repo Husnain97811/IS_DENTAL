@@ -76,7 +76,7 @@ class _ListsManagerState extends ConsumerState<_ListsManager> {
       child: Material(
         color: d.surface,
         child: SizedBox(
-          width: 420,
+          width: 30.w,
           height: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

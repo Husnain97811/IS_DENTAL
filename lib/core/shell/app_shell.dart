@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -34,6 +36,10 @@ class _AppShellState extends ConsumerState<AppShell> {
               byUsername: ref.read(authControllerProvider)?.username,
             );
         await ref.read(appDatabaseProvider).seedLookupsIfEmpty();
+        await ref.read(appDatabaseProvider).dedupeLookups();
+        // Encrypts any X-ray still stored as a plain image. Background,
+        // verified per file, and safe to interrupt.
+        unawaited(ref.read(xrayVaultProvider).encryptPending());
         await ref.read(requestsRealtimeProvider).start(clinicId);
       }
     });

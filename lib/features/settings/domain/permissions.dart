@@ -14,8 +14,9 @@ class Perm {
   static const manageBackup = 'manageBackup';
   static const manageStaff = 'manageStaff';
   static const cancelInvoices = 'cancelInvoices';
-  static const manageExpenses = 'manageExpenses';
-  static const viewExpenses = 'viewExpenses';
+  static const manageExpenses = 'manageExpenses'; // add + see all entries
+  static const editExpenses = 'editExpenses'; // edit + delete + lists
+  static const viewExpenses = 'viewExpenses'; // totals + profit
 
   static const all = [
     viewFinancials,
@@ -29,6 +30,7 @@ class Perm {
     manageStaff,
     cancelInvoices,
     manageExpenses,
+    editExpenses,
     viewExpenses,
   ];
 
@@ -43,8 +45,9 @@ class Perm {
     manageBackup => 'Manage backup & restore',
     manageStaff => 'Manage staff',
     cancelInvoices => 'Cancel invoices',
-    manageExpenses => 'Record expenses',
-    viewExpenses => 'View expenses & profit',
+    manageExpenses => 'Add expenses',
+    editExpenses => 'Edit & delete expenses',
+    viewExpenses => 'View expense totals & profit',
     _ => key,
   };
 
@@ -61,10 +64,14 @@ class Perm {
     manageStaff => 'Add, edit and remove staff logins',
     cancelInvoices => 'Mark an invoice cancelled. Owner can always do this.',
     manageExpenses =>
-      'Add, edit and delete expenses, and edit the category list',
+      'Open the Expenses screen, see every entry and add new ones. Totals '
+          'need "View expense totals & profit".',
+    editExpenses =>
+      'Edit or delete any expense, and manage the category and payment '
+          'method lists.',
     viewExpenses =>
-      'Open the Expenses screen and see expense totals. Net profit also '
-          'needs "View financials".',
+      'Expense totals, category breakdown and month-by-month. Net profit '
+          'also needs "View financials".',
     _ => '',
   };
 }

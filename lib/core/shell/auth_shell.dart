@@ -174,8 +174,8 @@ class AuthBrand extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 55.2,
-          height: 55.2,
+          width: 3.w,
+          height: 6.h,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             gradient: d.accentGradient,

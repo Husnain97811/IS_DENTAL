@@ -136,9 +136,11 @@ class _ExpenseEditorState extends ConsumerState<_ExpenseEditor> {
         ref.watch(branchesStreamProvider).value ?? const <Branch>[];
     final cats = ref.watch(expenseCategoriesProvider).value ?? const [];
     final methods = ref.watch(paymentMethodsProvider).value ?? const [];
+    // Deduplicated: a list seeded on one machine and restored from another
+    // can hold the same name twice, and a DropdownButton asserts on that.
     final methodNames = methods.isEmpty
         ? const ['Cash', 'Bank Transfer', 'Card', 'JazzCash', 'EasyPaisa']
-        : methods.map((m) => m.name).toList();
+        : <String>{for (final m in methods) m.name}.toList();
 
     // A DropdownButton asserts if its value is not among its items, and an
     // old expense can easily point at something no longer listed: a hidden
@@ -149,9 +151,15 @@ class _ExpenseEditorState extends ConsumerState<_ExpenseEditor> {
       String? current, {
       required String missingLabel,
     }) {
-      if (current == null || current.isEmpty) return items;
-      if (items.any((e) => e.$1 == current)) return items;
-      return [(current, missingLabel), ...items];
+      // Every value exactly once — the dropdown's hard requirement.
+      final seen = <String>{};
+      final unique = [
+        for (final e in items)
+          if (seen.add(e.$1)) e,
+      ];
+      if (current == null || current.isEmpty) return unique;
+      if (seen.contains(current)) return unique;
+      return [(current, missingLabel), ...unique];
     }
 
     final catItems = withCurrent(

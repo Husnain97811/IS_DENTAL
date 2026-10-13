@@ -14,6 +14,28 @@ class LicenseVerifier {
   );
   static final BigInt _exponent = BigInt.from(65537);
 
+  /// Public half of the Inover Studio key. Used to lock each X-ray transfer
+  /// file's key so ONLY the vendor's private key can unlock it for recovery.
+  static RSAPublicKey get vendorPublicKey => RSAPublicKey(_modulus, _exponent);
+
+  /// Verifies any vendor-signed payload whose canonical JSON the caller
+  /// builds (used by X-ray recovery codes).
+  bool verifyCanonical(String canonical, String signatureB64) {
+    try {
+      final signer = RSASigner(SHA256Digest(), '0609608648016503040201')
+        ..init(
+          false,
+          PublicKeyParameter<RSAPublicKey>(RSAPublicKey(_modulus, _exponent)),
+        );
+      return signer.verifySignature(
+        Uint8List.fromList(utf8.encode(canonical)),
+        RSASignature(base64.decode(signatureB64)),
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
   bool verify(License lic) {
     try {
       final signer = RSASigner(SHA256Digest(), '0609608648016503040201')
@@ -50,5 +72,4 @@ class LicenseVerifier {
       return false;
     }
   }
-
 }

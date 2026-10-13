@@ -162,6 +162,14 @@ bool navAllowed(String route, Entitlements ent, bool Function(String) can) {
   };
   if (!licensed) return false;
 
+  // Recording an expense needs the screen even without seeing the totals —
+  // a record-only user sees just the entries they added themselves.
+  if (route == AppRoutes.expenses) {
+    return can(Perm.viewExpenses) ||
+        can(Perm.manageExpenses) ||
+        can(Perm.editExpenses);
+  }
+
   final perm = kRoutePerm[route];
   return perm == null || can(perm);
 }
