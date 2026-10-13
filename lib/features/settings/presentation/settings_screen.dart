@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/settings/presentaion/widgets/xray_transfer_panel.dart';
 
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:sizer/sizer.dart';
@@ -339,6 +340,10 @@ class _S extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: 18),
 
                   _dataPanel(d),
+                  // Shows only for the owner and anyone granted
+                  // "Export X-rays" — the panel checks that itself.
+                  const SizedBox(height: 18),
+                  const XrayTransferPanel(),
 
                   if (isOwner) ...[
                     const SizedBox(height: 18),
