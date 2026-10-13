@@ -1232,6 +1232,10 @@ class SyncEngine {
           'invoice_no': inv.invoiceNo,
           'issued_at': _iso(inv.issuedAt),
           'status': inv.status,
+          // Pull and restore already read these; without them the other
+          // computers learn THAT it was cancelled, but not who or when.
+          'cancelled_by': inv.cancelledBy,
+          'cancelled_at': _iso(inv.cancelledAt),
           // Pull and restore already read these; without them here the
           // other computers learn THAT it was cancelled but not who or when.
           'cancelled_by': inv.cancelledBy,

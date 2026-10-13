@@ -8,7 +8,10 @@ import '../../data/payment_repository.dart';
 import 'payment_dialog.dart';
 
 class InvoiceDrawer extends ConsumerWidget {
-  const InvoiceDrawer({super.key});
+  const InvoiceDrawer({super.key, this.onClose});
+
+  /// Set when the panel is opened as an overlay on a narrow window.
+  final VoidCallback? onClose;
 
   String _m(int v) => v.toString().replaceAllMapped(
     RegExp(r'(\d)(?=(\d{3})+$)'),
@@ -42,6 +45,7 @@ class InvoiceDrawer extends ConsumerWidget {
     final payments = ref.watch(paymentsForInvoiceProvider(inv.id)).value ?? [];
     final cancelled = inv.status == InvoiceStatus.cancelled;
     final settled = inv.balance <= 0;
+    final canTake = ref.watch(canProvider(Perm.takePayments));
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -71,6 +75,15 @@ class InvoiceDrawer extends ConsumerWidget {
                   weight: FontWeight.w700,
                 ),
               ),
+              if (onClose != null) ...[
+                const SizedBox(width: 6),
+                IconButton(
+                  tooltip: 'Close',
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(Icons.close_rounded, size: 19, color: d.text3),
+                  onPressed: onClose,
+                ),
+              ],
             ],
           ),
         ),
@@ -165,18 +178,44 @@ class InvoiceDrawer extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
           child: Column(
             children: [
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: d.ice,
-                  foregroundColor: AppPalette.onAccent,
-                  minimumSize: const Size.fromHeight(42),
+              if (canTake)
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: d.ice,
+                    foregroundColor: AppPalette.onAccent,
+                    minimumSize: const Size.fromHeight(42),
+                  ),
+                  onPressed: (cancelled || settled)
+                      ? null
+                      : () => showPaymentDialog(context, inv),
+                  icon: const Icon(Icons.payments_rounded, size: 17),
+                  label: Text(settled ? 'Fully Paid' : 'Take Payment'),
+                )
+              else if (!cancelled && !settled)
+                // Say why, rather than leave a missing button to puzzle over.
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: d.surface2,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.lock_outline_rounded,
+                        size: 17,
+                        color: d.text4,
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          'Taking payments is not enabled for your role.',
+                          style: TextStyle(color: d.text3, fontSize: 9.5.sp),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                onPressed: (cancelled || settled)
-                    ? null
-                    : () => showPaymentDialog(context, inv),
-                icon: const Icon(Icons.payments_rounded, size: 17),
-                label: Text(settled ? 'Fully Paid' : 'Take Payment'),
-              ),
               const SizedBox(height: 9),
               OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
@@ -378,3 +417,30 @@ class InvoiceDrawer extends ConsumerWidget {
     ),
   );
 }
+
+/// Narrow windows have no room for the side panel, so the same panel slides
+/// in over the screen instead of silently not appearing.
+Future<void> showInvoiceSheet(BuildContext context) => showGeneralDialog(
+  context: context,
+  barrierDismissible: true,
+  barrierLabel: 'Close',
+  barrierColor: Colors.black.withValues(alpha: .35),
+  transitionDuration: const Duration(milliseconds: 220),
+  pageBuilder: (dialogCtx, _, __) => Align(
+    alignment: Alignment.centerRight,
+    child: Material(
+      elevation: 12,
+      child: SizedBox(
+        height: double.infinity,
+        child: InvoiceDrawer(onClose: () => Navigator.pop(dialogCtx)),
+      ),
+    ),
+  ),
+  transitionBuilder: (_, anim, __, child) => SlideTransition(
+    position: Tween(
+      begin: const Offset(1, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+    child: child,
+  ),
+);

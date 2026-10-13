@@ -516,7 +516,9 @@ String _writeBundle(
   Uint8List manifest,
   List<(String, String)> files,
 ) {
-  final tmp = File('$outPath.part');
+  final tmp = File(
+    '${Directory.systemTemp.path}/dentos_${DateTime.now().microsecondsSinceEpoch}.part',
+  );
   final raf = tmp.openSync(mode: FileMode.write);
   final d = SHA256Digest();
   void put(Uint8List b) {
@@ -540,9 +542,8 @@ String _writeBundle(
   raf.flushSync();
   raf.closeSync();
 
-  final out = File(outPath);
-  if (out.existsSync()) out.deleteSync();
-  tmp.renameSync(outPath);
+  tmp.copySync(outPath);
+  tmp.deleteSync();
 
   final h = Uint8List(32);
   d.doFinal(h, 0);

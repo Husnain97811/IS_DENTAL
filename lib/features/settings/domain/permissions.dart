@@ -14,6 +14,7 @@ class Perm {
   static const manageBackup = 'manageBackup';
   static const manageStaff = 'manageStaff';
   static const cancelInvoices = 'cancelInvoices';
+  static const takePayments = 'takePayments';
   static const manageExpenses = 'manageExpenses'; // add + see all entries
   static const editExpenses = 'editExpenses'; // edit + delete + lists
   static const viewExpenses = 'viewExpenses'; // totals + profit
@@ -29,6 +30,7 @@ class Perm {
     manageBackup,
     manageStaff,
     cancelInvoices,
+    takePayments,
     manageExpenses,
     editExpenses,
     viewExpenses,
@@ -45,6 +47,7 @@ class Perm {
     manageBackup => 'Manage backup & restore',
     manageStaff => 'Manage staff',
     cancelInvoices => 'Cancel invoices',
+    takePayments => 'Take payments',
     manageExpenses => 'Add expenses',
     editExpenses => 'Edit & delete expenses',
     viewExpenses => 'View expense totals & profit',
@@ -62,7 +65,12 @@ class Perm {
     exportXrays => 'Download all X-rays as a ZIP',
     manageBackup => 'Backup, restore from cloud, and data export',
     manageStaff => 'Add, edit and remove staff logins',
-    cancelInvoices => 'Mark an invoice cancelled. Owner can always do this.',
+    cancelInvoices =>
+      'Cancel an invoice, or remove a payment recorded by mistake. Owner '
+          'can always do this.',
+    takePayments =>
+      'Record money received on an invoice — the Take Payment button. '
+          'Removing a payment needs "Cancel invoices".',
     manageExpenses =>
       'Open the Expenses screen, see every entry and add new ones. Totals '
           'need "View expense totals & profit".',
@@ -82,7 +90,8 @@ bool defaultFor(AppRole role, String key) {
   // keeps existing clinics working exactly as before.
   if (key == Perm.accessBilling ||
       key == Perm.billAppointments ||
-      key == Perm.prescribe) {
+      key == Perm.prescribe ||
+      key == Perm.takePayments) {
     return true;
   }
 

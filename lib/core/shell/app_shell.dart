@@ -10,6 +10,10 @@ import 'widgets/app_sidebar.dart';
 import 'widgets/app_topbar.dart';
 import 'widgets/contextual_drawer.dart';
 
+/// Below this window width there is no room for the side panel. Screens
+/// that depend on it (Billing) slide it in as an overlay instead.
+const double kDrawerMinWidth = 1280;
+
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
   final StatefulNavigationShell navigationShell;
@@ -59,7 +63,8 @@ class _AppShellState extends ConsumerState<AppShell> {
         // Desktop-first breakpoints: auto-collapse below 1100, hide drawer below 1280.
         final autoCollapse = c.maxWidth < 1100;
         final collapsed = _collapsed || autoCollapse;
-        final showDrawer = dest.drawer != DrawerKind.none && c.maxWidth >= 1280;
+        final showDrawer =
+            dest.drawer != DrawerKind.none && c.maxWidth >= kDrawerMinWidth;
         return Scaffold(
           body: Row(
             children: [

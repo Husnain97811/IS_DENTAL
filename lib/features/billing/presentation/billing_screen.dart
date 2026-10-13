@@ -1,10 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:is_dental/core/constants/app_flags.dart';
+
 import 'package:sizer/sizer.dart';
 import '../../../core/constants/views.dart';
-import '../../../core/widgets/kpi_card.dart';
 
 class BillingScreen extends ConsumerStatefulWidget {
   const BillingScreen({super.key});
@@ -221,7 +220,13 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
     final selected = ref.watch(selectedInvoiceIdProvider) == inv.id;
     final (chip, label) = _stInv(inv);
     return InkWell(
-      onTap: () => ref.read(selectedInvoiceIdProvider.notifier).state = inv.id,
+      onTap: () {
+        ref.read(selectedInvoiceIdProvider.notifier).state = inv.id;
+        // No side panel on a narrow window — slide it in instead.
+        if (MediaQuery.sizeOf(context).width < kDrawerMinWidth) {
+          showInvoiceSheet(context);
+        }
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
         decoration: BoxDecoration(

@@ -218,6 +218,9 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
                 onTap: () {
                   ref.read(selectedInvoiceIdProvider.notifier).state = i.id;
                   _goReset(AppRoutes.billing);
+                  if (MediaQuery.sizeOf(context).width < kDrawerMinWidth) {
+                    showInvoiceSheet(context);
+                  }
                 },
               ),
         ].take(8).toList();

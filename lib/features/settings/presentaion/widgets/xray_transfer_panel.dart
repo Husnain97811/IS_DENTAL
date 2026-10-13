@@ -281,7 +281,8 @@ class _TransferDialogState extends ConsumerState<_TransferDialog> {
                 if (cloud) ...[
                   _label(d, 'SEND TO'),
                   Container(
-                    height: 46,
+                    // width: 30.w,
+                    height: 13.sp,
                     padding: const EdgeInsets.symmetric(horizontal: 13),
                     decoration: BoxDecoration(
                       color: d.surface2,
