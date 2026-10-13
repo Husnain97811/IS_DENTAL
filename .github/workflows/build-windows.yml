@@ -53,8 +53,6 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-        
-
       # ─────────────────────────────────────────────
       # Generate code (Drift + freezed) — REQUIRED for DentOS
       # ─────────────────────────────────────────────
@@ -72,7 +70,30 @@ jobs:
           Write-Host "Build completed!"
 
       # ─────────────────────────────────────────────
-      # Create ZIP using native Windows compression
+      # NEW: Create MSIX for Microsoft Store
+      # - reuses the build above (--build-windows false)
+      # - version auto-increments every run: 1.0.<run number>.0
+      #   (last number must stay 0 for the Store)
+      # - saved to build/msix so it doesn't end up inside the ZIP
+      # ─────────────────────────────────────────────
+      - name: Create MSIX
+        shell: pwsh
+        run: dart run msix:create --build-windows false --version 1.0.${{ github.run_number }}.0 --output-path build/msix --output-name DentOS
+
+      # ─────────────────────────────────────────────
+      # NEW: Upload MSIX so you can download it from the run page
+      # and upload it to Partner Center
+      # ─────────────────────────────────────────────
+      - name: Upload MSIX Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DentOS-msix
+          path: build/msix/DentOS.msix
+          if-no-files-found: error
+          retention-days: 30
+
+      # ─────────────────────────────────────────────
+      # Create ZIP (keep until all clinics have moved to the Store)
       # ─────────────────────────────────────────────
       - name: Create ZIP
         shell: pwsh
