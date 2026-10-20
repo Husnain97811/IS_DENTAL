@@ -2,10 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sizer/sizer.dart';
 import '../../constants/views.dart';
-import '../../router/nav_destinations.dart';
-import '../../router/app_routes.dart';
 
 String _money(int v) => v.toString().replaceAllMapped(
   RegExp(r'(\d)(?=(\d{3})+$)'),
@@ -20,6 +17,16 @@ const double _kBarHeight = 68;
 const double _kBtn = 44;
 const double _kIcon = 21;
 const double _kRadius = 12;
+
+/// Screens with nothing to search — the top bar shows no search box there.
+/// (A patient's history page hides it too; see `noSearch` in build.)
+const _kNoSearch = {
+  AppRoutes.dashboard,
+  AppRoutes.prescriptions,
+  AppRoutes.settings,
+  AppRoutes.reports,
+  AppRoutes.whatsapp,
+};
 
 class _Notif {
   const _Notif(this.icon, this.label, this.route);
@@ -77,6 +84,12 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
   void _onSearch(String v) {
     setState(() => _query = v);
 
+    // Showcase narrows its grid as you type; the dropdown adds the
+    // matching cases and patients on top.
+    if (widget.destination.route == AppRoutes.showcase) {
+      ref.read(showcaseSearchProvider.notifier).set(v);
+    }
+
     // Expenses filters its own table in place — no dropdown.
     if (widget.destination.route == AppRoutes.expenses) {
       ref.read(expenseSearchProvider.notifier).state = v;
@@ -102,6 +115,11 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
           (_) => ref.read(expenseSearchProvider.notifier).state = '',
         );
       }
+      if (old.destination.route == AppRoutes.showcase) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => ref.read(showcaseSearchProvider.notifier).set(''),
+        );
+      }
       _searchCtrl.clear();
       _query = '';
       if (_portal.isShowing) _portal.hide();
@@ -116,6 +134,9 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
   void _resetSearch() {
     _searchCtrl.clear();
     setState(() => _query = '');
+    if (widget.destination.route == AppRoutes.showcase) {
+      ref.read(showcaseSearchProvider.notifier).set('');
+    }
     _closeSearch();
   }
 
@@ -129,8 +150,9 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
     AppRoutes.treatments => 'Search treatments…',
     AppRoutes.billing => 'Search invoices…',
     AppRoutes.inventory => 'Search inventory…',
-    AppRoutes.prescriptions => 'Search medicines…',
+    // AppRoutes.prescriptions => 'Search medicines…',
     AppRoutes.expenses => 'Search expenses…',
+    AppRoutes.showcase => 'Search before & after — patient, treatment, tooth…',
     _ => 'Search patients…',
   };
 
@@ -252,6 +274,73 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
     }
   }
 
+  /// Showcase search: the matching before & after cases (open large),
+  /// then patients by name (open their file, where every photo is —
+  /// including cases not shared to the Showcase).
+  List<_Result> _showcaseMatches(String q, List<Patient> patients) {
+    if (q.isEmpty) return const [];
+    final cases =
+        ref.watch(showcaseCasesProvider).value ?? const <ShowcaseCase>[];
+    final people =
+        ref.watch(showcasePatientsProvider).value ??
+        const <String, ShowcasePatient>{};
+
+    final casesByPatient = <int, int>{};
+    for (final c in cases) {
+      final id = people[c.patientUuid]?.id;
+      if (id != null) casesByPatient[id] = (casesByPatient[id] ?? 0) + 1;
+    }
+
+    final words = q.split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+    final matchedPatients =
+        [
+          for (final p in patients)
+            if (words.every(
+              '${p.fullName} ${p.phone} ${p.code}'.toLowerCase().contains,
+            ))
+              p,
+        ]..sort(
+          (a, b) =>
+              (casesByPatient[b.id] ?? 0).compareTo(casesByPatient[a.id] ?? 0),
+        );
+
+    return [
+      ...[
+        for (final c in cases)
+          if (c.matches(q, patientName: people[c.patientUuid]?.name ?? ''))
+            _Result(
+              icon: Icons.auto_awesome_rounded,
+              title: c.title,
+              subtitle: [
+                if (c.tooth.isNotEmpty) 'Tooth ${c.tooth}',
+                c.durationShort,
+                if (people[c.patientUuid] != null) people[c.patientUuid]!.name,
+              ].join(' · '),
+              onTap: () {
+                _closeSearch(); // keep the grid filtered behind it
+                openShowcaseCase(context, c);
+              },
+            ),
+      ].take(6),
+      ...[
+        for (final p in matchedPatients)
+          _Result(
+            initials: p.initials,
+            title: p.fullName,
+            subtitle: switch (casesByPatient[p.id] ?? 0) {
+              0 => '#${p.code} · Open file for before & after photos',
+              1 => '#${p.code} · 1 showcase case · Open file',
+              final n => '#${p.code} · $n showcase cases · Open file',
+            },
+            onTap: () {
+              _resetSearch();
+              context.push('${AppRoutes.patients}/${p.id}');
+            },
+          ),
+      ].take(4),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = context.dent;
@@ -322,17 +411,30 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
     ];
 
     final route = widget.destination.route;
+    // no search box on these screens, nor on an open patient file
+    final noSearch =
+        _kNoSearch.contains(route) ||
+        (route == AppRoutes.patients &&
+            ref.watch(patientDetailDepthProvider) > 0);
+    if (noSearch && (_query.isNotEmpty || _portal.isShowing)) {
+      // a query typed on the list must not linger behind the hidden box
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _resetSearch();
+      });
+    }
     final q = _query.trim().toLowerCase();
-    final results = _matchesFor(
-      route,
-      q,
-      patients,
-      invoices,
-      inventory,
-      treatments,
-      monthAppts,
-      medicines,
-    );
+    final results = route == AppRoutes.showcase
+        ? _showcaseMatches(q, patients)
+        : _matchesFor(
+            route,
+            q,
+            patients,
+            invoices,
+            inventory,
+            treatments,
+            monthAppts,
+            medicines,
+          );
 
     return ClipRect(
       child: BackdropFilter(
@@ -381,10 +483,17 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
                     // inside it and stops at 560px. Because nothing else
                     // flexes, everything after it is pinned to the right edge.
                     Expanded(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: _searchField(context, route, results, monthName),
-                      ),
+                      child: noSearch
+                          ? const SizedBox.shrink()
+                          : Align(
+                              alignment: Alignment.centerLeft,
+                              child: _searchField(
+                                context,
+                                route,
+                                results,
+                                monthName,
+                              ),
+                            ),
                     ),
                     const SizedBox(width: 16),
 
@@ -524,6 +633,11 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
 
   Widget _searchOverlay(BuildContext context, List<_Result> results) {
     final d = context.dent;
+    // Showcase already shows "no cases match" in its grid — no empty box
+    // (and no click-blocking layer) over it.
+    if (results.isEmpty && widget.destination.route == AppRoutes.showcase) {
+      return const SizedBox.shrink();
+    }
     return Stack(
       children: [
         Positioned.fill(

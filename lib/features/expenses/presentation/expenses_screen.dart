@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
 import '../../../core/constants/views.dart';
 import '../data/expense_repository.dart';
+import '../../cash/data/cash_repository.dart';
+import '../../cash/presentation/commission_view.dart';
 
 String _m(int v) => v.toString().replaceAllMapped(
   RegExp(r'(\d)(?=(\d{3})+$)'),
@@ -52,8 +54,68 @@ class _Cols {
   static const flexMethod = 3;
 }
 
+/// Expenses, plus a "Dentist payouts" tab for people who can see financials.
 class ExpensesScreen extends ConsumerWidget {
   const ExpensesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final d = context.dent;
+    final canPayouts =
+        ref.watch(canProvider(Perm.viewExpenses)) &&
+        ref.watch(canProvider(Perm.viewFinancials));
+    if (!canPayouts) return const _ExpensesList();
+
+    final tab = ref.watch(expensesTabProvider);
+    return LayoutBuilder(
+      builder: (context, c) {
+        final narrow = c.maxWidth < 760;
+        final pad = narrow
+            ? (3.w).clamp(12.0, 18.0)
+            : (1.9.w).clamp(18.0, 34.0);
+        final gapV = (1.8.h).clamp(14.0, 22.0);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(pad, gapV, pad, 0),
+              child: Row(
+                children: [
+                  SegmentedControl(
+                    items: const ['Expenses', 'Dentist payouts'],
+                    selected: tab,
+                    onChanged: (i) =>
+                        ref.read(expensesTabProvider.notifier).set(i),
+                  ),
+                  SizedBox(width: 1.2.w),
+                  Expanded(
+                    child: Text(
+                      tab == 1
+                          ? 'Commission each dentist earned, and what is still to pay.'
+                          : 'Rent, salaries, lab fees and supplies.',
+                      style: TextStyle(color: d.text3, fontSize: 10.sp),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: tab == 1
+                  ? SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(pad, gapV, pad, gapV * 2.4),
+                      child: const CommissionView(),
+                    )
+                  : const _ExpensesList(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ExpensesList extends ConsumerWidget {
+  const _ExpensesList();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

@@ -28,6 +28,17 @@ class LicenseService {
     }
   }
 
+  /// Accepts the licence on its own OR inside a longer document (the
+  /// printed certificate). Everything outside the outermost braces is
+  /// ignored, so a user can paste the whole file without editing it.
+  /// The signature is base64, which never contains a brace.
+  String _extractJson(String raw) {
+    final start = raw.indexOf('{');
+    final end = raw.lastIndexOf('}');
+    if (start < 0 || end <= start) return raw.trim();
+    return raw.substring(start, end + 1);
+  }
+
   /// License-only status (no connectivity). Connectivity is layered by the controller.
   Future<LicenseState> resolveLicense() async {
     final lic = await _stored();
@@ -55,7 +66,7 @@ class LicenseService {
   }) async {
     License lic;
     try {
-      lic = License.fromJson(jsonDecode(raw));
+      lic = License.fromJson(jsonDecode(_extractJson(raw)));
     } catch (_) {
       return (license: null, error: 'Invalid license format.');
     }
@@ -85,7 +96,7 @@ class LicenseService {
   }) async {
     License lic;
     try {
-      lic = License.fromJson(jsonDecode(raw));
+      lic = License.fromJson(jsonDecode(_extractJson(raw)));
     } catch (_) {
       return (ok: false, error: 'Invalid license format.');
     }

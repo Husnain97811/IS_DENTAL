@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:is_dental/features/billing/presentation/widgets/invoice_drawer.dart';
+import 'package:is_dental/features/patients/presentation/widgets/patient_snapshot_drawer.dart';
 
-import '../../../features/appointments/presentation/widgets/quick_book_drawer.dart';
-import '../../../features/patients/presentation/widgets/patient_snapshot_drawer.dart';
+import '../../constants/views.dart';
 import '../../router/nav_destinations.dart';
 
 class ContextualDrawer extends StatelessWidget {

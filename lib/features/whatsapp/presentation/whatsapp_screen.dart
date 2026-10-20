@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:is_dental/cloud/data/quick_sync.dart';
-import 'package:is_dental/features/settings/domain/entitlements.dart';
 import 'package:is_dental/features/whatsapp/presentation/wa_language_provider.dart';
 
 import 'package:sizer/sizer.dart';
 
 import '../../../core/constants/views.dart';
 import 'widgets/wa_channel_dialogs.dart';
+import 'widgets/wa_automation_panel.dart';
 
 class WhatsAppScreen extends ConsumerWidget {
   const WhatsAppScreen({super.key});
@@ -182,6 +181,9 @@ class _BranchWaCard extends ConsumerWidget {
 
           if (b.qrConnected) ...[
             _languageRow(context, ref, d, b),
+            Divider(height: 1, color: d.line),
+            // prescriptions on WhatsApp · weekly summary · message log
+            WaAutomationPanel(branchUuid: b.uuid, branchName: b.name),
             Divider(height: 1, color: d.line),
           ],
 

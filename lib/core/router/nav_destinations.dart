@@ -108,6 +108,16 @@ const kNavDestinations = <NavDestination>[
     primaryAction: 'Add Expense',
     drawer: DrawerKind.none,
   ),
+  NavDestination(
+    route: AppRoutes.showcase,
+    icon: Icons.auto_awesome_rounded,
+    label: 'Showcase',
+    group: NavGroup.operations,
+    title: 'Smile Showcase',
+    subtitle: 'Your best results — ready to post and show',
+    primaryAction: '',
+    drawer: DrawerKind.none,
+  ),
   // NavDestination(
   //   route: AppRoutes.inventory,
   //   icon: Icons.inventory_2_rounded,
@@ -149,6 +159,7 @@ const kRoutePerm = <String, String>{
   AppRoutes.whatsapp: Perm.manageWhatsapp,
   AppRoutes.billing: Perm.accessBilling,
   AppRoutes.expenses: Perm.viewExpenses,
+  AppRoutes.showcase: Perm.exportXrays,
   AppRoutes.reports: Perm.viewFinancials,
 };
 

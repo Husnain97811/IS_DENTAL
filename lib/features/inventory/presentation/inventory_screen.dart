@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/constants/app_flags.dart';
-import 'package:is_dental/core/theme/app_palette.dart';
-import 'package:is_dental/features/patients/presentation/widgets/inventory_editor.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/theme/app_radii.dart';

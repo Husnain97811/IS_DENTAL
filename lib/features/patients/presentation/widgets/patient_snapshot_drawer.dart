@@ -2,20 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:is_dental/core/router/app_routes.dart';
-import 'package:is_dental/features/appointments/presentation/widgets/appointment_editor.dart';
-import 'package:is_dental/features/patients/presentation/widgets/patient_editor.dart';
 import 'package:is_dental/features/patients/presentation/widgets/patient_qr_dialog.dart';
 import 'package:is_dental/features/patients/presentation/widgets/xray_export_button.dart';
-import 'package:is_dental/features/settings/domain/permissions.dart';
 import 'package:sizer/sizer.dart';
 import '../../../../core/constants/views.dart';
-import '../../../../core/theme/app_palette.dart';
-import '../../../../core/theme/app_typography.dart';
-import '../../../../core/theme/dent_colors.dart';
-import '../../domain/patient.dart';
-import '../../domain/tooth_record.dart';
-import '../patients_controller.dart';
-import 'odontogram.dart';
 import 'treatment_plan_timeline.dart';
 
 class PatientSnapshotDrawer extends ConsumerWidget {
@@ -41,18 +31,7 @@ class PatientSnapshotDrawer extends ConsumerWidget {
         ),
       );
     }
-    final toothAsync = ref.watch(toothRecordsProvider(p.id));
     final planAsync = ref.watch(activePlanProvider(p.id));
-
-    void cycle(int fdi) {
-      final map =
-          ref.read(toothRecordsProvider(p.id)).value ??
-          const <int, ToothRecord>{};
-      final cur = map[fdi]?.state ?? ToothState.healthy;
-      const order = ToothState.values;
-      final next = order[(cur.index + 1) % order.length];
-      ref.read(patientRepositoryProvider).setToothState(p.id, fdi, next);
-    }
 
     return _wrap(
       context,
@@ -61,22 +40,6 @@ class PatientSnapshotDrawer extends ConsumerWidget {
         children: [
           _patientCard(context, p, ent),
           _quickStats(context, ref, p),
-          _section(
-            context,
-            'Dental Chart',
-            'FDI · tap a tooth to update',
-            toothAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.all(20),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (e, _) => Text('$e', style: TextStyle(color: d.alert)),
-              data: (states) => Odontogram(
-                states: {for (final e in states.entries) e.key: e.value.state},
-                onToothTap: cycle,
-              ),
-            ),
-          ),
           planAsync.when(
             loading: () => const SizedBox.shrink(),
             error: (_, __) => const SizedBox.shrink(),

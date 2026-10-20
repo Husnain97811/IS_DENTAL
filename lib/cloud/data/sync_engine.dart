@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/views.dart';
-import '../../core/db/app_database.dart';
 
 class SyncEngine {
   SyncEngine(this._db);
@@ -43,6 +42,18 @@ class SyncEngine {
     // The X-ray LIST only — images never leave the computer.
     await step('xrays', () => _syncXrays(clinicId));
     await step('xray_inventories', () => _syncInventories(clinicId));
+    await step('cash_closings', () => _syncCashClosings(clinicId));
+    await step('dentist_rates', () => _syncDentistRates(clinicId));
+    // Push and pull first. Only after a successful pull, copy the old chart
+    // into the new one. A patient charted on another computer then already
+    // has findings here and is skipped, so nothing is duplicated.
+    await step('tooth_findings', () async {
+      await _syncToothFindings(clinicId);
+      final n = await ToothChartRepository(_db).importLegacy();
+      await _db.setSetting('tooth_findings_pulled', '1');
+      if (n > 0)
+        await _syncToothFindings(clinicId); // push the imported rows now
+    });
     await step('branches', () => _syncBranches(clinicId));
     await step('treatments', () => _syncTreatments(clinicId));
     await step('medicines', () => _syncMedicines(clinicId));
@@ -110,7 +121,10 @@ class SyncEngine {
       await _db.delete(_db.rolePermissions).go();
       await _db.delete(_db.expenses).go();
       await _db.delete(_db.lookupLists).go();
-      await _db.delete(_db.devices).go();
+      await _db.delete(_db.deviceInventories).go();
+      await _db.delete(_db.cashClosings).go();
+      await _db.delete(_db.dentistRates).go();
+      await _db.delete(_db.toothFindings).go();
       // ⚠ DO NOT wipe patientXrays — X-rays are LOCAL-ONLY and not in the
       // cloud. Deleting them here would destroy them permanently.
     });
@@ -153,6 +167,12 @@ class SyncEngine {
       'pull_xrays',
       'push_xrays',
       'pull_inventories',
+      'pull_cash_closings',
+      'push_cash_closings',
+      'pull_dentist_rates',
+      'push_dentist_rates',
+      'pull_tooth_findings',
+      'push_tooth_findings',
     ];
     for (final k in cursorKeys) {
       await _db.setSetting('sync_$k', '');
@@ -189,6 +209,9 @@ class SyncEngine {
     await part('xray_relink', () => _db.relinkXrayPatients());
     await part('xrays', () => _restoreXrays(clinicId));
     await part('xray_inventories', () => _restoreInventories(clinicId));
+    await part('cash_closings', () => _restoreCashClosings(clinicId));
+    await part('dentist_rates', () => _restoreDentistRates(clinicId));
+    await part('tooth_findings', () => _restoreToothFindings(clinicId));
     // amountPaid and patients.balance are CACHES. The restored values came
     // from whichever machine pushed last; rebuild them from the payments
     // that actually landed here.
@@ -1576,6 +1599,228 @@ class SyncEngine {
     }
   }
 
+  // ================= TOOTH CHART (findings) =================
+  Map<String, dynamic> _findingJson(ToothFindingRow f, String clinicId) => {
+    'uuid': f.uuid,
+    'clinic_id': clinicId,
+    'patient_uuid': f.patientUuid,
+    'fdi': f.fdi,
+    'kind': f.kind,
+    'status': f.status,
+    'surfaces': f.surfaces,
+    'note': f.note,
+    'created_by_name': f.createdByName,
+    'created_at': _iso(f.createdAt),
+    'completed_by_name': f.completedByName,
+    'completed_at': _iso(f.completedAt),
+    'is_deleted': f.isDeleted,
+    'deleted_by_name': f.deletedByName,
+    'deleted_at': _iso(f.deletedAt),
+    'updated_at': _iso(f.updatedAt),
+  };
+
+  Future<void> _syncToothFindings(String clinicId) async {
+    final repo = ToothChartRepository(_db);
+
+    final since = await _cur('push_tooth_findings');
+    final changed = await repo.changedSince(since);
+    if (changed.isNotEmpty) {
+      for (var i = 0; i < changed.length; i += 500) {
+        final chunk = changed.skip(i).take(500);
+        await _sb.from('tooth_findings').upsert([
+          for (final f in chunk) _findingJson(f, clinicId),
+        ], onConflict: 'uuid');
+      }
+      await _setCur(
+        'push_tooth_findings',
+        _max(changed.map((e) => e.updatedAt)),
+      );
+    }
+
+    final pullSince = await _cur('pull_tooth_findings');
+    for (final r in await _pull('tooth_findings', clinicId, pullSince)) {
+      await _row('tooth_findings', r['uuid'], () async {
+        final pid = await _patientId(r['patient_uuid']);
+        if (pid != null) await repo.applyRemote(r, pid, force: false);
+        final u = DateTime.parse(r['updated_at']);
+        if (u.isAfter(pullSince)) await _setCur('pull_tooth_findings', u);
+      });
+    }
+  }
+
+  Future<void> _restoreToothFindings(String clinicId) async {
+    final repo = ToothChartRepository(_db);
+    for (final r in await _pullAll('tooth_findings', clinicId)) {
+      await _row('tooth_findings', r['uuid'], () async {
+        final pid = await _patientId(r['patient_uuid']);
+        if (pid != null) await repo.applyRemote(r, pid, force: true);
+      });
+    }
+    // Everything from the cloud is here, so the old chart can be imported safely.
+    await repo.importLegacy();
+    await _db.setSetting('tooth_findings_pulled', '1');
+  }
+
+  // ================= CASH CLOSINGS + DENTIST RATES =================
+  Future<void> _syncCashClosings(String clinicId) async {
+    final since = await _cur('push_cash_closings');
+    final changed = await (_db.select(
+      _db.cashClosings,
+    )..where((t) => t.updatedAt.isBiggerThanValue(since))).get();
+    if (changed.isNotEmpty) {
+      await _sb.from('cash_closings').upsert([
+        for (final c in changed)
+          {
+            'uuid': c.uuid,
+            'clinic_id': clinicId,
+            'branch_id': c.branchId,
+            'day': c.day,
+            'opening_float': c.openingFloat,
+            'cash_in': c.cashIn,
+            'cash_out': c.cashOut,
+            'expected': c.expected,
+            'counted': c.counted,
+            'taken_out': c.takenOut,
+            'note': c.note,
+            'closed_by_name': c.closedByName,
+            'closed_at': _iso(c.closedAt),
+            'is_deleted': c.isDeleted,
+            'updated_at': _iso(c.updatedAt),
+          },
+      ], onConflict: 'uuid');
+      await _setCur(
+        'push_cash_closings',
+        _max(changed.map((e) => e.updatedAt)),
+      );
+    }
+
+    final pullSince = await _cur('pull_cash_closings');
+    for (final r in await _pull('cash_closings', clinicId, pullSince)) {
+      await _row('cash_closings', r['uuid'], () async {
+        await _applyCashClosing(r, clinicId, force: false);
+        final u = DateTime.parse(r['updated_at']);
+        if (u.isAfter(pullSince)) await _setCur('pull_cash_closings', u);
+      });
+    }
+  }
+
+  Future<void> _applyCashClosing(
+    Map<String, dynamic> r,
+    String clinicId, {
+    required bool force,
+  }) async {
+    final u = DateTime.parse(r['updated_at']);
+    final existing = await (_db.select(
+      _db.cashClosings,
+    )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+    if (!force && existing != null && !u.isAfter(existing.updatedAt)) return;
+    int n(String k) => (r[k] as num?)?.toInt() ?? 0;
+    final c = CashClosingsCompanion(
+      uuid: Value(r['uuid']),
+      clinicId: Value(clinicId),
+      branchId: Value(r['branch_id'] ?? ''),
+      day: Value(r['day']),
+      openingFloat: Value(n('opening_float')),
+      cashIn: Value(n('cash_in')),
+      cashOut: Value(n('cash_out')),
+      expected: Value(n('expected')),
+      counted: Value(n('counted')),
+      takenOut: Value(n('taken_out')),
+      note: Value(r['note'] ?? ''),
+      closedByName: Value(r['closed_by_name'] ?? ''),
+      closedAt: Value(DateTime.parse(r['closed_at'] ?? r['updated_at'])),
+      isDeleted: Value(r['is_deleted'] ?? false),
+      updatedAt: Value(u),
+    );
+    if (existing == null) {
+      await _db.into(_db.cashClosings).insert(c);
+    } else {
+      await (_db.update(
+        _db.cashClosings,
+      )..where((t) => t.id.equals(existing.id))).write(c);
+    }
+  }
+
+  Future<void> _restoreCashClosings(String clinicId) async {
+    for (final r in await _pullAll('cash_closings', clinicId)) {
+      await _row(
+        'cash_closings',
+        r['uuid'],
+        () => _applyCashClosing(r, clinicId, force: true),
+      );
+    }
+  }
+
+  Future<void> _syncDentistRates(String clinicId) async {
+    final since = await _cur('push_dentist_rates');
+    final changed = await (_db.select(
+      _db.dentistRates,
+    )..where((t) => t.updatedAt.isBiggerThanValue(since))).get();
+    if (changed.isNotEmpty) {
+      await _sb.from('dentist_rates').upsert([
+        for (final c in changed)
+          {
+            'uuid': c.uuid,
+            'clinic_id': clinicId,
+            'dentist_name': c.dentistName,
+            'percent': c.percent,
+            'is_deleted': c.isDeleted,
+            'updated_at': _iso(c.updatedAt),
+          },
+      ], onConflict: 'uuid');
+      await _setCur(
+        'push_dentist_rates',
+        _max(changed.map((e) => e.updatedAt)),
+      );
+    }
+
+    final pullSince = await _cur('pull_dentist_rates');
+    for (final r in await _pull('dentist_rates', clinicId, pullSince)) {
+      await _row('dentist_rates', r['uuid'], () async {
+        await _applyDentistRate(r, clinicId, force: false);
+        final u = DateTime.parse(r['updated_at']);
+        if (u.isAfter(pullSince)) await _setCur('pull_dentist_rates', u);
+      });
+    }
+  }
+
+  Future<void> _applyDentistRate(
+    Map<String, dynamic> r,
+    String clinicId, {
+    required bool force,
+  }) async {
+    final u = DateTime.parse(r['updated_at']);
+    final existing = await (_db.select(
+      _db.dentistRates,
+    )..where((t) => t.uuid.equals(r['uuid']))).getSingleOrNull();
+    if (!force && existing != null && !u.isAfter(existing.updatedAt)) return;
+    final c = DentistRatesCompanion(
+      uuid: Value(r['uuid']),
+      clinicId: Value(clinicId),
+      dentistName: Value(r['dentist_name'] ?? ''),
+      percent: Value((r['percent'] as num?)?.toDouble() ?? 0),
+      isDeleted: Value(r['is_deleted'] ?? false),
+      updatedAt: Value(u),
+    );
+    if (existing == null) {
+      await _db.into(_db.dentistRates).insert(c);
+    } else {
+      await (_db.update(
+        _db.dentistRates,
+      )..where((t) => t.id.equals(existing.id))).write(c);
+    }
+  }
+
+  Future<void> _restoreDentistRates(String clinicId) async {
+    for (final r in await _pullAll('dentist_rates', clinicId)) {
+      await _row(
+        'dentist_rates',
+        r['uuid'],
+        () => _applyDentistRate(r, clinicId, force: true),
+      );
+    }
+  }
+
   // ================= X-RAY LIST (metadata only) =================
   /// Shared by pull and restore. A row for an X-ray this computer doesn't
   /// have becomes a placeholder (isLocal = false). A deletion from another
@@ -1624,6 +1869,15 @@ class SyncEngine {
               isLocal: const Value(false),
               originDevice: Value(r['origin_device']),
               updatedAt: Value(u),
+              kind: Value(r['kind'] ?? 'xray'),
+              pairGroup: Value(r['pair_group']),
+              tooth: Value(r['tooth'] ?? ''),
+              treatment: Value(r['treatment'] ?? ''),
+              consent: Value(r['consent'] ?? false),
+              consentBy: Value(r['consent_by'] ?? ''),
+              consentAt: Value(dt('consent_at')),
+              featured: Value(r['featured'] ?? false),
+              crop: Value(r['crop']),
             ),
           );
       return;
@@ -1652,6 +1906,16 @@ class SyncEngine {
         isLocal: deleted ? const Value(false) : const Value.absent(),
         filePath: deleted ? const Value('') : const Value.absent(),
         updatedAt: Value(u),
+        kind: Value(r['kind'] ?? existing.kind),
+        pairGroup: Value(r['pair_group'] ?? existing.pairGroup),
+        tooth: Value(r['tooth'] ?? existing.tooth),
+        treatment: Value(r['treatment'] ?? existing.treatment),
+        consent: Value(r['consent'] ?? existing.consent),
+        consentBy: Value(r['consent_by'] ?? existing.consentBy),
+        consentAt: Value(dt('consent_at') ?? existing.consentAt),
+        featured: Value(r['featured'] ?? existing.featured),
+        // a crop can be removed, so the cloud value wins even when null
+        crop: Value(r.containsKey('crop') ? r['crop'] : existing.crop),
       ),
     );
   }
@@ -1680,6 +1944,15 @@ class SyncEngine {
               'byte_size': x.byteSize,
               'key_id': x.keyId,
               'origin_device': x.originDevice,
+              'kind': x.kind,
+              'pair_group': x.pairGroup,
+              'tooth': x.tooth,
+              'treatment': x.treatment,
+              'consent': x.consent,
+              'consent_by': x.consentBy,
+              'consent_at': _iso(x.consentAt),
+              'featured': x.featured,
+              'crop': x.crop,
               'is_deleted': x.isDeleted,
               'updated_at': _iso(x.updatedAt),
             },
@@ -1751,7 +2024,9 @@ class SyncEngine {
                 updatedAt: u,
               ),
             );
-        if (u.isAfter(pullSince)) await _setCur('pull_inventories', u);
+        if (u.isAfter(pullSince)) {
+          await _setCur('pull_inventories', u);
+        }
       });
     }
   }

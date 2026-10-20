@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
 import '../../../core/constants/views.dart';
+import 'insights_panel.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -13,6 +14,9 @@ class ReportsScreen extends ConsumerStatefulWidget {
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   /// null = the default last-12-months view.
   DateTimeRange? _range;
+
+  /// 0 = Overview, 1 = Insights.
+  int _tab = 0;
 
   String _m(int v) => v.toString().replaceAllMapped(
     RegExp(r'(\d)(?=(\d{3})+$)'),
@@ -46,6 +50,27 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       'Dec',
     ];
     return '${d.day} ${mon[d.month - 1]} ${d.year}';
+  }
+
+  /// Same period the summary uses, as a stable key (date-only values, so
+  /// it doesn't change on every rebuild and re-run the insights).
+  ({DateTime from, DateTime to}) get _insightsRange {
+    final r = _range;
+    if (r == null) {
+      final now = DateTime.now();
+      return (
+        from: DateTime(now.year, now.month - 11),
+        to: DateTime(now.year, now.month + 1),
+      );
+    }
+    return (
+      from: DateTime(r.start.year, r.start.month, r.start.day),
+      to: DateTime(
+        r.end.year,
+        r.end.month,
+        r.end.day,
+      ).add(const Duration(days: 1)),
+    );
   }
 
   // ── range ────────────────────────────────────────────────────────────────
@@ -147,17 +172,20 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             children: [
               _header(d, narrow),
               const SizedBox(height: 18),
-              async.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.all(60),
-                  child: Center(child: CircularProgressIndicator()),
+              if (_tab == 1)
+                InsightsView(range: _insightsRange, showExpenses: showExp)
+              else
+                async.when(
+                  loading: () => const Padding(
+                    padding: EdgeInsets.all(60),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (e, _) => Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Text('$e', style: TextStyle(color: d.alert)),
+                  ),
+                  data: (s) => _body(d, s, showExp, narrow, c.maxWidth),
                 ),
-                error: (e, _) => Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Text('$e', style: TextStyle(color: d.alert)),
-                ),
-                data: (s) => _body(d, s, showExp, narrow, c.maxWidth),
-              ),
             ],
           ),
         );
@@ -200,13 +228,21 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final title = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        SegmentedControl(
+          items: const ['Overview', 'Insights'],
+          selected: _tab,
+          onChanged: (i) => setState(() => _tab = i),
+        ),
+        const SizedBox(height: 10),
         // Text(
         //   'Reports & Analytics',
         //   style: Theme.of(context).textTheme.displayLarge,
         // ),
         // const SizedBox(height: 4),
         Text(
-          _range == null
+          _tab == 1
+              ? 'Deeper look at income and patients · top services follow the period you pick'
+              : _range == null
               ? 'Practice performance · last 12 months'
               : 'Practice performance · ${_pretty(_range!.start)} to '
                     '${_pretty(_range!.end)}',
@@ -274,58 +310,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     bool narrow,
     double width,
   ) {
-    final cols = width < 620
-        ? 1
-        : width < 980
-        ? 2
-        : 3;
-    const gap = 16.0;
-    final cardW = (width - (narrow ? 32 : 52) - gap * (cols - 1)) / cols;
-
-    final secondary = <Widget>[
-      KpiCard(
-        icon: Icons.payments_rounded,
-        tone: KpiTone.teal,
-        label: 'Collected',
-        value: 'Rs ${_m(s.totalRevenue)}',
-      ),
-      if (showExp)
-        KpiCard(
-          icon: Icons.account_balance_wallet_rounded,
-          tone: KpiTone.amber,
-          label: 'Expenses',
-          value: 'Rs ${_m(s.totalExpenses)}',
-        ),
-      KpiCard(
-        icon: Icons.pending_actions_rounded,
-        tone: KpiTone.slate,
-        label: 'Outstanding',
-        value: 'Rs ${_m(s.outstanding)}',
-      ),
-      KpiCard(
-        icon: Icons.people_alt_rounded,
-        tone: KpiTone.blue,
-        label: 'Patients',
-        value: '${s.patientCount}',
-      ),
-      KpiCard(
-        icon: Icons.medical_services_rounded,
-        tone: KpiTone.slate,
-        label: 'Procedures',
-        value: '${s.procedureCount}',
-      ),
-    ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (showExp) ...[_profitHero(d, s, narrow), const SizedBox(height: 16)],
-        Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [
-            for (final w in secondary) SizedBox(width: cardW, child: w),
-          ],
+        _profitHero(d, s, narrow, showExp),
+        const SizedBox(height: 16),
+        _activityCard(d, s, narrow),
+        const SizedBox(height: 18),
+        InsightsTeaser(
+          range: _insightsRange,
+          onOpen: () => setState(() => _tab = 1),
         ),
         const SizedBox(height: 18),
 
@@ -370,8 +364,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   // ── profit hero ──────────────────────────────────────────────────────────
   /// The number the owner opens this screen for. Six equal cards bury it
   /// among the patient count; this gives it the weight it deserves.
-  Widget _profitHero(DentColors d, ReportsSummary s, bool narrow) {
-    final up = s.netProfit >= 0;
+  Widget _profitHero(
+    DentColors d,
+    ReportsSummary s,
+    bool narrow,
+    bool showExp,
+  ) {
+    // Roles that can't see expenses get the money-in side only.
+    final up = !showExp || s.netProfit >= 0;
     final spent = s.totalRevenue == 0
         ? 0.0
         : (s.totalExpenses / s.totalRevenue).clamp(0.0, 1.0);
@@ -381,7 +381,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          'NET PROFIT',
+          showExp ? 'NET PROFIT' : 'COLLECTED',
           style: TextStyle(
             color: d.text4,
             fontSize: 9.4.sp,
@@ -395,7 +395,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           textBaseline: TextBaseline.alphabetic,
           children: [
             Text(
-              up ? '+ ' : '– ',
+              !showExp ? 'Rs ' : (up ? '+ ' : '– '),
               style: TextStyle(
                 color: d.text3,
                 fontSize: 15.sp,
@@ -407,7 +407,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  _m(s.netProfit.abs()),
+                  _m(showExp ? s.netProfit.abs() : s.totalRevenue),
                   style: TextStyle(
                     fontFamily: AppFonts.display,
                     color: up ? d.text1 : d.alert,
@@ -420,68 +420,97 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-          decoration: BoxDecoration(
-            color: (up ? d.ok : d.alert).withValues(alpha: .11),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                up ? Icons.trending_up_rounded : Icons.trending_down_rounded,
-                size: 15,
-                color: up ? d.ok : d.alert,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                '${(s.margin * 100).toStringAsFixed(1)}% margin',
-                style: TextStyle(
+        if (showExp) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+            decoration: BoxDecoration(
+              color: (up ? d.ok : d.alert).withValues(alpha: .11),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  up ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                  size: 15,
                   color: up ? d.ok : d.alert,
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w700,
                 ),
-              ),
-            ],
+                const SizedBox(width: 6),
+                Text(
+                  '${(s.margin * 100).toStringAsFixed(1)}% margin',
+                  style: TextStyle(
+                    color: up ? d.ok : d.alert,
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ],
     );
 
-    final right = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _flow(d, 'Money in', s.totalRevenue, d.teal, Icons.south_west_rounded),
-        const SizedBox(height: 14),
-        _flow(
-          d,
-          'Money out',
-          s.totalExpenses,
-          d.warn,
-          Icons.north_east_rounded,
-        ),
-        const SizedBox(height: 16),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: LinearProgressIndicator(
-            value: spent,
-            minHeight: 8,
-            backgroundColor: d.teal.withValues(alpha: .18),
-            valueColor: AlwaysStoppedAnimation(d.warn),
-          ),
-        ),
-        const SizedBox(height: 7),
-        Text(
-          s.totalRevenue == 0
-              ? 'Nothing collected in this period.'
-              : '${(spent * 100).round()}% of what you collected went back out.',
-          style: TextStyle(color: d.text4, fontSize: 9.6.sp),
-        ),
-      ],
+    // Money still owed is all-time (every unpaid invoice), not just this
+    // period — so it sits apart from in/out, under its own line.
+    final owed = _flow(
+      d,
+      'Still owed to you',
+      s.outstanding,
+      s.outstanding > 0 ? d.alert : d.ok,
+      Icons.hourglass_bottom_rounded,
+      hint: 'All unpaid invoices',
     );
+
+    final right = !showExp
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [owed],
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _flow(
+                d,
+                'Money in',
+                s.totalRevenue,
+                d.teal,
+                Icons.south_west_rounded,
+              ),
+              const SizedBox(height: 14),
+              _flow(
+                d,
+                'Money out',
+                s.totalExpenses,
+                d.warn,
+                Icons.north_east_rounded,
+              ),
+              const SizedBox(height: 16),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: LinearProgressIndicator(
+                  value: spent,
+                  minHeight: 8,
+                  backgroundColor: d.teal.withValues(alpha: .18),
+                  valueColor: AlwaysStoppedAnimation(d.warn),
+                ),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                s.totalRevenue == 0
+                    ? 'Nothing collected in this period.'
+                    : '${(spent * 100).round()}% of what you collected went back out.',
+                style: TextStyle(color: d.text4, fontSize: 9.6.sp),
+              ),
+              const SizedBox(height: 16),
+              Divider(color: d.line, height: 1),
+              const SizedBox(height: 16),
+              owed,
+            ],
+          );
 
     return Container(
       padding: EdgeInsets.all(narrow ? 18 : 24),
@@ -516,13 +545,125 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
+  // ── activity ─────────────────────────────────────────────────────────────
+  /// Patients seen and procedures done, in the same style as the profit card.
+  Widget _activityCard(DentColors d, ReportsSummary s, bool narrow) {
+    Widget stat({
+      required IconData icon,
+      required Color tone,
+      required String label,
+      required int value,
+      required String caption,
+    }) => Row(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: tone.withValues(alpha: .13),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(icon, size: 22, color: tone),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: d.text4,
+                  fontSize: 9.4.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '$value',
+                style: TextStyle(
+                  fontFamily: AppFonts.display,
+                  color: d.text1,
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.w700,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                caption,
+                style: TextStyle(color: d.text4, fontSize: 9.4.sp),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    final perPatient = s.patientCount == 0
+        ? null
+        : (s.totalRevenue / s.patientCount).round();
+
+    final patients = stat(
+      icon: Icons.people_alt_rounded,
+      tone: d.ice,
+      label: 'PATIENTS SEEN',
+      value: s.patientCount,
+      caption: perPatient == null
+          ? 'No patients in this period'
+          : 'Rs ${_m(perPatient)} collected per patient',
+    );
+    final procedures = stat(
+      icon: Icons.medical_services_rounded,
+      tone: d.teal,
+      label: 'PROCEDURES DONE',
+      value: s.procedureCount,
+      caption: 'Completed appointments in this period',
+    );
+
+    return Container(
+      padding: EdgeInsets.all(narrow ? 18 : 24),
+      decoration: BoxDecoration(
+        color: d.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: d.line),
+      ),
+      child: narrow
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                patients,
+                const SizedBox(height: 18),
+                Divider(color: d.line, height: 1),
+                const SizedBox(height: 18),
+                procedures,
+              ],
+            )
+          : IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: patients),
+                  const SizedBox(width: 22),
+                  VerticalDivider(color: d.line, width: 1),
+                  const SizedBox(width: 22),
+                  Expanded(child: procedures),
+                ],
+              ),
+            ),
+    );
+  }
+
   Widget _flow(
     DentColors d,
     String label,
     int value,
     Color tone,
-    IconData icon,
-  ) => Row(
+    IconData icon, {
+    String? hint,
+  }) => Row(
     children: [
       Container(
         width: 34,
@@ -536,13 +677,23 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       ),
       const SizedBox(width: 11),
       Expanded(
-        child: Text(
-          label,
-          style: TextStyle(
-            color: d.text3,
-            fontSize: 11.sp,
-            fontWeight: FontWeight.w600,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: d.text3,
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (hint != null)
+              Text(
+                hint,
+                style: TextStyle(color: d.text4, fontSize: 8.8.sp),
+              ),
+          ],
         ),
       ),
       Text(

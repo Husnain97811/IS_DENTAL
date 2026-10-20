@@ -1,11 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:is_dental/features/prescriptions/data/prescription_pdf.dart';
-import 'package:printing/printing.dart';
 import 'package:sizer/sizer.dart';
 import 'prescription_preview.dart';
+import 'package:is_dental/features/whatsapp/data/wa_outbox.dart';
 import '../../../../core/constants/views.dart';
-import '../prescription_controller.dart';
 
 enum _SaveMode { none, pdf, print }
 
@@ -378,7 +377,7 @@ class _EditorState extends ConsumerState<_Editor> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                     ),
                     label: Text(
-                      'Save & PDF',
+                      'Save & Download',
                       style: TextStyle(fontSize: 10.5.sp),
                     ),
                   ),
@@ -643,6 +642,14 @@ class _EditorState extends ConsumerState<_Editor> {
       if (session?.role == AppRole.clinician) doctor = session?.fullName ?? '';
     }
 
+    // captured now — this dialog is gone by the time WhatsApp is queued
+    final container = ProviderScope.containerOf(context, listen: false);
+    final messenger = ScaffoldMessenger.of(context);
+    final isNew = widget.existing == null;
+    final byName = ref.read(authControllerProvider)?.fullName ?? '';
+    // the app's own navigator stays alive after this dialog closes
+    final appCtx = Navigator.of(context, rootNavigator: true).context;
+
     setState(() => _busy = true);
     try {
       final id = await ref
@@ -662,20 +669,25 @@ class _EditorState extends ConsumerState<_Editor> {
       setState(() => _busy = false);
       Navigator.pop(context);
 
+      // new prescription → PDF goes to the patient on WhatsApp (if the branch
+      // has it switched on). Runs in the background; print/PDF don't wait.
+      if (isNew) unawaited(_autoSendRx(container, messenger, id, byName));
+
       if (mode == _SaveMode.none) return;
 
-      final saved = await ref.read(prescriptionRepositoryProvider).byId(id);
-      if (saved == null || !context.mounted) return;
+      final saved = await container
+          .read(prescriptionRepositoryProvider)
+          .byId(id);
+      if (saved == null) return;
 
       if (mode == _SaveMode.print) {
+        if (!context.mounted) return;
         await printPrescription(context, ref, saved);
-      } else {
-        final data = await buildRxData(ref, saved);
-        if (data == null) return;
-        final bytes = await PrescriptionPdf.build(data);
-        await Printing.sharePdf(
-          bytes: bytes,
-          filename: 'Prescription_${saved.rxNo}.pdf',
+      } else if (appCtx.mounted) {
+        await savePrescriptionToDownloads(
+          appCtx,
+          container.read(appDatabaseProvider),
+          saved,
         );
       }
     } catch (e) {
@@ -686,6 +698,20 @@ class _EditorState extends ConsumerState<_Editor> {
       ).showSnackBar(SnackBar(content: Text('Could not save: $e')));
     }
   }
+}
+
+/// Queues a just-saved prescription on WhatsApp and reports the result.
+Future<void> _autoSendRx(
+  ProviderContainer c,
+  ScaffoldMessengerState messenger,
+  int id,
+  String byName,
+) async {
+  final rx = await c.read(prescriptionRepositoryProvider).byId(id);
+  if (rx == null) return;
+  final r = await queuePrescriptionOnWhatsApp(c, rx, byName: byName);
+  final msg = rxWaMessage(r);
+  if (msg != null) messenger.showSnackBar(SnackBar(content: Text(msg)));
 }
 
 /// Holds the controllers for one medicine row.

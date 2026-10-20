@@ -1,16 +1,22 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:is_dental/core/utils/qr_payload.dart';
 import 'package:printing/printing.dart';
 import 'package:sizer/sizer.dart';
-
 import '../../../../core/constants/views.dart';
 import '../../data/prescription_pdf.dart';
 import 'prescription_editor.dart';
+import 'package:is_dental/features/whatsapp/data/wa_outbox.dart';
+import 'package:is_dental/core/utils/save_to_downloads.dart';
+import 'package:is_dental/core/widgets/busy_dialog.dart';
 
 /// Builds the PDF bytes for a prescription (pulls clinic + patient details).
-Future<RxPdfData?> buildRxData(WidgetRef ref, Prescription rx) async {
-  final db = ref.read(appDatabaseProvider);
+Future<RxPdfData?> buildRxData(WidgetRef ref, Prescription rx) =>
+    buildRxDataFrom(ref.read(appDatabaseProvider), rx);
+
+/// Same as [buildRxData] but without a WidgetRef — used by the WhatsApp
+/// sender, which runs after the editor dialog has closed.
+Future<RxPdfData?> buildRxDataFrom(AppDatabase db, Prescription rx) async {
   final profile = await db.select(db.clinicProfile).getSingleOrNull();
   final p = await (db.select(
     db.patients,
@@ -39,6 +45,40 @@ Future<RxPdfData?> buildRxData(WidgetRef ref, Prescription rx) async {
     qrPayload: buildPatientQrPayload(clinicId: clinicId, patientUuid: p.uuid),
     rx: rx,
   );
+}
+
+/// Builds the prescription PDF and writes it straight into Downloads
+/// ("Prescription_RX-0000012_Ali.pdf"), with "Saving…" while it works and a
+/// ✓ message with Show — or the reason it failed. Works with no internet.
+Future<void> savePrescriptionToDownloads(
+  BuildContext context,
+  AppDatabase db,
+  Prescription rx,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final saved = await runBusy(context, 'Saving prescription to Downloads…', (
+      _,
+    ) async {
+      final data = await buildRxDataFrom(db, rx);
+      if (data == null) throw StateError('The patient record was not found.');
+      final bytes = await PrescriptionPdf.build(data);
+      final first = data.patientName.trim().split(RegExp(r'\s+')).first;
+      return saveToDownloads(
+        bytes,
+        'Prescription_${rx.rxNo}${first.isEmpty ? '' : '_$first'}.pdf',
+      );
+    });
+    showSavedToDownloads(messenger, saved);
+  } catch (e) {
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Could not save the prescription: ${'$e'.replaceFirst('Bad state: ', '')}',
+        ),
+      ),
+    );
+  }
 }
 
 /// Opens the system print dialog for a prescription.
@@ -367,6 +407,12 @@ class _S extends ConsumerState<_Preview> {
               ),
             ),
 
+            // WhatsApp status + send / resend
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+              child: _WaRxBar(rx: rx),
+            ),
+
             // actions
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
@@ -402,7 +448,7 @@ class _S extends ConsumerState<_Preview> {
                       minimumSize: const Size(0, 44),
                     ),
                     label: Text(
-                      'Save PDF',
+                      'Download PDF',
                       style: TextStyle(fontSize: 10.5.sp),
                     ),
                   ),
@@ -441,15 +487,10 @@ class _S extends ConsumerState<_Preview> {
 
   Future<void> _savePdf() async {
     setState(() => _busy = true);
-    final data = await buildRxData(ref, widget.rx);
-    if (data == null) {
-      if (mounted) setState(() => _busy = false);
-      return;
-    }
-    final bytes = await PrescriptionPdf.build(data);
-    await Printing.sharePdf(
-      bytes: bytes,
-      filename: 'Prescription_${widget.rx.rxNo}.pdf',
+    await savePrescriptionToDownloads(
+      context,
+      ref.read(appDatabaseProvider),
+      widget.rx,
     );
     if (mounted) setState(() => _busy = false);
   }
@@ -471,4 +512,167 @@ class _S extends ConsumerState<_Preview> {
       '${dt.day} '
       '${const ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][dt.month - 1]} '
       '${dt.year}';
+}
+
+/// One line under the prescription: has it gone on WhatsApp, plus Send / Resend.
+class _WaRxBar extends ConsumerStatefulWidget {
+  const _WaRxBar({required this.rx});
+  final Prescription rx;
+  @override
+  ConsumerState<_WaRxBar> createState() => _WaRxBarState();
+}
+
+class _WaRxBarState extends ConsumerState<_WaRxBar> {
+  bool _sending = false;
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    // anything left waiting for internet (even from before a restart) is
+    // retried now
+    resumePendingWhatsApp(ProviderScope.containerOf(context, listen: false));
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  void _refresh() {
+    ref.invalidate(rxWaStatusProvider(widget.rx.uuid));
+    ref.invalidate(rxWaPendingProvider(widget.rx.id));
+  }
+
+  /// While a send is on its way, check again every 10 s so "Waiting…"
+  /// turns into "Sent" by itself. Stops as soon as nothing is pending.
+  void _pollWhile(bool active) {
+    if (active && _poll == null) {
+      _poll = Timer.periodic(const Duration(seconds: 10), (_) {
+        if (mounted) _refresh();
+      });
+    } else if (!active && _poll != null) {
+      _poll!.cancel();
+      _poll = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = context.dent;
+    final async = ref.watch(rxWaStatusProvider(widget.rx.uuid));
+    final waiting = ref.watch(rxWaPendingProvider(widget.rx.id)).value ?? false;
+    final e = async.value;
+    _pollWhile(waiting || (e?.isWaiting ?? false));
+
+    final (String text, Color color) = switch (e?.status) {
+      _ when waiting => (
+        'No internet — will go on WhatsApp automatically once it is back',
+        d.warn,
+      ),
+      null when async.isLoading => ('Checking WhatsApp…', d.text4),
+      null when async.hasError => (
+        'Can\'t check WhatsApp right now (no internet?)',
+        d.text4,
+      ),
+      null => ('Not sent on WhatsApp yet', d.text3),
+      'sent' => (
+        'Sent on WhatsApp · ${_when(e!.sentAt ?? e.createdAt)}',
+        d.tealDeep,
+      ),
+      'pending' || 'sending' => ('Waiting to go on WhatsApp…', d.ice),
+      'failed' => ('WhatsApp failed · ${e!.lastError}', d.alert),
+      _ => ('Not sent on WhatsApp · ${e!.lastError}', d.text3),
+    };
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+      decoration: BoxDecoration(
+        color: d.surface2,
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: d.line),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.chat_rounded, size: 15, color: color),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 9.5.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Refresh',
+            icon: Icon(Icons.refresh_rounded, size: 16, color: d.text4),
+            onPressed: _refresh,
+          ),
+          TextButton.icon(
+            onPressed: _sending || (e?.isWaiting ?? false) ? null : _send,
+            icon: _sending
+                ? const SizedBox(
+                    width: 13,
+                    height: 13,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(Icons.send_rounded, size: 15, color: d.tealDeep),
+            label: Text(
+              waiting ? 'Try now' : (e == null ? 'Send on WhatsApp' : 'Resend'),
+              style: TextStyle(fontSize: 9.5.sp, color: d.tealDeep),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _send() async {
+    setState(() => _sending = true);
+    final c = ProviderScope.containerOf(context, listen: false);
+    final messenger = ScaffoldMessenger.of(context);
+    final by = ref.read(authControllerProvider)?.fullName ?? '';
+    final r = await queuePrescriptionOnWhatsApp(
+      c,
+      widget.rx,
+      manual: true,
+      byName: by,
+    );
+    if (!mounted) return;
+    setState(() => _sending = false);
+    _refresh();
+    final msg = rxWaMessage(r, manual: true);
+    if (msg != null) messenger.showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  String _when(DateTime t) {
+    final now = DateTime.now();
+    final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
+    final time =
+        '$h:${t.minute.toString().padLeft(2, '0')} ${t.hour >= 12 ? 'PM' : 'AM'}';
+    if (t.year == now.year && t.month == now.month && t.day == now.day) {
+      return 'today $time';
+    }
+    const m = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${t.day} ${m[t.month - 1]} $time';
+  }
 }

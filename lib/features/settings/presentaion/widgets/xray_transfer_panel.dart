@@ -48,8 +48,8 @@ class XrayTransferPanel extends ConsumerWidget {
     final cloud = ref.watch(entitlementsProvider).cloud;
 
     return DentPanel(
-      title: 'X-ray transfer',
-      subtitle: 'Encrypted — only DentOS can open them',
+      title: 'X-ray & photo transfer',
+      subtitle: 'Encrypted',
       child: Padding(
         padding: EdgeInsets.all((1.2.w).clamp(14.0, 20.0)),
         child: Column(
@@ -74,9 +74,9 @@ class XrayTransferPanel extends ConsumerWidget {
             const SizedBox(height: 14),
             Text(
               cloud
-                  ? 'X-rays stay on the computer that took them. Transfer '
-                        'creates an encrypted file for another computer; '
-                        'carry the file and the code separately.'
+                  ? 'X-rays and before/after photos stay on the computer '
+                        'that took them. Transfer creates an encrypted file for '
+                        'another computer; carry the file and the code separately.'
                   : 'Offline installs can create an encrypted backup. It can '
                         'only be opened with a recovery code from Inover Studio.',
               style: TextStyle(color: d.text3, fontSize: 10.sp, height: 1.5),
@@ -98,7 +98,7 @@ class XrayTransferPanel extends ConsumerWidget {
                   ),
                   icon: const Icon(Icons.upload_file_rounded, size: 18),
                   label: Text(
-                    cloud ? 'Transfer X-rays' : 'Create backup',
+                    cloud ? 'Transfer Photos/X-rays' : 'Create backup',
                     style: TextStyle(fontSize: 10.5.sp),
                   ),
                 ),
@@ -114,7 +114,7 @@ class XrayTransferPanel extends ConsumerWidget {
                   ),
                   icon: const Icon(Icons.download_rounded, size: 18),
                   label: Text(
-                    'Receive X-rays',
+                    'Receive Photos/X-rays',
                     style: TextStyle(fontSize: 10.5.sp),
                   ),
                 ),
@@ -344,9 +344,9 @@ class _TransferDialogState extends ConsumerState<_TransferDialog> {
                             ? 'Working out what to send…'
                             : p.count == 0
                             ? 'Nothing to send — that computer already has '
-                                  'every X-ray from this one.'
-                            : '${p.count} X-ray${p.count == 1 ? "" : "s"} · '
-                                  '${_size(p.bytes)}',
+                                  'every X-ray and photo from this one.'
+                            : '${p.count} file${p.count == 1 ? "" : "s"} '
+                                  '(X-rays & photos) · ${_size(p.bytes)}',
                         style: TextStyle(
                           color: d.text1,
                           fontSize: 11.sp,
@@ -403,9 +403,9 @@ class _TransferDialogState extends ConsumerState<_TransferDialog> {
     final ap = r.expires.hour >= 12 ? 'PM' : 'AM';
     return [
       Text(
-        '${r.count} X-rays · ${_size(r.bytes)} saved. On the other computer: '
-        'Settings → X-ray transfer → Receive X-rays, pick the file, and enter '
-        'this code.',
+        '${r.count} files · ${_size(r.bytes)} saved. On the other computer: '
+        'Settings → X-ray & photo transfer → Receive X-rays, pick the file, '
+        'and enter this code.',
         style: TextStyle(color: d.text3, fontSize: 10.5.sp, height: 1.5),
       ),
       const SizedBox(height: 18),
@@ -471,7 +471,7 @@ class _TransferDialogState extends ConsumerState<_TransferDialog> {
 
   List<Widget> _backupResult(DentColors d, BuildContext dialogCtx) => [
     Text(
-      '${_backupDone!.count} X-rays · ${_size(_backupDone!.bytes)} saved as '
+      '${_backupDone!.count} files · ${_size(_backupDone!.bytes)} saved as '
       'an encrypted backup. Keep it somewhere other than this computer. To '
       'open it, contact Inover Studio for a recovery code.',
       style: TextStyle(color: d.text3, fontSize: 10.5.sp, height: 1.5),
@@ -827,7 +827,7 @@ class _ReceiveDialogState extends ConsumerState<_ReceiveDialog> {
       ),
     );
     return [
-      line(Icons.check_circle_rounded, d.ok, '${r.added} X-rays received'),
+      line(Icons.check_circle_rounded, d.ok, '${r.added} files received'),
       if (r.already > 0)
         line(Icons.done_all_rounded, d.text4, '${r.already} were already here'),
       if (r.noPatient > 0)

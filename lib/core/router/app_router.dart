@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:is_dental/features/expenses/presentation/expenses_screen.dart';
-
 import '../constants/views.dart';
 import 'app_routes.dart';
+import 'package:is_dental/features/patients/presentation/patient_detail_route.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier(0);
@@ -111,7 +110,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   // ),
                   GoRoute(
                     path: ':id',
-                    builder: (c, s) => PatientDetailScreen(
+                    builder: (c, s) => PatientDetailRoute(
                       patientId: int.parse(s.pathParameters['id']!),
                     ),
                   ),
@@ -148,6 +147,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.expenses,
                 builder: (c, s) => const ExpensesScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.showcase,
+                builder: (c, s) => const ShowcaseScreen(),
               ),
             ],
           ),

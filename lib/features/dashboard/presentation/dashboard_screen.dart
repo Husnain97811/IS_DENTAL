@@ -8,6 +8,7 @@ import '../../../core/widgets/kpi_card.dart';
 import '../../../core/widgets/mini_bar_chart.dart';
 import '../../../core/widgets/stat_bar.dart';
 import '../../appointments/presentation/widgets/appointment_tile.dart';
+import '../../cash/data/cash_repository.dart';
 
 typedef _Range = ({DateTime start, DateTime end});
 
@@ -234,7 +235,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'You have ${today.length} appointment${today.length == 1 ? '' : 's'} today · $inChair in chair · $waiting waiting.',
+                      'You have ${today.length} appointment${today.length == 1 ? '' : 's'} today',
+                      // 'You have ${today.length} appointment${today.length == 1 ? '' : 's'} today · $inChair in chair · $waiting waiting.',
                       style: TextStyle(color: d.text3, fontSize: 9.sp),
                     ),
                   ],
@@ -297,13 +299,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     delta: 'Rs ${_money(periodExpenses)} spent',
                     deltaUp: false,
                   ),
-                if (canStats)
-                  KpiCard(
-                    icon: Icons.people_alt_rounded,
-                    tone: KpiTone.slate,
-                    label: 'Total Patients',
-                    value: '$patientCount',
-                  ),
+                // if (canStats)
+                //   KpiCard(
+                //     icon: Icons.people_alt_rounded,
+                //     tone: KpiTone.slate,
+                //     label: 'Total Patients',
+                //     value: '$patientCount',
+                //   ),
               ];
               return Wrap(
                 spacing: gap,
@@ -314,6 +316,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               );
             },
           ),
+          // Evening reminder: today has cash activity but isn't closed yet.
+          const _CloseDayReminder(),
+
           if (ref.watch(entitlementsProvider).bookingRequests)
             SizedBox(height: 2.2.h),
 
@@ -728,5 +733,193 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
       ),
     ],
+  );
+}
+
+const _wdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const _mons = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+String _dayName(DateTime d) =>
+    '${_wdays[d.weekday - 1]} ${d.day} ${_mons[d.month - 1]}';
+
+/// Cash closing nudges, shown only when there is something to do:
+///  • red  — earlier days had cash but were never closed (any time of day);
+///  • amber — from one hour before closing time, today isn't closed yet.
+class _CloseDayReminder extends ConsumerWidget {
+  const _CloseDayReminder();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final d = context.dent;
+    final now = DateTime.now();
+    final canClose =
+        ref.watch(canProvider(Perm.viewFinancials)) ||
+        ref.watch(canProvider(Perm.takePayments));
+    if (!canClose) return const SizedBox.shrink();
+
+    final todayKey = dayKey(now);
+    void open(String day) {
+      ref.read(dayCloseTargetProvider.notifier).set(day);
+      ref.read(billingTabProvider.notifier).set(1);
+      context.go(AppRoutes.billing);
+    }
+
+    // ── 1. missed days ──
+    final missed =
+        ref.watch(unclosedDaysProvider(todayKey)).value ??
+        const <({DateTime day, int cashPayments})>[];
+
+    // ── 2. today, from 1 hour before closing ──
+    final closeAt = ref.watch(clinicClosingTimeProvider(todayKey)).value;
+    final remindFrom = closeAt == null
+        ? null
+        : DateTime(
+            now.year,
+            now.month,
+            now.day,
+            closeAt.hour,
+            closeAt.minute,
+          ).subtract(const Duration(hours: 1));
+    final inWindow = remindFrom != null && !now.isBefore(remindFrom);
+    final today = inWindow ? ref.watch(cashDayProvider(todayKey)).value : null;
+    final todayOpen =
+        today != null &&
+        today.closing == null &&
+        (today.cashPayments > 0 || today.cashOut > 0);
+
+    if (missed.isEmpty && !todayOpen) return const SizedBox.shrink();
+
+    final yesterday = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(const Duration(days: 1));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (missed.isNotEmpty)
+          _card(
+            d,
+            tone: d.alert,
+            icon: Icons.history_toggle_off_rounded,
+            title: missed.length == 1
+                ? (dayKey(missed.first.day) == dayKey(yesterday)
+                      ? "Yesterday (${_dayName(missed.first.day)}) wasn't closed"
+                      : "${_dayName(missed.first.day)} wasn't closed")
+                : '${missed.length} days not closed',
+            sub: missed.length == 1
+                ? '${missed.first.cashPayments} cash payment'
+                      '${missed.first.cashPayments == 1 ? '' : 's'} · '
+                      'the cash was never counted. You can still close it now.'
+                : 'Oldest: ${_dayName(missed.first.day)} · '
+                      'close them one by one, oldest first.',
+            action: missed.length == 1 ? 'Close it' : 'Start with oldest',
+            onTap: () => open(dayKey(missed.first.day)),
+          ),
+        if (todayOpen)
+          _card(
+            d,
+            tone: d.warn,
+            icon: Icons.lock_clock_rounded,
+            title: "Today isn't closed yet",
+            sub:
+                '${today!.cashPayments} cash payment'
+                '${today.cashPayments == 1 ? '' : 's'} today · '
+                'count the drawer before the clinic closes'
+                '${closeAt == null ? '' : ' at ${_clock(closeAt.hour, closeAt.minute)}'}.',
+            action: 'Close day',
+            onTap: () => open(todayKey),
+          ),
+      ],
+    );
+  }
+
+  static String _clock(int h, int m) {
+    final hh = h % 12 == 0 ? 12 : h % 12;
+    return '$hh:${m.toString().padLeft(2, '0')} ${h < 12 ? 'AM' : 'PM'}';
+  }
+
+  Widget _card(
+    DentColors d, {
+    required Color tone,
+    required IconData icon,
+    required String title,
+    required String sub,
+    required String action,
+    required VoidCallback onTap,
+  }) => Padding(
+    padding: EdgeInsets.only(top: 2.2.h),
+    child: Material(
+      color: tone.withValues(alpha: .1),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.all((1.2.w).clamp(14.0, 22.0)),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: tone.withValues(alpha: .35)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: tone.withValues(alpha: .15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: tone, size: 15.sp),
+              ),
+              SizedBox(width: (1.w).clamp(12.0, 18.0)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontFamily: AppFonts.display,
+                        color: d.text1,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      sub,
+                      style: TextStyle(color: d.text3, fontSize: 9.8.sp),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                action,
+                style: TextStyle(
+                  color: tone,
+                  fontSize: 10.5.sp,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: tone, size: 16.sp),
+            ],
+          ),
+        ),
+      ),
+    ),
   );
 }

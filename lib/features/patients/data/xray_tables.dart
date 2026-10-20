@@ -1,5 +1,8 @@
 import 'package:drift/drift.dart';
 
+/// X-rays AND before/after photos. Photos share this table on purpose:
+/// encryption, the synced list, and computer-to-computer transfer all work
+/// for them with no second copy of that machinery. `kind` tells them apart.
 @DataClassName('XrayRow')
 class PatientXrays extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -38,6 +41,30 @@ class PatientXrays extends Table {
 
   /// Device uuid of the computer that took it.
   TextColumn get originDevice => text().nullable()();
+
+  // ── v31: before & after photos ──
+  /// 'xray' | 'before' | 'after' | 'progress'. Old rows are X-rays.
+  TextColumn get kind => text().withDefault(const Constant('xray'))();
+
+  /// Photos of one treatment ("case") share this id.
+  TextColumn get pairGroup => text().nullable()();
+  TextColumn get tooth => text().withDefault(const Constant(''))();
+  TextColumn get treatment => text().withDefault(const Constant(''))();
+
+  /// Patient agreed to the photo being used in clinic marketing.
+  BoolColumn get consent => boolean().withDefault(const Constant(false))();
+
+  // ── v32: showcase ──
+  /// Who ticked consent, and when — the record if a patient ever asks.
+  TextColumn get consentBy => text().withDefault(const Constant(''))();
+  DateTimeColumn get consentAt => dateTime().nullable()();
+
+  /// Starred as one of the clinic's best cases.
+  BoolColumn get featured => boolean().withDefault(const Constant(false))();
+
+  /// Marketing crop "x,y,w,h" (0–1 of the photo, always 4:3) — e.g. the
+  /// smile only, so no face is ever shown. Null = the whole photo.
+  TextColumn get crop => text().nullable()();
 }
 
 /// Which X-rays each computer actually holds. Each computer writes ONLY its

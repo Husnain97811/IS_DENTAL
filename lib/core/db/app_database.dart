@@ -1,8 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:is_dental/core/utils/uuids.dart';
 import '../constants/views.dart';
 import 'database_connection.dart';
+import 'package:is_dental/features/cash/data/cash_tables.dart';
 part 'app_database.g.dart';
 
 /// Key/value store for app meta: license blob, anti-rollback clock, setup flag, theme.
@@ -74,6 +74,9 @@ class Users extends Table {
     InvoicePayments,
     Devices,
     DeviceInventories,
+    ToothFindings,
+    CashClosings,
+    DentistRates,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -81,7 +84,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 28;
+  int get schemaVersion => 32;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -271,27 +274,73 @@ class AppDatabase extends _$AppDatabase {
     return DateTime.tryParse(v);
   }
 
-  /// X-rays for a patient, newest first.
+  /// X-rays for a patient, newest first. Photos live in the same table
+  /// (kind = before/after/progress) and are left out here.
   Stream<List<XrayRow>> watchXrays(int patientId) =>
       (select(patientXrays)
             ..where(
-              (t) => t.patientId.equals(patientId) & t.isDeleted.equals(false),
+              (t) =>
+                  t.patientId.equals(patientId) &
+                  t.isDeleted.equals(false) &
+                  t.kind.equals('xray'),
             )
             ..orderBy([(t) => OrderingTerm.desc(t.takenAt)]))
           .watch();
 
-  /// Count of X-rays stored in a given calendar year (for the basic-tier cap).
-  /// Count of X-rays stored within a given period (the clinic's subscription year).
-  Future<int> xrayCountBetween(DateTime start, DateTime end) async {
-    final rows =
-        await (select(patientXrays)..where(
+  /// Before / after / progress photos for a patient, oldest first
+  /// (so a case reads left to right in time).
+  Stream<List<XrayRow>> watchPhotos(int patientId) =>
+      (select(patientXrays)
+            ..where(
+              (t) =>
+                  t.patientId.equals(patientId) &
+                  t.isDeleted.equals(false) &
+                  t.kind.equals('xray').not(),
+            )
+            ..orderBy([(t) => OrderingTerm.asc(t.takenAt)]))
+          .watch();
+
+  /// Every photo of a case the patient agreed to share — the Showcase.
+  /// Branch-filtered like the rest of the app (null = all branches).
+  Stream<List<XrayRow>> watchShowcasePhotos({String? branchId}) =>
+      (select(patientXrays)
+            ..where(
               (t) =>
                   t.isDeleted.equals(false) &
-                  t.createdAt.isBiggerOrEqualValue(start) &
-                  t.createdAt.isSmallerThanValue(end),
-            ))
-            .get();
-    return rows.length;
+                  t.consent.equals(true) &
+                  t.kind.equals('xray').not() &
+                  (branchId == null
+                      ? const Constant(true)
+                      : t.branchId.equals(branchId)),
+            )
+            ..orderBy([(t) => OrderingTerm.asc(t.takenAt)]))
+          .watch();
+
+  /// X-rays stored within a period (the clinic's subscription year) —
+  /// the basic-tier cap. Photos have their own count.
+  Future<int> xrayCountBetween(DateTime start, DateTime end) =>
+      _imagingCount(start, end, photos: false);
+
+  /// Photos stored within a period — the basic-tier photo cap.
+  Future<int> photoCountBetween(DateTime start, DateTime end) =>
+      _imagingCount(start, end, photos: true);
+
+  Future<int> _imagingCount(
+    DateTime start,
+    DateTime end, {
+    required bool photos,
+  }) async {
+    final c = countAll();
+    final isXray = patientXrays.kind.equals('xray');
+    final q = selectOnly(patientXrays)
+      ..addColumns([c])
+      ..where(
+        patientXrays.isDeleted.equals(false) &
+            patientXrays.createdAt.isBiggerOrEqualValue(start) &
+            patientXrays.createdAt.isSmallerThanValue(end) &
+            (photos ? isXray.not() : isXray),
+      );
+    return (await q.getSingle()).read(c) ?? 0;
   }
 
   /// All non-deleted X-rays (optionally branch-filtered) for ZIP export.
@@ -549,6 +598,58 @@ class AppDatabase extends _$AppDatabase {
             'WHERE updated_at IS NULL',
           );
         } catch (_) {}
+      }
+      if (from < 29) {
+        try {
+          await m.createTable(toothFindings);
+        } catch (_) {}
+        try {
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_tooth_findings_patient '
+            'ON tooth_findings (patient_id)',
+          );
+        } catch (_) {}
+      }
+      if (from < 30) {
+        try {
+          await m.createTable(cashClosings);
+        } catch (_) {}
+        try {
+          await m.createTable(dentistRates);
+        } catch (_) {}
+      }
+      if (from < 31) {
+        // before & after photos share the X-ray table
+        for (final c in <GeneratedColumn>[
+          patientXrays.kind,
+          patientXrays.pairGroup,
+          patientXrays.tooth,
+          patientXrays.treatment,
+          patientXrays.consent,
+        ]) {
+          try {
+            await m.addColumn(patientXrays, c);
+          } catch (_) {}
+        }
+        try {
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_xrays_patient_kind '
+            'ON patient_xrays (patient_id, kind)',
+          );
+        } catch (_) {}
+      }
+      if (from < 32) {
+        // showcase: consent record, best-case star, marketing crop
+        for (final c in <GeneratedColumn>[
+          patientXrays.consentBy,
+          patientXrays.consentAt,
+          patientXrays.featured,
+          patientXrays.crop,
+        ]) {
+          try {
+            await m.addColumn(patientXrays, c);
+          } catch (_) {}
+        }
       }
     },
   );
@@ -1511,6 +1612,10 @@ class AppDatabase extends _$AppDatabase {
     );
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_tooth_patient ON tooth_records(patient_id);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_xrays_patient_kind '
+      'ON patient_xrays (patient_id, kind);',
     );
     await _v24Indexes();
   }

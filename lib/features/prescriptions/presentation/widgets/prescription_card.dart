@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
-
 import '../../../../core/constants/views.dart';
-import '../prescription_controller.dart';
 import 'prescription_editor.dart';
 import 'prescription_preview.dart';
 

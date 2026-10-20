@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/constants/views.dart';
-import 'prescription_controller.dart';
-import 'widgets/medicine_editor.dart';
+
+import 'widgets/all_prescriptions_tab.dart';
 import 'widgets/precaution_set_editor.dart';
 
 class PrescriptionsScreen extends ConsumerStatefulWidget {
@@ -39,16 +39,22 @@ class _S extends ConsumerState<PrescriptionsScreen> {
           // ),
           SegmentedControl(
             items: canFormat
-                ? const ['Medicines', 'Precautions', 'Print Format']
-                : const ['Medicines', 'Precautions'],
+                ? const [
+                    'Prescriptions',
+                    'Medicines',
+                    'Precautions',
+                    'Print Format',
+                  ]
+                : const ['Prescriptions', 'Medicines', 'Precautions'],
             selected: _tab,
             onChanged: (i) => setState(() => _tab = i),
           ),
           SizedBox(height: 2.2.h),
 
-          if (_tab == 0) _MedicinesTab(),
-          if (_tab == 1) _PrecautionsTab(),
-          if (_tab == 2 && canFormat) _FormatTab(),
+          if (_tab == 0) const AllPrescriptionsTab(),
+          if (_tab == 1) _MedicinesTab(),
+          if (_tab == 2) _PrecautionsTab(),
+          if (_tab == 3 && canFormat) _FormatTab(),
         ],
       ),
     );

@@ -77,7 +77,8 @@ class XrayTransfer {
         bytes: 0,
         code: null,
         expiresAt: null,
-        error: 'Nothing to transfer — that computer already has every X-ray.',
+        error:
+            'Nothing to transfer — that computer already has every X-ray and photo.',
       );
     }
 
@@ -115,6 +116,15 @@ class XrayTransfer {
               'byteSize': r.byteSize,
               'keyId': r.keyId,
               'originDevice': r.originDevice,
+              'kind': r.kind,
+              'pairGroup': r.pairGroup,
+              'tooth': r.tooth,
+              'treatment': r.treatment,
+              'consent': r.consent,
+              'consentBy': r.consentBy,
+              'consentAt': r.consentAt?.toUtc().toIso8601String(),
+              'featured': r.featured,
+              'crop': r.crop,
             },
         ],
       }),
@@ -359,6 +369,20 @@ class XrayTransfer {
                   isLocal: const Value(true),
                   originDevice: Value(m['originDevice'] as String?),
                   updatedAt: Value(DateTime.parse(m['updatedAt']).toLocal()),
+                  // files from an older DentOS carry no kind → X-ray
+                  kind: Value((m['kind'] ?? 'xray') as String),
+                  pairGroup: Value(m['pairGroup'] as String?),
+                  tooth: Value((m['tooth'] ?? '') as String),
+                  treatment: Value((m['treatment'] ?? '') as String),
+                  consent: Value((m['consent'] ?? false) as bool),
+                  consentBy: Value((m['consentBy'] ?? '') as String),
+                  consentAt: Value(
+                    m['consentAt'] == null
+                        ? null
+                        : DateTime.parse(m['consentAt'] as String).toLocal(),
+                  ),
+                  featured: Value((m['featured'] ?? false) as bool),
+                  crop: Value(m['crop'] as String?),
                 ),
               );
         } else {

@@ -10668,6 +10668,111 @@ class $PatientXraysTable extends PatientXrays
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('xray'),
+  );
+  static const VerificationMeta _pairGroupMeta = const VerificationMeta(
+    'pairGroup',
+  );
+  @override
+  late final GeneratedColumn<String> pairGroup = GeneratedColumn<String>(
+    'pair_group',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _toothMeta = const VerificationMeta('tooth');
+  @override
+  late final GeneratedColumn<String> tooth = GeneratedColumn<String>(
+    'tooth',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _treatmentMeta = const VerificationMeta(
+    'treatment',
+  );
+  @override
+  late final GeneratedColumn<String> treatment = GeneratedColumn<String>(
+    'treatment',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _consentMeta = const VerificationMeta(
+    'consent',
+  );
+  @override
+  late final GeneratedColumn<bool> consent = GeneratedColumn<bool>(
+    'consent',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("consent" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _consentByMeta = const VerificationMeta(
+    'consentBy',
+  );
+  @override
+  late final GeneratedColumn<String> consentBy = GeneratedColumn<String>(
+    'consent_by',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _consentAtMeta = const VerificationMeta(
+    'consentAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> consentAt = GeneratedColumn<DateTime>(
+    'consent_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _featuredMeta = const VerificationMeta(
+    'featured',
+  );
+  @override
+  late final GeneratedColumn<bool> featured = GeneratedColumn<bool>(
+    'featured',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("featured" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _cropMeta = const VerificationMeta('crop');
+  @override
+  late final GeneratedColumn<String> crop = GeneratedColumn<String>(
+    'crop',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -10690,6 +10795,15 @@ class $PatientXraysTable extends PatientXrays
     keyId,
     isLocal,
     originDevice,
+    kind,
+    pairGroup,
+    tooth,
+    treatment,
+    consent,
+    consentBy,
+    consentAt,
+    featured,
+    crop,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -10841,6 +10955,60 @@ class $PatientXraysTable extends PatientXrays
         ),
       );
     }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    }
+    if (data.containsKey('pair_group')) {
+      context.handle(
+        _pairGroupMeta,
+        pairGroup.isAcceptableOrUnknown(data['pair_group']!, _pairGroupMeta),
+      );
+    }
+    if (data.containsKey('tooth')) {
+      context.handle(
+        _toothMeta,
+        tooth.isAcceptableOrUnknown(data['tooth']!, _toothMeta),
+      );
+    }
+    if (data.containsKey('treatment')) {
+      context.handle(
+        _treatmentMeta,
+        treatment.isAcceptableOrUnknown(data['treatment']!, _treatmentMeta),
+      );
+    }
+    if (data.containsKey('consent')) {
+      context.handle(
+        _consentMeta,
+        consent.isAcceptableOrUnknown(data['consent']!, _consentMeta),
+      );
+    }
+    if (data.containsKey('consent_by')) {
+      context.handle(
+        _consentByMeta,
+        consentBy.isAcceptableOrUnknown(data['consent_by']!, _consentByMeta),
+      );
+    }
+    if (data.containsKey('consent_at')) {
+      context.handle(
+        _consentAtMeta,
+        consentAt.isAcceptableOrUnknown(data['consent_at']!, _consentAtMeta),
+      );
+    }
+    if (data.containsKey('featured')) {
+      context.handle(
+        _featuredMeta,
+        featured.isAcceptableOrUnknown(data['featured']!, _featuredMeta),
+      );
+    }
+    if (data.containsKey('crop')) {
+      context.handle(
+        _cropMeta,
+        crop.isAcceptableOrUnknown(data['crop']!, _cropMeta),
+      );
+    }
     return context;
   }
 
@@ -10930,6 +11098,42 @@ class $PatientXraysTable extends PatientXrays
         DriftSqlType.string,
         data['${effectivePrefix}origin_device'],
       ),
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      pairGroup: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pair_group'],
+      ),
+      tooth: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tooth'],
+      )!,
+      treatment: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}treatment'],
+      )!,
+      consent: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}consent'],
+      )!,
+      consentBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}consent_by'],
+      )!,
+      consentAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}consent_at'],
+      ),
+      featured: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}featured'],
+      )!,
+      crop: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}crop'],
+      ),
     );
   }
 
@@ -10972,6 +11176,28 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
 
   /// Device uuid of the computer that took it.
   final String? originDevice;
+
+  /// 'xray' | 'before' | 'after' | 'progress'. Old rows are X-rays.
+  final String kind;
+
+  /// Photos of one treatment ("case") share this id.
+  final String? pairGroup;
+  final String tooth;
+  final String treatment;
+
+  /// Patient agreed to the photo being used in clinic marketing.
+  final bool consent;
+
+  /// Who ticked consent, and when — the record if a patient ever asks.
+  final String consentBy;
+  final DateTime? consentAt;
+
+  /// Starred as one of the clinic's best cases.
+  final bool featured;
+
+  /// Marketing crop "x,y,w,h" (0–1 of the photo, always 4:3) — e.g. the
+  /// smile only, so no face is ever shown. Null = the whole photo.
+  final String? crop;
   const XrayRow({
     required this.id,
     required this.uuid,
@@ -10993,6 +11219,15 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
     this.keyId,
     required this.isLocal,
     this.originDevice,
+    required this.kind,
+    this.pairGroup,
+    required this.tooth,
+    required this.treatment,
+    required this.consent,
+    required this.consentBy,
+    this.consentAt,
+    required this.featured,
+    this.crop,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -11026,6 +11261,21 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
     map['is_local'] = Variable<bool>(isLocal);
     if (!nullToAbsent || originDevice != null) {
       map['origin_device'] = Variable<String>(originDevice);
+    }
+    map['kind'] = Variable<String>(kind);
+    if (!nullToAbsent || pairGroup != null) {
+      map['pair_group'] = Variable<String>(pairGroup);
+    }
+    map['tooth'] = Variable<String>(tooth);
+    map['treatment'] = Variable<String>(treatment);
+    map['consent'] = Variable<bool>(consent);
+    map['consent_by'] = Variable<String>(consentBy);
+    if (!nullToAbsent || consentAt != null) {
+      map['consent_at'] = Variable<DateTime>(consentAt);
+    }
+    map['featured'] = Variable<bool>(featured);
+    if (!nullToAbsent || crop != null) {
+      map['crop'] = Variable<String>(crop);
     }
     return map;
   }
@@ -11062,6 +11312,19 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
       originDevice: originDevice == null && nullToAbsent
           ? const Value.absent()
           : Value(originDevice),
+      kind: Value(kind),
+      pairGroup: pairGroup == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pairGroup),
+      tooth: Value(tooth),
+      treatment: Value(treatment),
+      consent: Value(consent),
+      consentBy: Value(consentBy),
+      consentAt: consentAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(consentAt),
+      featured: Value(featured),
+      crop: crop == null && nullToAbsent ? const Value.absent() : Value(crop),
     );
   }
 
@@ -11091,6 +11354,15 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
       keyId: serializer.fromJson<String?>(json['keyId']),
       isLocal: serializer.fromJson<bool>(json['isLocal']),
       originDevice: serializer.fromJson<String?>(json['originDevice']),
+      kind: serializer.fromJson<String>(json['kind']),
+      pairGroup: serializer.fromJson<String?>(json['pairGroup']),
+      tooth: serializer.fromJson<String>(json['tooth']),
+      treatment: serializer.fromJson<String>(json['treatment']),
+      consent: serializer.fromJson<bool>(json['consent']),
+      consentBy: serializer.fromJson<String>(json['consentBy']),
+      consentAt: serializer.fromJson<DateTime?>(json['consentAt']),
+      featured: serializer.fromJson<bool>(json['featured']),
+      crop: serializer.fromJson<String?>(json['crop']),
     );
   }
   @override
@@ -11117,6 +11389,15 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
       'keyId': serializer.toJson<String?>(keyId),
       'isLocal': serializer.toJson<bool>(isLocal),
       'originDevice': serializer.toJson<String?>(originDevice),
+      'kind': serializer.toJson<String>(kind),
+      'pairGroup': serializer.toJson<String?>(pairGroup),
+      'tooth': serializer.toJson<String>(tooth),
+      'treatment': serializer.toJson<String>(treatment),
+      'consent': serializer.toJson<bool>(consent),
+      'consentBy': serializer.toJson<String>(consentBy),
+      'consentAt': serializer.toJson<DateTime?>(consentAt),
+      'featured': serializer.toJson<bool>(featured),
+      'crop': serializer.toJson<String?>(crop),
     };
   }
 
@@ -11141,6 +11422,15 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
     Value<String?> keyId = const Value.absent(),
     bool? isLocal,
     Value<String?> originDevice = const Value.absent(),
+    String? kind,
+    Value<String?> pairGroup = const Value.absent(),
+    String? tooth,
+    String? treatment,
+    bool? consent,
+    String? consentBy,
+    Value<DateTime?> consentAt = const Value.absent(),
+    bool? featured,
+    Value<String?> crop = const Value.absent(),
   }) => XrayRow(
     id: id ?? this.id,
     uuid: uuid ?? this.uuid,
@@ -11162,6 +11452,15 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
     keyId: keyId.present ? keyId.value : this.keyId,
     isLocal: isLocal ?? this.isLocal,
     originDevice: originDevice.present ? originDevice.value : this.originDevice,
+    kind: kind ?? this.kind,
+    pairGroup: pairGroup.present ? pairGroup.value : this.pairGroup,
+    tooth: tooth ?? this.tooth,
+    treatment: treatment ?? this.treatment,
+    consent: consent ?? this.consent,
+    consentBy: consentBy ?? this.consentBy,
+    consentAt: consentAt.present ? consentAt.value : this.consentAt,
+    featured: featured ?? this.featured,
+    crop: crop.present ? crop.value : this.crop,
   );
   XrayRow copyWithCompanion(PatientXraysCompanion data) {
     return XrayRow(
@@ -11191,6 +11490,15 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
       originDevice: data.originDevice.present
           ? data.originDevice.value
           : this.originDevice,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      pairGroup: data.pairGroup.present ? data.pairGroup.value : this.pairGroup,
+      tooth: data.tooth.present ? data.tooth.value : this.tooth,
+      treatment: data.treatment.present ? data.treatment.value : this.treatment,
+      consent: data.consent.present ? data.consent.value : this.consent,
+      consentBy: data.consentBy.present ? data.consentBy.value : this.consentBy,
+      consentAt: data.consentAt.present ? data.consentAt.value : this.consentAt,
+      featured: data.featured.present ? data.featured.value : this.featured,
+      crop: data.crop.present ? data.crop.value : this.crop,
     );
   }
 
@@ -11216,13 +11524,22 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
           ..write('updatedAt: $updatedAt, ')
           ..write('keyId: $keyId, ')
           ..write('isLocal: $isLocal, ')
-          ..write('originDevice: $originDevice')
+          ..write('originDevice: $originDevice, ')
+          ..write('kind: $kind, ')
+          ..write('pairGroup: $pairGroup, ')
+          ..write('tooth: $tooth, ')
+          ..write('treatment: $treatment, ')
+          ..write('consent: $consent, ')
+          ..write('consentBy: $consentBy, ')
+          ..write('consentAt: $consentAt, ')
+          ..write('featured: $featured, ')
+          ..write('crop: $crop')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     uuid,
     clinicId,
@@ -11243,7 +11560,16 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
     keyId,
     isLocal,
     originDevice,
-  );
+    kind,
+    pairGroup,
+    tooth,
+    treatment,
+    consent,
+    consentBy,
+    consentAt,
+    featured,
+    crop,
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -11267,7 +11593,16 @@ class XrayRow extends DataClass implements Insertable<XrayRow> {
           other.updatedAt == this.updatedAt &&
           other.keyId == this.keyId &&
           other.isLocal == this.isLocal &&
-          other.originDevice == this.originDevice);
+          other.originDevice == this.originDevice &&
+          other.kind == this.kind &&
+          other.pairGroup == this.pairGroup &&
+          other.tooth == this.tooth &&
+          other.treatment == this.treatment &&
+          other.consent == this.consent &&
+          other.consentBy == this.consentBy &&
+          other.consentAt == this.consentAt &&
+          other.featured == this.featured &&
+          other.crop == this.crop);
 }
 
 class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
@@ -11291,6 +11626,15 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
   final Value<String?> keyId;
   final Value<bool> isLocal;
   final Value<String?> originDevice;
+  final Value<String> kind;
+  final Value<String?> pairGroup;
+  final Value<String> tooth;
+  final Value<String> treatment;
+  final Value<bool> consent;
+  final Value<String> consentBy;
+  final Value<DateTime?> consentAt;
+  final Value<bool> featured;
+  final Value<String?> crop;
   const PatientXraysCompanion({
     this.id = const Value.absent(),
     this.uuid = const Value.absent(),
@@ -11312,6 +11656,15 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
     this.keyId = const Value.absent(),
     this.isLocal = const Value.absent(),
     this.originDevice = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.pairGroup = const Value.absent(),
+    this.tooth = const Value.absent(),
+    this.treatment = const Value.absent(),
+    this.consent = const Value.absent(),
+    this.consentBy = const Value.absent(),
+    this.consentAt = const Value.absent(),
+    this.featured = const Value.absent(),
+    this.crop = const Value.absent(),
   });
   PatientXraysCompanion.insert({
     this.id = const Value.absent(),
@@ -11334,6 +11687,15 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
     this.keyId = const Value.absent(),
     this.isLocal = const Value.absent(),
     this.originDevice = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.pairGroup = const Value.absent(),
+    this.tooth = const Value.absent(),
+    this.treatment = const Value.absent(),
+    this.consent = const Value.absent(),
+    this.consentBy = const Value.absent(),
+    this.consentAt = const Value.absent(),
+    this.featured = const Value.absent(),
+    this.crop = const Value.absent(),
   }) : uuid = Value(uuid),
        clinicId = Value(clinicId),
        patientId = Value(patientId),
@@ -11361,6 +11723,15 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
     Expression<String>? keyId,
     Expression<bool>? isLocal,
     Expression<String>? originDevice,
+    Expression<String>? kind,
+    Expression<String>? pairGroup,
+    Expression<String>? tooth,
+    Expression<String>? treatment,
+    Expression<bool>? consent,
+    Expression<String>? consentBy,
+    Expression<DateTime>? consentAt,
+    Expression<bool>? featured,
+    Expression<String>? crop,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -11383,6 +11754,15 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
       if (keyId != null) 'key_id': keyId,
       if (isLocal != null) 'is_local': isLocal,
       if (originDevice != null) 'origin_device': originDevice,
+      if (kind != null) 'kind': kind,
+      if (pairGroup != null) 'pair_group': pairGroup,
+      if (tooth != null) 'tooth': tooth,
+      if (treatment != null) 'treatment': treatment,
+      if (consent != null) 'consent': consent,
+      if (consentBy != null) 'consent_by': consentBy,
+      if (consentAt != null) 'consent_at': consentAt,
+      if (featured != null) 'featured': featured,
+      if (crop != null) 'crop': crop,
     });
   }
 
@@ -11407,6 +11787,15 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
     Value<String?>? keyId,
     Value<bool>? isLocal,
     Value<String?>? originDevice,
+    Value<String>? kind,
+    Value<String?>? pairGroup,
+    Value<String>? tooth,
+    Value<String>? treatment,
+    Value<bool>? consent,
+    Value<String>? consentBy,
+    Value<DateTime?>? consentAt,
+    Value<bool>? featured,
+    Value<String?>? crop,
   }) {
     return PatientXraysCompanion(
       id: id ?? this.id,
@@ -11429,6 +11818,15 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
       keyId: keyId ?? this.keyId,
       isLocal: isLocal ?? this.isLocal,
       originDevice: originDevice ?? this.originDevice,
+      kind: kind ?? this.kind,
+      pairGroup: pairGroup ?? this.pairGroup,
+      tooth: tooth ?? this.tooth,
+      treatment: treatment ?? this.treatment,
+      consent: consent ?? this.consent,
+      consentBy: consentBy ?? this.consentBy,
+      consentAt: consentAt ?? this.consentAt,
+      featured: featured ?? this.featured,
+      crop: crop ?? this.crop,
     );
   }
 
@@ -11495,6 +11893,33 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
     if (originDevice.present) {
       map['origin_device'] = Variable<String>(originDevice.value);
     }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (pairGroup.present) {
+      map['pair_group'] = Variable<String>(pairGroup.value);
+    }
+    if (tooth.present) {
+      map['tooth'] = Variable<String>(tooth.value);
+    }
+    if (treatment.present) {
+      map['treatment'] = Variable<String>(treatment.value);
+    }
+    if (consent.present) {
+      map['consent'] = Variable<bool>(consent.value);
+    }
+    if (consentBy.present) {
+      map['consent_by'] = Variable<String>(consentBy.value);
+    }
+    if (consentAt.present) {
+      map['consent_at'] = Variable<DateTime>(consentAt.value);
+    }
+    if (featured.present) {
+      map['featured'] = Variable<bool>(featured.value);
+    }
+    if (crop.present) {
+      map['crop'] = Variable<String>(crop.value);
+    }
     return map;
   }
 
@@ -11520,7 +11945,16 @@ class PatientXraysCompanion extends UpdateCompanion<XrayRow> {
           ..write('updatedAt: $updatedAt, ')
           ..write('keyId: $keyId, ')
           ..write('isLocal: $isLocal, ')
-          ..write('originDevice: $originDevice')
+          ..write('originDevice: $originDevice, ')
+          ..write('kind: $kind, ')
+          ..write('pairGroup: $pairGroup, ')
+          ..write('tooth: $tooth, ')
+          ..write('treatment: $treatment, ')
+          ..write('consent: $consent, ')
+          ..write('consentBy: $consentBy, ')
+          ..write('consentAt: $consentAt, ')
+          ..write('featured: $featured, ')
+          ..write('crop: $crop')
           ..write(')'))
         .toString();
   }
@@ -18791,6 +19225,2356 @@ class DeviceInventoriesCompanion extends UpdateCompanion<DeviceInventoryRow> {
   }
 }
 
+class $ToothFindingsTable extends ToothFindings
+    with TableInfo<$ToothFindingsTable, ToothFindingRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ToothFindingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _clinicIdMeta = const VerificationMeta(
+    'clinicId',
+  );
+  @override
+  late final GeneratedColumn<String> clinicId = GeneratedColumn<String>(
+    'clinic_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _patientIdMeta = const VerificationMeta(
+    'patientId',
+  );
+  @override
+  late final GeneratedColumn<int> patientId = GeneratedColumn<int>(
+    'patient_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _patientUuidMeta = const VerificationMeta(
+    'patientUuid',
+  );
+  @override
+  late final GeneratedColumn<String> patientUuid = GeneratedColumn<String>(
+    'patient_uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fdiMeta = const VerificationMeta('fdi');
+  @override
+  late final GeneratedColumn<int> fdi = GeneratedColumn<int>(
+    'fdi',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _surfacesMeta = const VerificationMeta(
+    'surfaces',
+  );
+  @override
+  late final GeneratedColumn<String> surfaces = GeneratedColumn<String>(
+    'surfaces',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdByNameMeta = const VerificationMeta(
+    'createdByName',
+  );
+  @override
+  late final GeneratedColumn<String> createdByName = GeneratedColumn<String>(
+    'created_by_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _completedByNameMeta = const VerificationMeta(
+    'completedByName',
+  );
+  @override
+  late final GeneratedColumn<String> completedByName = GeneratedColumn<String>(
+    'completed_by_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _completedAtMeta = const VerificationMeta(
+    'completedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> completedAt = GeneratedColumn<DateTime>(
+    'completed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _deletedByNameMeta = const VerificationMeta(
+    'deletedByName',
+  );
+  @override
+  late final GeneratedColumn<String> deletedByName = GeneratedColumn<String>(
+    'deleted_by_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    uuid,
+    clinicId,
+    patientId,
+    patientUuid,
+    fdi,
+    kind,
+    status,
+    surfaces,
+    note,
+    createdByName,
+    createdAt,
+    completedByName,
+    completedAt,
+    isDeleted,
+    deletedByName,
+    deletedAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tooth_findings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ToothFindingRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('clinic_id')) {
+      context.handle(
+        _clinicIdMeta,
+        clinicId.isAcceptableOrUnknown(data['clinic_id']!, _clinicIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('patient_id')) {
+      context.handle(
+        _patientIdMeta,
+        patientId.isAcceptableOrUnknown(data['patient_id']!, _patientIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_patientIdMeta);
+    }
+    if (data.containsKey('patient_uuid')) {
+      context.handle(
+        _patientUuidMeta,
+        patientUuid.isAcceptableOrUnknown(
+          data['patient_uuid']!,
+          _patientUuidMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_patientUuidMeta);
+    }
+    if (data.containsKey('fdi')) {
+      context.handle(
+        _fdiMeta,
+        fdi.isAcceptableOrUnknown(data['fdi']!, _fdiMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fdiMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('surfaces')) {
+      context.handle(
+        _surfacesMeta,
+        surfaces.isAcceptableOrUnknown(data['surfaces']!, _surfacesMeta),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('created_by_name')) {
+      context.handle(
+        _createdByNameMeta,
+        createdByName.isAcceptableOrUnknown(
+          data['created_by_name']!,
+          _createdByNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('completed_by_name')) {
+      context.handle(
+        _completedByNameMeta,
+        completedByName.isAcceptableOrUnknown(
+          data['completed_by_name']!,
+          _completedByNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+        _completedAtMeta,
+        completedAt.isAcceptableOrUnknown(
+          data['completed_at']!,
+          _completedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('deleted_by_name')) {
+      context.handle(
+        _deletedByNameMeta,
+        deletedByName.isAcceptableOrUnknown(
+          data['deleted_by_name']!,
+          _deletedByNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ToothFindingRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ToothFindingRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      clinicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clinic_id'],
+      )!,
+      patientId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}patient_id'],
+      )!,
+      patientUuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}patient_uuid'],
+      )!,
+      fdi: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fdi'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      surfaces: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}surfaces'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      createdByName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_by_name'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      completedByName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}completed_by_name'],
+      ),
+      completedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}completed_at'],
+      ),
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      deletedByName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deleted_by_name'],
+      ),
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ToothFindingsTable createAlias(String alias) {
+    return $ToothFindingsTable(attachedDatabase, alias);
+  }
+}
+
+class ToothFindingRow extends DataClass implements Insertable<ToothFindingRow> {
+  final int id;
+  final String uuid;
+  final String clinicId;
+
+  /// Local link for fast queries on this computer.
+  final int patientId;
+
+  /// Cross-computer link. Resolved back to patientId on pull.
+  final String patientUuid;
+
+  /// FDI tooth number: 11–48 adult, 51–85 primary.
+  final int fdi;
+
+  /// caries | filling | sealant | crown | rct | extraction | implant | bridge | missing
+  final String kind;
+
+  /// found | existing | planned | done
+  final String status;
+
+  /// Surfaces in clinical order, e.g. "MO", "MOD". Empty for whole-tooth
+  /// findings, and for imported fillings whose surfaces were never recorded.
+  final String surfaces;
+  final String? note;
+  final String createdByName;
+  final DateTime createdAt;
+  final String? completedByName;
+  final DateTime? completedAt;
+  final bool isDeleted;
+  final String? deletedByName;
+  final DateTime? deletedAt;
+  final DateTime updatedAt;
+  const ToothFindingRow({
+    required this.id,
+    required this.uuid,
+    required this.clinicId,
+    required this.patientId,
+    required this.patientUuid,
+    required this.fdi,
+    required this.kind,
+    required this.status,
+    required this.surfaces,
+    this.note,
+    required this.createdByName,
+    required this.createdAt,
+    this.completedByName,
+    this.completedAt,
+    required this.isDeleted,
+    this.deletedByName,
+    this.deletedAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['uuid'] = Variable<String>(uuid);
+    map['clinic_id'] = Variable<String>(clinicId);
+    map['patient_id'] = Variable<int>(patientId);
+    map['patient_uuid'] = Variable<String>(patientUuid);
+    map['fdi'] = Variable<int>(fdi);
+    map['kind'] = Variable<String>(kind);
+    map['status'] = Variable<String>(status);
+    map['surfaces'] = Variable<String>(surfaces);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['created_by_name'] = Variable<String>(createdByName);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || completedByName != null) {
+      map['completed_by_name'] = Variable<String>(completedByName);
+    }
+    if (!nullToAbsent || completedAt != null) {
+      map['completed_at'] = Variable<DateTime>(completedAt);
+    }
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    if (!nullToAbsent || deletedByName != null) {
+      map['deleted_by_name'] = Variable<String>(deletedByName);
+    }
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ToothFindingsCompanion toCompanion(bool nullToAbsent) {
+    return ToothFindingsCompanion(
+      id: Value(id),
+      uuid: Value(uuid),
+      clinicId: Value(clinicId),
+      patientId: Value(patientId),
+      patientUuid: Value(patientUuid),
+      fdi: Value(fdi),
+      kind: Value(kind),
+      status: Value(status),
+      surfaces: Value(surfaces),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      createdByName: Value(createdByName),
+      createdAt: Value(createdAt),
+      completedByName: completedByName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedByName),
+      completedAt: completedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedAt),
+      isDeleted: Value(isDeleted),
+      deletedByName: deletedByName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedByName),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ToothFindingRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ToothFindingRow(
+      id: serializer.fromJson<int>(json['id']),
+      uuid: serializer.fromJson<String>(json['uuid']),
+      clinicId: serializer.fromJson<String>(json['clinicId']),
+      patientId: serializer.fromJson<int>(json['patientId']),
+      patientUuid: serializer.fromJson<String>(json['patientUuid']),
+      fdi: serializer.fromJson<int>(json['fdi']),
+      kind: serializer.fromJson<String>(json['kind']),
+      status: serializer.fromJson<String>(json['status']),
+      surfaces: serializer.fromJson<String>(json['surfaces']),
+      note: serializer.fromJson<String?>(json['note']),
+      createdByName: serializer.fromJson<String>(json['createdByName']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      completedByName: serializer.fromJson<String?>(json['completedByName']),
+      completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      deletedByName: serializer.fromJson<String?>(json['deletedByName']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'uuid': serializer.toJson<String>(uuid),
+      'clinicId': serializer.toJson<String>(clinicId),
+      'patientId': serializer.toJson<int>(patientId),
+      'patientUuid': serializer.toJson<String>(patientUuid),
+      'fdi': serializer.toJson<int>(fdi),
+      'kind': serializer.toJson<String>(kind),
+      'status': serializer.toJson<String>(status),
+      'surfaces': serializer.toJson<String>(surfaces),
+      'note': serializer.toJson<String?>(note),
+      'createdByName': serializer.toJson<String>(createdByName),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'completedByName': serializer.toJson<String?>(completedByName),
+      'completedAt': serializer.toJson<DateTime?>(completedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'deletedByName': serializer.toJson<String?>(deletedByName),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ToothFindingRow copyWith({
+    int? id,
+    String? uuid,
+    String? clinicId,
+    int? patientId,
+    String? patientUuid,
+    int? fdi,
+    String? kind,
+    String? status,
+    String? surfaces,
+    Value<String?> note = const Value.absent(),
+    String? createdByName,
+    DateTime? createdAt,
+    Value<String?> completedByName = const Value.absent(),
+    Value<DateTime?> completedAt = const Value.absent(),
+    bool? isDeleted,
+    Value<String?> deletedByName = const Value.absent(),
+    Value<DateTime?> deletedAt = const Value.absent(),
+    DateTime? updatedAt,
+  }) => ToothFindingRow(
+    id: id ?? this.id,
+    uuid: uuid ?? this.uuid,
+    clinicId: clinicId ?? this.clinicId,
+    patientId: patientId ?? this.patientId,
+    patientUuid: patientUuid ?? this.patientUuid,
+    fdi: fdi ?? this.fdi,
+    kind: kind ?? this.kind,
+    status: status ?? this.status,
+    surfaces: surfaces ?? this.surfaces,
+    note: note.present ? note.value : this.note,
+    createdByName: createdByName ?? this.createdByName,
+    createdAt: createdAt ?? this.createdAt,
+    completedByName: completedByName.present
+        ? completedByName.value
+        : this.completedByName,
+    completedAt: completedAt.present ? completedAt.value : this.completedAt,
+    isDeleted: isDeleted ?? this.isDeleted,
+    deletedByName: deletedByName.present
+        ? deletedByName.value
+        : this.deletedByName,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ToothFindingRow copyWithCompanion(ToothFindingsCompanion data) {
+    return ToothFindingRow(
+      id: data.id.present ? data.id.value : this.id,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      patientId: data.patientId.present ? data.patientId.value : this.patientId,
+      patientUuid: data.patientUuid.present
+          ? data.patientUuid.value
+          : this.patientUuid,
+      fdi: data.fdi.present ? data.fdi.value : this.fdi,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      status: data.status.present ? data.status.value : this.status,
+      surfaces: data.surfaces.present ? data.surfaces.value : this.surfaces,
+      note: data.note.present ? data.note.value : this.note,
+      createdByName: data.createdByName.present
+          ? data.createdByName.value
+          : this.createdByName,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      completedByName: data.completedByName.present
+          ? data.completedByName.value
+          : this.completedByName,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      deletedByName: data.deletedByName.present
+          ? data.deletedByName.value
+          : this.deletedByName,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ToothFindingRow(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('patientId: $patientId, ')
+          ..write('patientUuid: $patientUuid, ')
+          ..write('fdi: $fdi, ')
+          ..write('kind: $kind, ')
+          ..write('status: $status, ')
+          ..write('surfaces: $surfaces, ')
+          ..write('note: $note, ')
+          ..write('createdByName: $createdByName, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('completedByName: $completedByName, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('deletedByName: $deletedByName, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    uuid,
+    clinicId,
+    patientId,
+    patientUuid,
+    fdi,
+    kind,
+    status,
+    surfaces,
+    note,
+    createdByName,
+    createdAt,
+    completedByName,
+    completedAt,
+    isDeleted,
+    deletedByName,
+    deletedAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ToothFindingRow &&
+          other.id == this.id &&
+          other.uuid == this.uuid &&
+          other.clinicId == this.clinicId &&
+          other.patientId == this.patientId &&
+          other.patientUuid == this.patientUuid &&
+          other.fdi == this.fdi &&
+          other.kind == this.kind &&
+          other.status == this.status &&
+          other.surfaces == this.surfaces &&
+          other.note == this.note &&
+          other.createdByName == this.createdByName &&
+          other.createdAt == this.createdAt &&
+          other.completedByName == this.completedByName &&
+          other.completedAt == this.completedAt &&
+          other.isDeleted == this.isDeleted &&
+          other.deletedByName == this.deletedByName &&
+          other.deletedAt == this.deletedAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ToothFindingsCompanion extends UpdateCompanion<ToothFindingRow> {
+  final Value<int> id;
+  final Value<String> uuid;
+  final Value<String> clinicId;
+  final Value<int> patientId;
+  final Value<String> patientUuid;
+  final Value<int> fdi;
+  final Value<String> kind;
+  final Value<String> status;
+  final Value<String> surfaces;
+  final Value<String?> note;
+  final Value<String> createdByName;
+  final Value<DateTime> createdAt;
+  final Value<String?> completedByName;
+  final Value<DateTime?> completedAt;
+  final Value<bool> isDeleted;
+  final Value<String?> deletedByName;
+  final Value<DateTime?> deletedAt;
+  final Value<DateTime> updatedAt;
+  const ToothFindingsCompanion({
+    this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
+    this.clinicId = const Value.absent(),
+    this.patientId = const Value.absent(),
+    this.patientUuid = const Value.absent(),
+    this.fdi = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.status = const Value.absent(),
+    this.surfaces = const Value.absent(),
+    this.note = const Value.absent(),
+    this.createdByName = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.completedByName = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.deletedByName = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  ToothFindingsCompanion.insert({
+    this.id = const Value.absent(),
+    required String uuid,
+    required String clinicId,
+    required int patientId,
+    required String patientUuid,
+    required int fdi,
+    required String kind,
+    required String status,
+    this.surfaces = const Value.absent(),
+    this.note = const Value.absent(),
+    this.createdByName = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.completedByName = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.deletedByName = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : uuid = Value(uuid),
+       clinicId = Value(clinicId),
+       patientId = Value(patientId),
+       patientUuid = Value(patientUuid),
+       fdi = Value(fdi),
+       kind = Value(kind),
+       status = Value(status);
+  static Insertable<ToothFindingRow> custom({
+    Expression<int>? id,
+    Expression<String>? uuid,
+    Expression<String>? clinicId,
+    Expression<int>? patientId,
+    Expression<String>? patientUuid,
+    Expression<int>? fdi,
+    Expression<String>? kind,
+    Expression<String>? status,
+    Expression<String>? surfaces,
+    Expression<String>? note,
+    Expression<String>? createdByName,
+    Expression<DateTime>? createdAt,
+    Expression<String>? completedByName,
+    Expression<DateTime>? completedAt,
+    Expression<bool>? isDeleted,
+    Expression<String>? deletedByName,
+    Expression<DateTime>? deletedAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (uuid != null) 'uuid': uuid,
+      if (clinicId != null) 'clinic_id': clinicId,
+      if (patientId != null) 'patient_id': patientId,
+      if (patientUuid != null) 'patient_uuid': patientUuid,
+      if (fdi != null) 'fdi': fdi,
+      if (kind != null) 'kind': kind,
+      if (status != null) 'status': status,
+      if (surfaces != null) 'surfaces': surfaces,
+      if (note != null) 'note': note,
+      if (createdByName != null) 'created_by_name': createdByName,
+      if (createdAt != null) 'created_at': createdAt,
+      if (completedByName != null) 'completed_by_name': completedByName,
+      if (completedAt != null) 'completed_at': completedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (deletedByName != null) 'deleted_by_name': deletedByName,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  ToothFindingsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? uuid,
+    Value<String>? clinicId,
+    Value<int>? patientId,
+    Value<String>? patientUuid,
+    Value<int>? fdi,
+    Value<String>? kind,
+    Value<String>? status,
+    Value<String>? surfaces,
+    Value<String?>? note,
+    Value<String>? createdByName,
+    Value<DateTime>? createdAt,
+    Value<String?>? completedByName,
+    Value<DateTime?>? completedAt,
+    Value<bool>? isDeleted,
+    Value<String?>? deletedByName,
+    Value<DateTime?>? deletedAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return ToothFindingsCompanion(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      clinicId: clinicId ?? this.clinicId,
+      patientId: patientId ?? this.patientId,
+      patientUuid: patientUuid ?? this.patientUuid,
+      fdi: fdi ?? this.fdi,
+      kind: kind ?? this.kind,
+      status: status ?? this.status,
+      surfaces: surfaces ?? this.surfaces,
+      note: note ?? this.note,
+      createdByName: createdByName ?? this.createdByName,
+      createdAt: createdAt ?? this.createdAt,
+      completedByName: completedByName ?? this.completedByName,
+      completedAt: completedAt ?? this.completedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedByName: deletedByName ?? this.deletedByName,
+      deletedAt: deletedAt ?? this.deletedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (clinicId.present) {
+      map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (patientId.present) {
+      map['patient_id'] = Variable<int>(patientId.value);
+    }
+    if (patientUuid.present) {
+      map['patient_uuid'] = Variable<String>(patientUuid.value);
+    }
+    if (fdi.present) {
+      map['fdi'] = Variable<int>(fdi.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (surfaces.present) {
+      map['surfaces'] = Variable<String>(surfaces.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (createdByName.present) {
+      map['created_by_name'] = Variable<String>(createdByName.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (completedByName.present) {
+      map['completed_by_name'] = Variable<String>(completedByName.value);
+    }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<DateTime>(completedAt.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (deletedByName.present) {
+      map['deleted_by_name'] = Variable<String>(deletedByName.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ToothFindingsCompanion(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('patientId: $patientId, ')
+          ..write('patientUuid: $patientUuid, ')
+          ..write('fdi: $fdi, ')
+          ..write('kind: $kind, ')
+          ..write('status: $status, ')
+          ..write('surfaces: $surfaces, ')
+          ..write('note: $note, ')
+          ..write('createdByName: $createdByName, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('completedByName: $completedByName, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('deletedByName: $deletedByName, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CashClosingsTable extends CashClosings
+    with TableInfo<$CashClosingsTable, CashClosingRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CashClosingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _clinicIdMeta = const VerificationMeta(
+    'clinicId',
+  );
+  @override
+  late final GeneratedColumn<String> clinicId = GeneratedColumn<String>(
+    'clinic_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _dayMeta = const VerificationMeta('day');
+  @override
+  late final GeneratedColumn<String> day = GeneratedColumn<String>(
+    'day',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _openingFloatMeta = const VerificationMeta(
+    'openingFloat',
+  );
+  @override
+  late final GeneratedColumn<int> openingFloat = GeneratedColumn<int>(
+    'opening_float',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _cashInMeta = const VerificationMeta('cashIn');
+  @override
+  late final GeneratedColumn<int> cashIn = GeneratedColumn<int>(
+    'cash_in',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _cashOutMeta = const VerificationMeta(
+    'cashOut',
+  );
+  @override
+  late final GeneratedColumn<int> cashOut = GeneratedColumn<int>(
+    'cash_out',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _expectedMeta = const VerificationMeta(
+    'expected',
+  );
+  @override
+  late final GeneratedColumn<int> expected = GeneratedColumn<int>(
+    'expected',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _countedMeta = const VerificationMeta(
+    'counted',
+  );
+  @override
+  late final GeneratedColumn<int> counted = GeneratedColumn<int>(
+    'counted',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _takenOutMeta = const VerificationMeta(
+    'takenOut',
+  );
+  @override
+  late final GeneratedColumn<int> takenOut = GeneratedColumn<int>(
+    'taken_out',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _closedByNameMeta = const VerificationMeta(
+    'closedByName',
+  );
+  @override
+  late final GeneratedColumn<String> closedByName = GeneratedColumn<String>(
+    'closed_by_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _closedAtMeta = const VerificationMeta(
+    'closedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> closedAt = GeneratedColumn<DateTime>(
+    'closed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    uuid,
+    clinicId,
+    branchId,
+    day,
+    openingFloat,
+    cashIn,
+    cashOut,
+    expected,
+    counted,
+    takenOut,
+    note,
+    closedByName,
+    closedAt,
+    isDeleted,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cash_closings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CashClosingRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('clinic_id')) {
+      context.handle(
+        _clinicIdMeta,
+        clinicId.isAcceptableOrUnknown(data['clinic_id']!, _clinicIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
+    if (data.containsKey('day')) {
+      context.handle(
+        _dayMeta,
+        day.isAcceptableOrUnknown(data['day']!, _dayMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dayMeta);
+    }
+    if (data.containsKey('opening_float')) {
+      context.handle(
+        _openingFloatMeta,
+        openingFloat.isAcceptableOrUnknown(
+          data['opening_float']!,
+          _openingFloatMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cash_in')) {
+      context.handle(
+        _cashInMeta,
+        cashIn.isAcceptableOrUnknown(data['cash_in']!, _cashInMeta),
+      );
+    }
+    if (data.containsKey('cash_out')) {
+      context.handle(
+        _cashOutMeta,
+        cashOut.isAcceptableOrUnknown(data['cash_out']!, _cashOutMeta),
+      );
+    }
+    if (data.containsKey('expected')) {
+      context.handle(
+        _expectedMeta,
+        expected.isAcceptableOrUnknown(data['expected']!, _expectedMeta),
+      );
+    }
+    if (data.containsKey('counted')) {
+      context.handle(
+        _countedMeta,
+        counted.isAcceptableOrUnknown(data['counted']!, _countedMeta),
+      );
+    }
+    if (data.containsKey('taken_out')) {
+      context.handle(
+        _takenOutMeta,
+        takenOut.isAcceptableOrUnknown(data['taken_out']!, _takenOutMeta),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('closed_by_name')) {
+      context.handle(
+        _closedByNameMeta,
+        closedByName.isAcceptableOrUnknown(
+          data['closed_by_name']!,
+          _closedByNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('closed_at')) {
+      context.handle(
+        _closedAtMeta,
+        closedAt.isAcceptableOrUnknown(data['closed_at']!, _closedAtMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CashClosingRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CashClosingRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      clinicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clinic_id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      day: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}day'],
+      )!,
+      openingFloat: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}opening_float'],
+      )!,
+      cashIn: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cash_in'],
+      )!,
+      cashOut: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cash_out'],
+      )!,
+      expected: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected'],
+      )!,
+      counted: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}counted'],
+      )!,
+      takenOut: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}taken_out'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      )!,
+      closedByName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}closed_by_name'],
+      )!,
+      closedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}closed_at'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CashClosingsTable createAlias(String alias) {
+    return $CashClosingsTable(attachedDatabase, alias);
+  }
+}
+
+class CashClosingRow extends DataClass implements Insertable<CashClosingRow> {
+  final int id;
+  final String uuid;
+  final String clinicId;
+  final String branchId;
+
+  /// The day closed, as 'yyyy-mm-dd'. Text on purpose: a calendar day must
+  /// never shift because two computers are in different time zones.
+  final String day;
+
+  /// Cash in the drawer when the day started.
+  final int openingFloat;
+
+  /// Snapshot at closing: cash payments received and cash expenses paid.
+  final int cashIn;
+  final int cashOut;
+
+  /// openingFloat + cashIn - cashOut, at the moment of closing.
+  final int expected;
+
+  /// What staff actually counted.
+  final int counted;
+
+  /// Cash removed at closing (handed to owner / banked). What stays in the
+  /// drawer — counted - takenOut — becomes tomorrow's opening cash.
+  final int takenOut;
+  final String note;
+  final String closedByName;
+  final DateTime closedAt;
+  final bool isDeleted;
+  final DateTime updatedAt;
+  const CashClosingRow({
+    required this.id,
+    required this.uuid,
+    required this.clinicId,
+    required this.branchId,
+    required this.day,
+    required this.openingFloat,
+    required this.cashIn,
+    required this.cashOut,
+    required this.expected,
+    required this.counted,
+    required this.takenOut,
+    required this.note,
+    required this.closedByName,
+    required this.closedAt,
+    required this.isDeleted,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['uuid'] = Variable<String>(uuid);
+    map['clinic_id'] = Variable<String>(clinicId);
+    map['branch_id'] = Variable<String>(branchId);
+    map['day'] = Variable<String>(day);
+    map['opening_float'] = Variable<int>(openingFloat);
+    map['cash_in'] = Variable<int>(cashIn);
+    map['cash_out'] = Variable<int>(cashOut);
+    map['expected'] = Variable<int>(expected);
+    map['counted'] = Variable<int>(counted);
+    map['taken_out'] = Variable<int>(takenOut);
+    map['note'] = Variable<String>(note);
+    map['closed_by_name'] = Variable<String>(closedByName);
+    map['closed_at'] = Variable<DateTime>(closedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CashClosingsCompanion toCompanion(bool nullToAbsent) {
+    return CashClosingsCompanion(
+      id: Value(id),
+      uuid: Value(uuid),
+      clinicId: Value(clinicId),
+      branchId: Value(branchId),
+      day: Value(day),
+      openingFloat: Value(openingFloat),
+      cashIn: Value(cashIn),
+      cashOut: Value(cashOut),
+      expected: Value(expected),
+      counted: Value(counted),
+      takenOut: Value(takenOut),
+      note: Value(note),
+      closedByName: Value(closedByName),
+      closedAt: Value(closedAt),
+      isDeleted: Value(isDeleted),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory CashClosingRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CashClosingRow(
+      id: serializer.fromJson<int>(json['id']),
+      uuid: serializer.fromJson<String>(json['uuid']),
+      clinicId: serializer.fromJson<String>(json['clinicId']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      day: serializer.fromJson<String>(json['day']),
+      openingFloat: serializer.fromJson<int>(json['openingFloat']),
+      cashIn: serializer.fromJson<int>(json['cashIn']),
+      cashOut: serializer.fromJson<int>(json['cashOut']),
+      expected: serializer.fromJson<int>(json['expected']),
+      counted: serializer.fromJson<int>(json['counted']),
+      takenOut: serializer.fromJson<int>(json['takenOut']),
+      note: serializer.fromJson<String>(json['note']),
+      closedByName: serializer.fromJson<String>(json['closedByName']),
+      closedAt: serializer.fromJson<DateTime>(json['closedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'uuid': serializer.toJson<String>(uuid),
+      'clinicId': serializer.toJson<String>(clinicId),
+      'branchId': serializer.toJson<String>(branchId),
+      'day': serializer.toJson<String>(day),
+      'openingFloat': serializer.toJson<int>(openingFloat),
+      'cashIn': serializer.toJson<int>(cashIn),
+      'cashOut': serializer.toJson<int>(cashOut),
+      'expected': serializer.toJson<int>(expected),
+      'counted': serializer.toJson<int>(counted),
+      'takenOut': serializer.toJson<int>(takenOut),
+      'note': serializer.toJson<String>(note),
+      'closedByName': serializer.toJson<String>(closedByName),
+      'closedAt': serializer.toJson<DateTime>(closedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  CashClosingRow copyWith({
+    int? id,
+    String? uuid,
+    String? clinicId,
+    String? branchId,
+    String? day,
+    int? openingFloat,
+    int? cashIn,
+    int? cashOut,
+    int? expected,
+    int? counted,
+    int? takenOut,
+    String? note,
+    String? closedByName,
+    DateTime? closedAt,
+    bool? isDeleted,
+    DateTime? updatedAt,
+  }) => CashClosingRow(
+    id: id ?? this.id,
+    uuid: uuid ?? this.uuid,
+    clinicId: clinicId ?? this.clinicId,
+    branchId: branchId ?? this.branchId,
+    day: day ?? this.day,
+    openingFloat: openingFloat ?? this.openingFloat,
+    cashIn: cashIn ?? this.cashIn,
+    cashOut: cashOut ?? this.cashOut,
+    expected: expected ?? this.expected,
+    counted: counted ?? this.counted,
+    takenOut: takenOut ?? this.takenOut,
+    note: note ?? this.note,
+    closedByName: closedByName ?? this.closedByName,
+    closedAt: closedAt ?? this.closedAt,
+    isDeleted: isDeleted ?? this.isDeleted,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  CashClosingRow copyWithCompanion(CashClosingsCompanion data) {
+    return CashClosingRow(
+      id: data.id.present ? data.id.value : this.id,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      day: data.day.present ? data.day.value : this.day,
+      openingFloat: data.openingFloat.present
+          ? data.openingFloat.value
+          : this.openingFloat,
+      cashIn: data.cashIn.present ? data.cashIn.value : this.cashIn,
+      cashOut: data.cashOut.present ? data.cashOut.value : this.cashOut,
+      expected: data.expected.present ? data.expected.value : this.expected,
+      counted: data.counted.present ? data.counted.value : this.counted,
+      takenOut: data.takenOut.present ? data.takenOut.value : this.takenOut,
+      note: data.note.present ? data.note.value : this.note,
+      closedByName: data.closedByName.present
+          ? data.closedByName.value
+          : this.closedByName,
+      closedAt: data.closedAt.present ? data.closedAt.value : this.closedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CashClosingRow(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('branchId: $branchId, ')
+          ..write('day: $day, ')
+          ..write('openingFloat: $openingFloat, ')
+          ..write('cashIn: $cashIn, ')
+          ..write('cashOut: $cashOut, ')
+          ..write('expected: $expected, ')
+          ..write('counted: $counted, ')
+          ..write('takenOut: $takenOut, ')
+          ..write('note: $note, ')
+          ..write('closedByName: $closedByName, ')
+          ..write('closedAt: $closedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    uuid,
+    clinicId,
+    branchId,
+    day,
+    openingFloat,
+    cashIn,
+    cashOut,
+    expected,
+    counted,
+    takenOut,
+    note,
+    closedByName,
+    closedAt,
+    isDeleted,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CashClosingRow &&
+          other.id == this.id &&
+          other.uuid == this.uuid &&
+          other.clinicId == this.clinicId &&
+          other.branchId == this.branchId &&
+          other.day == this.day &&
+          other.openingFloat == this.openingFloat &&
+          other.cashIn == this.cashIn &&
+          other.cashOut == this.cashOut &&
+          other.expected == this.expected &&
+          other.counted == this.counted &&
+          other.takenOut == this.takenOut &&
+          other.note == this.note &&
+          other.closedByName == this.closedByName &&
+          other.closedAt == this.closedAt &&
+          other.isDeleted == this.isDeleted &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CashClosingsCompanion extends UpdateCompanion<CashClosingRow> {
+  final Value<int> id;
+  final Value<String> uuid;
+  final Value<String> clinicId;
+  final Value<String> branchId;
+  final Value<String> day;
+  final Value<int> openingFloat;
+  final Value<int> cashIn;
+  final Value<int> cashOut;
+  final Value<int> expected;
+  final Value<int> counted;
+  final Value<int> takenOut;
+  final Value<String> note;
+  final Value<String> closedByName;
+  final Value<DateTime> closedAt;
+  final Value<bool> isDeleted;
+  final Value<DateTime> updatedAt;
+  const CashClosingsCompanion({
+    this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
+    this.clinicId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.day = const Value.absent(),
+    this.openingFloat = const Value.absent(),
+    this.cashIn = const Value.absent(),
+    this.cashOut = const Value.absent(),
+    this.expected = const Value.absent(),
+    this.counted = const Value.absent(),
+    this.takenOut = const Value.absent(),
+    this.note = const Value.absent(),
+    this.closedByName = const Value.absent(),
+    this.closedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  CashClosingsCompanion.insert({
+    this.id = const Value.absent(),
+    required String uuid,
+    required String clinicId,
+    this.branchId = const Value.absent(),
+    required String day,
+    this.openingFloat = const Value.absent(),
+    this.cashIn = const Value.absent(),
+    this.cashOut = const Value.absent(),
+    this.expected = const Value.absent(),
+    this.counted = const Value.absent(),
+    this.takenOut = const Value.absent(),
+    this.note = const Value.absent(),
+    this.closedByName = const Value.absent(),
+    this.closedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : uuid = Value(uuid),
+       clinicId = Value(clinicId),
+       day = Value(day);
+  static Insertable<CashClosingRow> custom({
+    Expression<int>? id,
+    Expression<String>? uuid,
+    Expression<String>? clinicId,
+    Expression<String>? branchId,
+    Expression<String>? day,
+    Expression<int>? openingFloat,
+    Expression<int>? cashIn,
+    Expression<int>? cashOut,
+    Expression<int>? expected,
+    Expression<int>? counted,
+    Expression<int>? takenOut,
+    Expression<String>? note,
+    Expression<String>? closedByName,
+    Expression<DateTime>? closedAt,
+    Expression<bool>? isDeleted,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (uuid != null) 'uuid': uuid,
+      if (clinicId != null) 'clinic_id': clinicId,
+      if (branchId != null) 'branch_id': branchId,
+      if (day != null) 'day': day,
+      if (openingFloat != null) 'opening_float': openingFloat,
+      if (cashIn != null) 'cash_in': cashIn,
+      if (cashOut != null) 'cash_out': cashOut,
+      if (expected != null) 'expected': expected,
+      if (counted != null) 'counted': counted,
+      if (takenOut != null) 'taken_out': takenOut,
+      if (note != null) 'note': note,
+      if (closedByName != null) 'closed_by_name': closedByName,
+      if (closedAt != null) 'closed_at': closedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  CashClosingsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? uuid,
+    Value<String>? clinicId,
+    Value<String>? branchId,
+    Value<String>? day,
+    Value<int>? openingFloat,
+    Value<int>? cashIn,
+    Value<int>? cashOut,
+    Value<int>? expected,
+    Value<int>? counted,
+    Value<int>? takenOut,
+    Value<String>? note,
+    Value<String>? closedByName,
+    Value<DateTime>? closedAt,
+    Value<bool>? isDeleted,
+    Value<DateTime>? updatedAt,
+  }) {
+    return CashClosingsCompanion(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      clinicId: clinicId ?? this.clinicId,
+      branchId: branchId ?? this.branchId,
+      day: day ?? this.day,
+      openingFloat: openingFloat ?? this.openingFloat,
+      cashIn: cashIn ?? this.cashIn,
+      cashOut: cashOut ?? this.cashOut,
+      expected: expected ?? this.expected,
+      counted: counted ?? this.counted,
+      takenOut: takenOut ?? this.takenOut,
+      note: note ?? this.note,
+      closedByName: closedByName ?? this.closedByName,
+      closedAt: closedAt ?? this.closedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (clinicId.present) {
+      map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (day.present) {
+      map['day'] = Variable<String>(day.value);
+    }
+    if (openingFloat.present) {
+      map['opening_float'] = Variable<int>(openingFloat.value);
+    }
+    if (cashIn.present) {
+      map['cash_in'] = Variable<int>(cashIn.value);
+    }
+    if (cashOut.present) {
+      map['cash_out'] = Variable<int>(cashOut.value);
+    }
+    if (expected.present) {
+      map['expected'] = Variable<int>(expected.value);
+    }
+    if (counted.present) {
+      map['counted'] = Variable<int>(counted.value);
+    }
+    if (takenOut.present) {
+      map['taken_out'] = Variable<int>(takenOut.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (closedByName.present) {
+      map['closed_by_name'] = Variable<String>(closedByName.value);
+    }
+    if (closedAt.present) {
+      map['closed_at'] = Variable<DateTime>(closedAt.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CashClosingsCompanion(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('branchId: $branchId, ')
+          ..write('day: $day, ')
+          ..write('openingFloat: $openingFloat, ')
+          ..write('cashIn: $cashIn, ')
+          ..write('cashOut: $cashOut, ')
+          ..write('expected: $expected, ')
+          ..write('counted: $counted, ')
+          ..write('takenOut: $takenOut, ')
+          ..write('note: $note, ')
+          ..write('closedByName: $closedByName, ')
+          ..write('closedAt: $closedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DentistRatesTable extends DentistRates
+    with TableInfo<$DentistRatesTable, DentistRateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DentistRatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _clinicIdMeta = const VerificationMeta(
+    'clinicId',
+  );
+  @override
+  late final GeneratedColumn<String> clinicId = GeneratedColumn<String>(
+    'clinic_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dentistNameMeta = const VerificationMeta(
+    'dentistName',
+  );
+  @override
+  late final GeneratedColumn<String> dentistName = GeneratedColumn<String>(
+    'dentist_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _percentMeta = const VerificationMeta(
+    'percent',
+  );
+  @override
+  late final GeneratedColumn<double> percent = GeneratedColumn<double>(
+    'percent',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    uuid,
+    clinicId,
+    dentistName,
+    percent,
+    isDeleted,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'dentist_rates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DentistRateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('clinic_id')) {
+      context.handle(
+        _clinicIdMeta,
+        clinicId.isAcceptableOrUnknown(data['clinic_id']!, _clinicIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('dentist_name')) {
+      context.handle(
+        _dentistNameMeta,
+        dentistName.isAcceptableOrUnknown(
+          data['dentist_name']!,
+          _dentistNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_dentistNameMeta);
+    }
+    if (data.containsKey('percent')) {
+      context.handle(
+        _percentMeta,
+        percent.isAcceptableOrUnknown(data['percent']!, _percentMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DentistRateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DentistRateRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      clinicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clinic_id'],
+      )!,
+      dentistName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dentist_name'],
+      )!,
+      percent: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}percent'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DentistRatesTable createAlias(String alias) {
+    return $DentistRatesTable(attachedDatabase, alias);
+  }
+}
+
+class DentistRateRow extends DataClass implements Insertable<DentistRateRow> {
+  final int id;
+  final String uuid;
+  final String clinicId;
+  final String dentistName;
+
+  /// 0–100. 40 means the dentist gets 40% of what was collected.
+  final double percent;
+  final bool isDeleted;
+  final DateTime updatedAt;
+  const DentistRateRow({
+    required this.id,
+    required this.uuid,
+    required this.clinicId,
+    required this.dentistName,
+    required this.percent,
+    required this.isDeleted,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['uuid'] = Variable<String>(uuid);
+    map['clinic_id'] = Variable<String>(clinicId);
+    map['dentist_name'] = Variable<String>(dentistName);
+    map['percent'] = Variable<double>(percent);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  DentistRatesCompanion toCompanion(bool nullToAbsent) {
+    return DentistRatesCompanion(
+      id: Value(id),
+      uuid: Value(uuid),
+      clinicId: Value(clinicId),
+      dentistName: Value(dentistName),
+      percent: Value(percent),
+      isDeleted: Value(isDeleted),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DentistRateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DentistRateRow(
+      id: serializer.fromJson<int>(json['id']),
+      uuid: serializer.fromJson<String>(json['uuid']),
+      clinicId: serializer.fromJson<String>(json['clinicId']),
+      dentistName: serializer.fromJson<String>(json['dentistName']),
+      percent: serializer.fromJson<double>(json['percent']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'uuid': serializer.toJson<String>(uuid),
+      'clinicId': serializer.toJson<String>(clinicId),
+      'dentistName': serializer.toJson<String>(dentistName),
+      'percent': serializer.toJson<double>(percent),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DentistRateRow copyWith({
+    int? id,
+    String? uuid,
+    String? clinicId,
+    String? dentistName,
+    double? percent,
+    bool? isDeleted,
+    DateTime? updatedAt,
+  }) => DentistRateRow(
+    id: id ?? this.id,
+    uuid: uuid ?? this.uuid,
+    clinicId: clinicId ?? this.clinicId,
+    dentistName: dentistName ?? this.dentistName,
+    percent: percent ?? this.percent,
+    isDeleted: isDeleted ?? this.isDeleted,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DentistRateRow copyWithCompanion(DentistRatesCompanion data) {
+    return DentistRateRow(
+      id: data.id.present ? data.id.value : this.id,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      dentistName: data.dentistName.present
+          ? data.dentistName.value
+          : this.dentistName,
+      percent: data.percent.present ? data.percent.value : this.percent,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DentistRateRow(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('dentistName: $dentistName, ')
+          ..write('percent: $percent, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    uuid,
+    clinicId,
+    dentistName,
+    percent,
+    isDeleted,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DentistRateRow &&
+          other.id == this.id &&
+          other.uuid == this.uuid &&
+          other.clinicId == this.clinicId &&
+          other.dentistName == this.dentistName &&
+          other.percent == this.percent &&
+          other.isDeleted == this.isDeleted &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DentistRatesCompanion extends UpdateCompanion<DentistRateRow> {
+  final Value<int> id;
+  final Value<String> uuid;
+  final Value<String> clinicId;
+  final Value<String> dentistName;
+  final Value<double> percent;
+  final Value<bool> isDeleted;
+  final Value<DateTime> updatedAt;
+  const DentistRatesCompanion({
+    this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
+    this.clinicId = const Value.absent(),
+    this.dentistName = const Value.absent(),
+    this.percent = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  DentistRatesCompanion.insert({
+    this.id = const Value.absent(),
+    required String uuid,
+    required String clinicId,
+    required String dentistName,
+    this.percent = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : uuid = Value(uuid),
+       clinicId = Value(clinicId),
+       dentistName = Value(dentistName);
+  static Insertable<DentistRateRow> custom({
+    Expression<int>? id,
+    Expression<String>? uuid,
+    Expression<String>? clinicId,
+    Expression<String>? dentistName,
+    Expression<double>? percent,
+    Expression<bool>? isDeleted,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (uuid != null) 'uuid': uuid,
+      if (clinicId != null) 'clinic_id': clinicId,
+      if (dentistName != null) 'dentist_name': dentistName,
+      if (percent != null) 'percent': percent,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  DentistRatesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? uuid,
+    Value<String>? clinicId,
+    Value<String>? dentistName,
+    Value<double>? percent,
+    Value<bool>? isDeleted,
+    Value<DateTime>? updatedAt,
+  }) {
+    return DentistRatesCompanion(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      clinicId: clinicId ?? this.clinicId,
+      dentistName: dentistName ?? this.dentistName,
+      percent: percent ?? this.percent,
+      isDeleted: isDeleted ?? this.isDeleted,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (clinicId.present) {
+      map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (dentistName.present) {
+      map['dentist_name'] = Variable<String>(dentistName.value);
+    }
+    if (percent.present) {
+      map['percent'] = Variable<double>(percent.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DentistRatesCompanion(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('dentistName: $dentistName, ')
+          ..write('percent: $percent, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -18835,6 +21619,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $DevicesTable devices = $DevicesTable(this);
   late final $DeviceInventoriesTable deviceInventories =
       $DeviceInventoriesTable(this);
+  late final $ToothFindingsTable toothFindings = $ToothFindingsTable(this);
+  late final $CashClosingsTable cashClosings = $CashClosingsTable(this);
+  late final $DentistRatesTable dentistRates = $DentistRatesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -18869,6 +21656,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     invoicePayments,
     devices,
     deviceInventories,
+    toothFindings,
+    cashClosings,
+    dentistRates,
   ];
 }
 
@@ -25348,6 +28138,15 @@ typedef $$PatientXraysTableCreateCompanionBuilder =
       Value<String?> keyId,
       Value<bool> isLocal,
       Value<String?> originDevice,
+      Value<String> kind,
+      Value<String?> pairGroup,
+      Value<String> tooth,
+      Value<String> treatment,
+      Value<bool> consent,
+      Value<String> consentBy,
+      Value<DateTime?> consentAt,
+      Value<bool> featured,
+      Value<String?> crop,
     });
 typedef $$PatientXraysTableUpdateCompanionBuilder =
     PatientXraysCompanion Function({
@@ -25371,6 +28170,15 @@ typedef $$PatientXraysTableUpdateCompanionBuilder =
       Value<String?> keyId,
       Value<bool> isLocal,
       Value<String?> originDevice,
+      Value<String> kind,
+      Value<String?> pairGroup,
+      Value<String> tooth,
+      Value<String> treatment,
+      Value<bool> consent,
+      Value<String> consentBy,
+      Value<DateTime?> consentAt,
+      Value<bool> featured,
+      Value<String?> crop,
     });
 
 class $$PatientXraysTableFilterComposer
@@ -25479,6 +28287,51 @@ class $$PatientXraysTableFilterComposer
 
   ColumnFilters<String> get originDevice => $composableBuilder(
     column: $table.originDevice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pairGroup => $composableBuilder(
+    column: $table.pairGroup,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tooth => $composableBuilder(
+    column: $table.tooth,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get treatment => $composableBuilder(
+    column: $table.treatment,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get consent => $composableBuilder(
+    column: $table.consent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get consentBy => $composableBuilder(
+    column: $table.consentBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get consentAt => $composableBuilder(
+    column: $table.consentAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get featured => $composableBuilder(
+    column: $table.featured,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get crop => $composableBuilder(
+    column: $table.crop,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -25591,6 +28444,51 @@ class $$PatientXraysTableOrderingComposer
     column: $table.originDevice,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pairGroup => $composableBuilder(
+    column: $table.pairGroup,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tooth => $composableBuilder(
+    column: $table.tooth,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get treatment => $composableBuilder(
+    column: $table.treatment,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get consent => $composableBuilder(
+    column: $table.consent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get consentBy => $composableBuilder(
+    column: $table.consentBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get consentAt => $composableBuilder(
+    column: $table.consentAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get featured => $composableBuilder(
+    column: $table.featured,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get crop => $composableBuilder(
+    column: $table.crop,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PatientXraysTableAnnotationComposer
@@ -25667,6 +28565,33 @@ class $$PatientXraysTableAnnotationComposer
     column: $table.originDevice,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get pairGroup =>
+      $composableBuilder(column: $table.pairGroup, builder: (column) => column);
+
+  GeneratedColumn<String> get tooth =>
+      $composableBuilder(column: $table.tooth, builder: (column) => column);
+
+  GeneratedColumn<String> get treatment =>
+      $composableBuilder(column: $table.treatment, builder: (column) => column);
+
+  GeneratedColumn<bool> get consent =>
+      $composableBuilder(column: $table.consent, builder: (column) => column);
+
+  GeneratedColumn<String> get consentBy =>
+      $composableBuilder(column: $table.consentBy, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get consentAt =>
+      $composableBuilder(column: $table.consentAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get featured =>
+      $composableBuilder(column: $table.featured, builder: (column) => column);
+
+  GeneratedColumn<String> get crop =>
+      $composableBuilder(column: $table.crop, builder: (column) => column);
 }
 
 class $$PatientXraysTableTableManager
@@ -25717,6 +28642,15 @@ class $$PatientXraysTableTableManager
                 Value<String?> keyId = const Value.absent(),
                 Value<bool> isLocal = const Value.absent(),
                 Value<String?> originDevice = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> pairGroup = const Value.absent(),
+                Value<String> tooth = const Value.absent(),
+                Value<String> treatment = const Value.absent(),
+                Value<bool> consent = const Value.absent(),
+                Value<String> consentBy = const Value.absent(),
+                Value<DateTime?> consentAt = const Value.absent(),
+                Value<bool> featured = const Value.absent(),
+                Value<String?> crop = const Value.absent(),
               }) => PatientXraysCompanion(
                 id: id,
                 uuid: uuid,
@@ -25738,6 +28672,15 @@ class $$PatientXraysTableTableManager
                 keyId: keyId,
                 isLocal: isLocal,
                 originDevice: originDevice,
+                kind: kind,
+                pairGroup: pairGroup,
+                tooth: tooth,
+                treatment: treatment,
+                consent: consent,
+                consentBy: consentBy,
+                consentAt: consentAt,
+                featured: featured,
+                crop: crop,
               ),
           createCompanionCallback:
               ({
@@ -25761,6 +28704,15 @@ class $$PatientXraysTableTableManager
                 Value<String?> keyId = const Value.absent(),
                 Value<bool> isLocal = const Value.absent(),
                 Value<String?> originDevice = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> pairGroup = const Value.absent(),
+                Value<String> tooth = const Value.absent(),
+                Value<String> treatment = const Value.absent(),
+                Value<bool> consent = const Value.absent(),
+                Value<String> consentBy = const Value.absent(),
+                Value<DateTime?> consentAt = const Value.absent(),
+                Value<bool> featured = const Value.absent(),
+                Value<String?> crop = const Value.absent(),
               }) => PatientXraysCompanion.insert(
                 id: id,
                 uuid: uuid,
@@ -25782,6 +28734,15 @@ class $$PatientXraysTableTableManager
                 keyId: keyId,
                 isLocal: isLocal,
                 originDevice: originDevice,
+                kind: kind,
+                pairGroup: pairGroup,
+                tooth: tooth,
+                treatment: treatment,
+                consent: consent,
+                consentBy: consentBy,
+                consentAt: consentAt,
+                featured: featured,
+                crop: crop,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -29518,6 +32479,1098 @@ typedef $$DeviceInventoriesTableProcessedTableManager =
       DeviceInventoryRow,
       PrefetchHooks Function()
     >;
+typedef $$ToothFindingsTableCreateCompanionBuilder =
+    ToothFindingsCompanion Function({
+      Value<int> id,
+      required String uuid,
+      required String clinicId,
+      required int patientId,
+      required String patientUuid,
+      required int fdi,
+      required String kind,
+      required String status,
+      Value<String> surfaces,
+      Value<String?> note,
+      Value<String> createdByName,
+      Value<DateTime> createdAt,
+      Value<String?> completedByName,
+      Value<DateTime?> completedAt,
+      Value<bool> isDeleted,
+      Value<String?> deletedByName,
+      Value<DateTime?> deletedAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$ToothFindingsTableUpdateCompanionBuilder =
+    ToothFindingsCompanion Function({
+      Value<int> id,
+      Value<String> uuid,
+      Value<String> clinicId,
+      Value<int> patientId,
+      Value<String> patientUuid,
+      Value<int> fdi,
+      Value<String> kind,
+      Value<String> status,
+      Value<String> surfaces,
+      Value<String?> note,
+      Value<String> createdByName,
+      Value<DateTime> createdAt,
+      Value<String?> completedByName,
+      Value<DateTime?> completedAt,
+      Value<bool> isDeleted,
+      Value<String?> deletedByName,
+      Value<DateTime?> deletedAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$ToothFindingsTableFilterComposer
+    extends Composer<_$AppDatabase, $ToothFindingsTable> {
+  $$ToothFindingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get patientId => $composableBuilder(
+    column: $table.patientId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get patientUuid => $composableBuilder(
+    column: $table.patientUuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fdi => $composableBuilder(
+    column: $table.fdi,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get surfaces => $composableBuilder(
+    column: $table.surfaces,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdByName => $composableBuilder(
+    column: $table.createdByName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get completedByName => $composableBuilder(
+    column: $table.completedByName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deletedByName => $composableBuilder(
+    column: $table.deletedByName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ToothFindingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ToothFindingsTable> {
+  $$ToothFindingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get patientId => $composableBuilder(
+    column: $table.patientId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get patientUuid => $composableBuilder(
+    column: $table.patientUuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fdi => $composableBuilder(
+    column: $table.fdi,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get surfaces => $composableBuilder(
+    column: $table.surfaces,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdByName => $composableBuilder(
+    column: $table.createdByName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get completedByName => $composableBuilder(
+    column: $table.completedByName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deletedByName => $composableBuilder(
+    column: $table.deletedByName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ToothFindingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ToothFindingsTable> {
+  $$ToothFindingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get clinicId =>
+      $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<int> get patientId =>
+      $composableBuilder(column: $table.patientId, builder: (column) => column);
+
+  GeneratedColumn<String> get patientUuid => $composableBuilder(
+    column: $table.patientUuid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fdi =>
+      $composableBuilder(column: $table.fdi, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get surfaces =>
+      $composableBuilder(column: $table.surfaces, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get createdByName => $composableBuilder(
+    column: $table.createdByName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get completedByName => $composableBuilder(
+    column: $table.completedByName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<String> get deletedByName => $composableBuilder(
+    column: $table.deletedByName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ToothFindingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ToothFindingsTable,
+          ToothFindingRow,
+          $$ToothFindingsTableFilterComposer,
+          $$ToothFindingsTableOrderingComposer,
+          $$ToothFindingsTableAnnotationComposer,
+          $$ToothFindingsTableCreateCompanionBuilder,
+          $$ToothFindingsTableUpdateCompanionBuilder,
+          (
+            ToothFindingRow,
+            BaseReferences<_$AppDatabase, $ToothFindingsTable, ToothFindingRow>,
+          ),
+          ToothFindingRow,
+          PrefetchHooks Function()
+        > {
+  $$ToothFindingsTableTableManager(_$AppDatabase db, $ToothFindingsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ToothFindingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ToothFindingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ToothFindingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
+                Value<String> clinicId = const Value.absent(),
+                Value<int> patientId = const Value.absent(),
+                Value<String> patientUuid = const Value.absent(),
+                Value<int> fdi = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String> surfaces = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<String> createdByName = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> completedByName = const Value.absent(),
+                Value<DateTime?> completedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<String?> deletedByName = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => ToothFindingsCompanion(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                patientId: patientId,
+                patientUuid: patientUuid,
+                fdi: fdi,
+                kind: kind,
+                status: status,
+                surfaces: surfaces,
+                note: note,
+                createdByName: createdByName,
+                createdAt: createdAt,
+                completedByName: completedByName,
+                completedAt: completedAt,
+                isDeleted: isDeleted,
+                deletedByName: deletedByName,
+                deletedAt: deletedAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String uuid,
+                required String clinicId,
+                required int patientId,
+                required String patientUuid,
+                required int fdi,
+                required String kind,
+                required String status,
+                Value<String> surfaces = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<String> createdByName = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> completedByName = const Value.absent(),
+                Value<DateTime?> completedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<String?> deletedByName = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => ToothFindingsCompanion.insert(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                patientId: patientId,
+                patientUuid: patientUuid,
+                fdi: fdi,
+                kind: kind,
+                status: status,
+                surfaces: surfaces,
+                note: note,
+                createdByName: createdByName,
+                createdAt: createdAt,
+                completedByName: completedByName,
+                completedAt: completedAt,
+                isDeleted: isDeleted,
+                deletedByName: deletedByName,
+                deletedAt: deletedAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ToothFindingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ToothFindingsTable,
+      ToothFindingRow,
+      $$ToothFindingsTableFilterComposer,
+      $$ToothFindingsTableOrderingComposer,
+      $$ToothFindingsTableAnnotationComposer,
+      $$ToothFindingsTableCreateCompanionBuilder,
+      $$ToothFindingsTableUpdateCompanionBuilder,
+      (
+        ToothFindingRow,
+        BaseReferences<_$AppDatabase, $ToothFindingsTable, ToothFindingRow>,
+      ),
+      ToothFindingRow,
+      PrefetchHooks Function()
+    >;
+typedef $$CashClosingsTableCreateCompanionBuilder =
+    CashClosingsCompanion Function({
+      Value<int> id,
+      required String uuid,
+      required String clinicId,
+      Value<String> branchId,
+      required String day,
+      Value<int> openingFloat,
+      Value<int> cashIn,
+      Value<int> cashOut,
+      Value<int> expected,
+      Value<int> counted,
+      Value<int> takenOut,
+      Value<String> note,
+      Value<String> closedByName,
+      Value<DateTime> closedAt,
+      Value<bool> isDeleted,
+      Value<DateTime> updatedAt,
+    });
+typedef $$CashClosingsTableUpdateCompanionBuilder =
+    CashClosingsCompanion Function({
+      Value<int> id,
+      Value<String> uuid,
+      Value<String> clinicId,
+      Value<String> branchId,
+      Value<String> day,
+      Value<int> openingFloat,
+      Value<int> cashIn,
+      Value<int> cashOut,
+      Value<int> expected,
+      Value<int> counted,
+      Value<int> takenOut,
+      Value<String> note,
+      Value<String> closedByName,
+      Value<DateTime> closedAt,
+      Value<bool> isDeleted,
+      Value<DateTime> updatedAt,
+    });
+
+class $$CashClosingsTableFilterComposer
+    extends Composer<_$AppDatabase, $CashClosingsTable> {
+  $$CashClosingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get day => $composableBuilder(
+    column: $table.day,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get openingFloat => $composableBuilder(
+    column: $table.openingFloat,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get cashIn => $composableBuilder(
+    column: $table.cashIn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get cashOut => $composableBuilder(
+    column: $table.cashOut,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expected => $composableBuilder(
+    column: $table.expected,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get counted => $composableBuilder(
+    column: $table.counted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get takenOut => $composableBuilder(
+    column: $table.takenOut,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get closedByName => $composableBuilder(
+    column: $table.closedByName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get closedAt => $composableBuilder(
+    column: $table.closedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CashClosingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CashClosingsTable> {
+  $$CashClosingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get day => $composableBuilder(
+    column: $table.day,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get openingFloat => $composableBuilder(
+    column: $table.openingFloat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get cashIn => $composableBuilder(
+    column: $table.cashIn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get cashOut => $composableBuilder(
+    column: $table.cashOut,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expected => $composableBuilder(
+    column: $table.expected,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get counted => $composableBuilder(
+    column: $table.counted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get takenOut => $composableBuilder(
+    column: $table.takenOut,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get closedByName => $composableBuilder(
+    column: $table.closedByName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get closedAt => $composableBuilder(
+    column: $table.closedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CashClosingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CashClosingsTable> {
+  $$CashClosingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get clinicId =>
+      $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get day =>
+      $composableBuilder(column: $table.day, builder: (column) => column);
+
+  GeneratedColumn<int> get openingFloat => $composableBuilder(
+    column: $table.openingFloat,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get cashIn =>
+      $composableBuilder(column: $table.cashIn, builder: (column) => column);
+
+  GeneratedColumn<int> get cashOut =>
+      $composableBuilder(column: $table.cashOut, builder: (column) => column);
+
+  GeneratedColumn<int> get expected =>
+      $composableBuilder(column: $table.expected, builder: (column) => column);
+
+  GeneratedColumn<int> get counted =>
+      $composableBuilder(column: $table.counted, builder: (column) => column);
+
+  GeneratedColumn<int> get takenOut =>
+      $composableBuilder(column: $table.takenOut, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get closedByName => $composableBuilder(
+    column: $table.closedByName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get closedAt =>
+      $composableBuilder(column: $table.closedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CashClosingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CashClosingsTable,
+          CashClosingRow,
+          $$CashClosingsTableFilterComposer,
+          $$CashClosingsTableOrderingComposer,
+          $$CashClosingsTableAnnotationComposer,
+          $$CashClosingsTableCreateCompanionBuilder,
+          $$CashClosingsTableUpdateCompanionBuilder,
+          (
+            CashClosingRow,
+            BaseReferences<_$AppDatabase, $CashClosingsTable, CashClosingRow>,
+          ),
+          CashClosingRow,
+          PrefetchHooks Function()
+        > {
+  $$CashClosingsTableTableManager(_$AppDatabase db, $CashClosingsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CashClosingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CashClosingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CashClosingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
+                Value<String> clinicId = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String> day = const Value.absent(),
+                Value<int> openingFloat = const Value.absent(),
+                Value<int> cashIn = const Value.absent(),
+                Value<int> cashOut = const Value.absent(),
+                Value<int> expected = const Value.absent(),
+                Value<int> counted = const Value.absent(),
+                Value<int> takenOut = const Value.absent(),
+                Value<String> note = const Value.absent(),
+                Value<String> closedByName = const Value.absent(),
+                Value<DateTime> closedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => CashClosingsCompanion(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                branchId: branchId,
+                day: day,
+                openingFloat: openingFloat,
+                cashIn: cashIn,
+                cashOut: cashOut,
+                expected: expected,
+                counted: counted,
+                takenOut: takenOut,
+                note: note,
+                closedByName: closedByName,
+                closedAt: closedAt,
+                isDeleted: isDeleted,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String uuid,
+                required String clinicId,
+                Value<String> branchId = const Value.absent(),
+                required String day,
+                Value<int> openingFloat = const Value.absent(),
+                Value<int> cashIn = const Value.absent(),
+                Value<int> cashOut = const Value.absent(),
+                Value<int> expected = const Value.absent(),
+                Value<int> counted = const Value.absent(),
+                Value<int> takenOut = const Value.absent(),
+                Value<String> note = const Value.absent(),
+                Value<String> closedByName = const Value.absent(),
+                Value<DateTime> closedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => CashClosingsCompanion.insert(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                branchId: branchId,
+                day: day,
+                openingFloat: openingFloat,
+                cashIn: cashIn,
+                cashOut: cashOut,
+                expected: expected,
+                counted: counted,
+                takenOut: takenOut,
+                note: note,
+                closedByName: closedByName,
+                closedAt: closedAt,
+                isDeleted: isDeleted,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CashClosingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CashClosingsTable,
+      CashClosingRow,
+      $$CashClosingsTableFilterComposer,
+      $$CashClosingsTableOrderingComposer,
+      $$CashClosingsTableAnnotationComposer,
+      $$CashClosingsTableCreateCompanionBuilder,
+      $$CashClosingsTableUpdateCompanionBuilder,
+      (
+        CashClosingRow,
+        BaseReferences<_$AppDatabase, $CashClosingsTable, CashClosingRow>,
+      ),
+      CashClosingRow,
+      PrefetchHooks Function()
+    >;
+typedef $$DentistRatesTableCreateCompanionBuilder =
+    DentistRatesCompanion Function({
+      Value<int> id,
+      required String uuid,
+      required String clinicId,
+      required String dentistName,
+      Value<double> percent,
+      Value<bool> isDeleted,
+      Value<DateTime> updatedAt,
+    });
+typedef $$DentistRatesTableUpdateCompanionBuilder =
+    DentistRatesCompanion Function({
+      Value<int> id,
+      Value<String> uuid,
+      Value<String> clinicId,
+      Value<String> dentistName,
+      Value<double> percent,
+      Value<bool> isDeleted,
+      Value<DateTime> updatedAt,
+    });
+
+class $$DentistRatesTableFilterComposer
+    extends Composer<_$AppDatabase, $DentistRatesTable> {
+  $$DentistRatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dentistName => $composableBuilder(
+    column: $table.dentistName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get percent => $composableBuilder(
+    column: $table.percent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DentistRatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DentistRatesTable> {
+  $$DentistRatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dentistName => $composableBuilder(
+    column: $table.dentistName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get percent => $composableBuilder(
+    column: $table.percent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DentistRatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DentistRatesTable> {
+  $$DentistRatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get clinicId =>
+      $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<String> get dentistName => $composableBuilder(
+    column: $table.dentistName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get percent =>
+      $composableBuilder(column: $table.percent, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$DentistRatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DentistRatesTable,
+          DentistRateRow,
+          $$DentistRatesTableFilterComposer,
+          $$DentistRatesTableOrderingComposer,
+          $$DentistRatesTableAnnotationComposer,
+          $$DentistRatesTableCreateCompanionBuilder,
+          $$DentistRatesTableUpdateCompanionBuilder,
+          (
+            DentistRateRow,
+            BaseReferences<_$AppDatabase, $DentistRatesTable, DentistRateRow>,
+          ),
+          DentistRateRow,
+          PrefetchHooks Function()
+        > {
+  $$DentistRatesTableTableManager(_$AppDatabase db, $DentistRatesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DentistRatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DentistRatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DentistRatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
+                Value<String> clinicId = const Value.absent(),
+                Value<String> dentistName = const Value.absent(),
+                Value<double> percent = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DentistRatesCompanion(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                dentistName: dentistName,
+                percent: percent,
+                isDeleted: isDeleted,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String uuid,
+                required String clinicId,
+                required String dentistName,
+                Value<double> percent = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DentistRatesCompanion.insert(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                dentistName: dentistName,
+                percent: percent,
+                isDeleted: isDeleted,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DentistRatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DentistRatesTable,
+      DentistRateRow,
+      $$DentistRatesTableFilterComposer,
+      $$DentistRatesTableOrderingComposer,
+      $$DentistRatesTableAnnotationComposer,
+      $$DentistRatesTableCreateCompanionBuilder,
+      $$DentistRatesTableUpdateCompanionBuilder,
+      (
+        DentistRateRow,
+        BaseReferences<_$AppDatabase, $DentistRatesTable, DentistRateRow>,
+      ),
+      DentistRateRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -29580,4 +33633,10 @@ class $AppDatabaseManager {
       $$DevicesTableTableManager(_db, _db.devices);
   $$DeviceInventoriesTableTableManager get deviceInventories =>
       $$DeviceInventoriesTableTableManager(_db, _db.deviceInventories);
+  $$ToothFindingsTableTableManager get toothFindings =>
+      $$ToothFindingsTableTableManager(_db, _db.toothFindings);
+  $$CashClosingsTableTableManager get cashClosings =>
+      $$CashClosingsTableTableManager(_db, _db.cashClosings);
+  $$DentistRatesTableTableManager get dentistRates =>
+      $$DentistRatesTableTableManager(_db, _db.dentistRates);
 }

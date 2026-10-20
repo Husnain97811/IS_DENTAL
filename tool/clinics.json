@@ -1,5 +1,57 @@
 [
   {
+    "clinicId": "MICROSOFT-ISL-515159",
+    "clinicName": "Microsoft Certification",
+    "city": "Islamabad",
+    "email": "dummy@gmail.com",
+    "tier": "basic",
+    "cloudPackage": "none",
+    "maxBranches": 1,
+    "maxUsers": 3,
+    "maxDevices": 1,
+    "firstIssuedAt": "2026-10-13T23:53:39.168086",
+    "lastIssuedAt": "2026-10-13T23:53:39.168086",
+    "expiresAt": "2026-10-23T23:53:39.168086",
+    "history": [
+      {
+        "issuedAt": "2026-10-13T23:53:39.168086",
+        "expiresAt": "2026-10-23T23:53:39.168086",
+        "tier": "basic",
+        "cloudPackage": "none",
+        "maxBranches": 1,
+        "maxUsers": 3,
+        "maxDevices": 1,
+        "kind": "new"
+      }
+    ]
+  },
+  {
+    "clinicId": "MICROSOFT-ISL-516342",
+    "clinicName": "Microsoft Certification",
+    "city": "Islamabad",
+    "email": "dummy@gmail.com",
+    "tier": "basic",
+    "cloudPackage": "none",
+    "maxBranches": 1,
+    "maxUsers": 3,
+    "maxDevices": 1,
+    "firstIssuedAt": "2026-10-13T23:36:10.952210",
+    "lastIssuedAt": "2026-10-13T23:36:10.952210",
+    "expiresAt": "2027-10-13T23:36:10.952210",
+    "history": [
+      {
+        "issuedAt": "2026-10-13T23:36:10.952210",
+        "expiresAt": "2027-10-13T23:36:10.952210",
+        "tier": "basic",
+        "cloudPackage": "none",
+        "maxBranches": 1,
+        "maxUsers": 3,
+        "maxDevices": 1,
+        "kind": "new"
+      }
+    ]
+  },
+  {
     "clinicId": "EMAN-ISL-440203",
     "clinicName": "eman laptaop",
     "city": "Islamabad",

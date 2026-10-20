@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:sizer/sizer.dart';
 import '../../../core/constants/views.dart';
+import '../../cash/data/cash_repository.dart';
+import '../../cash/presentation/cash_closing_view.dart';
 
 class BillingScreen extends ConsumerStatefulWidget {
   const BillingScreen({super.key});
@@ -111,80 +113,119 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
     final canCancel = ref.watch(canProvider(Perm.cancelInvoices));
     final isOwner = ref.watch(authControllerProvider)?.role == AppRole.owner;
     final async = ref.watch(invoicesStreamProvider);
+
+    // Day close: anyone who takes payments, plus everyone with financials.
+    final canClose = canFin || ref.watch(canProvider(Perm.takePayments));
+    final tab = canClose ? ref.watch(billingTabProvider) : 0;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(26, 24, 26, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(height: 2.h),
-          async.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.all(40),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, _) => Text('$e', style: TextStyle(color: d.alert)),
-            data: (list) {
-              // Collected = money actually received, including partials.
-              final paidMtd = list.fold<int>(0, (s, i) => s + i.amountPaid);
-              // Pending = what is still owed, not the full invoice value.
-              final pending = list.fold<int>(
-                0,
-                (s, i) => s + (i.balance > 0 ? i.balance : 0),
-              );
-              final avg = list.isEmpty
-                  ? 0
-                  : (list.fold<int>(0, (s, i) => s + i.total) / list.length)
-                        .round();
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (canFin) ...[
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      children: [
-                        for (final c in [
-                          ('Collected', 'Rs ${_m(paidMtd)}', KpiTone.teal),
-                          ('Pending', 'Rs ${_m(pending)}', KpiTone.amber),
-                          ('Invoices', '${list.length}', KpiTone.blue),
-                          ('Avg. Invoice', 'Rs ${_m(avg)}', KpiTone.slate),
-                        ])
-                          SizedBox(
-                            width: 12.w,
-                            child: KpiCard(
-                              tone: c.$3,
-                              label: c.$1,
-                              value: c.$2,
-                            ),
-                          ),
-                      ],
-                    ),
-                    SizedBox(height: 2.2.h),
-                  ],
-                  DentPanel(
-                    title: 'Recent Invoices',
-                    subtitle: 'Click to preview',
-                    child: Column(
-                      children: [
-                        _header(d),
-                        if (list.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(40),
-                            child: Text(
-                              'No invoices yet.',
-                              style: TextStyle(color: d.text4),
-                            ),
-                          ),
-                        for (final inv in list) _row(d, inv, canCancel),
-                      ],
-                    ),
+          if (canClose) ...[
+            Row(
+              children: [
+                SegmentedControl(
+                  items: const ['Invoices', 'Day close'],
+                  selected: tab,
+                  onChanged: (i) {
+                    ref.read(billingTabProvider.notifier).set(i);
+                    // Day close has nothing to do with one invoice: drop the
+                    // selection so the invoice preview drawer closes.
+                    if (i == 1) {
+                      ref.read(selectedInvoiceIdProvider.notifier).state = null;
+                    }
+                  },
+                ),
+                SizedBox(width: 1.2.w),
+                Expanded(
+                  child: Text(
+                    tab == 1
+                        ? 'Count the cash at the end of the day — the app checks it for you.'
+                        : 'Invoices, payments and printing.',
+                    style: TextStyle(color: d.text3, fontSize: 10.sp),
                   ),
+                ),
+              ],
+            ),
+            SizedBox(height: 2.h),
+          ] else
+            SizedBox(height: 2.h),
+          if (tab == 1)
+            const CashClosingView()
+          else
+            async.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.all(40),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (e, _) => Text('$e', style: TextStyle(color: d.alert)),
+              data: (list) {
+                // Collected = money actually received, including partials.
+                final paidMtd = list.fold<int>(0, (s, i) => s + i.amountPaid);
+                // Pending = what is still owed, not the full invoice value.
+                final pending = list.fold<int>(
+                  0,
+                  (s, i) => s + (i.balance > 0 ? i.balance : 0),
+                );
+                final avg = list.isEmpty
+                    ? 0
+                    : (list.fold<int>(0, (s, i) => s + i.total) / list.length)
+                          .round();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (canFin) ...[
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        children: [
+                          for (final c in [
+                            ('Collected', 'Rs ${_m(paidMtd)}', KpiTone.teal),
+                            ('Pending', 'Rs ${_m(pending)}', KpiTone.amber),
+                            ('Invoices', '${list.length}', KpiTone.blue),
+                            ('Avg. Invoice', 'Rs ${_m(avg)}', KpiTone.slate),
+                          ])
+                            SizedBox(
+                              width: 12.w,
+                              child: KpiCard(
+                                tone: c.$3,
+                                label: c.$1,
+                                value: c.$2,
+                              ),
+                            ),
+                        ],
+                      ),
+                      SizedBox(height: 2.2.h),
+                    ],
+                    DentPanel(
+                      title: 'Recent Invoices',
+                      subtitle: 'Click to preview',
+                      child: Column(
+                        children: [
+                          _header(d),
+                          if (list.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.all(40),
+                              child: Text(
+                                'No invoices yet.',
+                                style: TextStyle(color: d.text4),
+                              ),
+                            ),
+                          for (final inv in list) _row(d, inv, canCancel),
+                        ],
+                      ),
+                    ),
 
-                  if (isOwner) ...[SizedBox(height: 2.2.h), _cancelledPanel(d)],
-                ],
-              );
-            },
-          ),
+                    if (isOwner) ...[
+                      SizedBox(height: 2.2.h),
+                      _cancelledPanel(d),
+                    ],
+                  ],
+                );
+              },
+            ),
         ],
       ),
     );

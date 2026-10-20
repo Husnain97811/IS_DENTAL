@@ -5,8 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
 import 'package:sizer/sizer.dart';
 import '../../../../core/constants/views.dart';
-import '../../../../core/device/device_service.dart';
-import '../../data/xray_vault.dart';
 
 /// X-rays on a patient record.
 ///
@@ -174,6 +172,22 @@ class XrayCard extends ConsumerWidget {
                       style: TextStyle(color: d.text3, fontSize: 8.5.sp),
                     ),
                   ),
+                  if (x.isLocal)
+                    Tooltip(
+                      message: 'Send on WhatsApp',
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(6),
+                        onTap: () => shareXrayOnWhatsApp(context, ref, x),
+                        child: const Padding(
+                          padding: EdgeInsets.all(3),
+                          child: Icon(
+                            Icons.chat_rounded,
+                            size: 15,
+                            color: Color(0xFF25D366),
+                          ),
+                        ),
+                      ),
+                    ),
                   InkWell(
                     borderRadius: BorderRadius.circular(6),
                     onTap: () async {
@@ -238,33 +252,22 @@ class XrayCard extends ConsumerWidget {
       label: 'X-rays',
       extensions: <String>['jpg', 'jpeg', 'png', 'pdf'],
     );
+    // read before the first await — this widget may rebuild meanwhile
+    final repo = ref.read(xrayRepositoryProvider);
     final files = await openFiles(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
-    if (files.isEmpty) return;
+    if (files.isEmpty || !context.mounted) return;
 
     // repo.add encrypts on the way in — no readable copy is ever stored.
-    final repo = ref.read(xrayRepositoryProvider);
-    String? err;
-    for (final f in files) {
-      err = await repo.add(
-        patientId: patientId,
-        patientUuid: patientUuid,
-        sourcePath: f.path,
-        fileName: f.name,
-        isLimited: isLimited,
-        expiresAt: expiresAt,
-      );
-      if (err != null) break;
-    }
-
-    if (err != null && context.mounted) {
-      await showDentDialog(
-        context,
-        kind: DentDialogKind.warning,
-        title: 'Storage limit reached',
-        message: err,
-        confirmLabel: 'OK',
-      );
-    }
+    await addImagingFiles(
+      context,
+      repo: repo,
+      files: files,
+      label: 'X-ray',
+      patientId: patientId,
+      patientUuid: patientUuid,
+      isLimited: isLimited,
+      expiresAt: expiresAt,
+    );
   }
 }
 
@@ -390,16 +393,50 @@ class _XrayViewer extends ConsumerWidget {
           Positioned(
             top: 8,
             right: 8,
-            child: IconButton(
-              tooltip: 'Close',
-              icon: const Icon(Icons.close_rounded, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
+            child: Row(
+              children: [
+                TextButton.icon(
+                  onPressed: () => shareXrayOnWhatsApp(context, ref, x),
+                  icon: const Icon(
+                    Icons.chat_rounded,
+                    color: Color(0xFF25D366),
+                    size: 18,
+                  ),
+                  label: Text(
+                    'Send on WhatsApp',
+                    style: TextStyle(color: Colors.white, fontSize: 10.sp),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close',
+                  icon: const Icon(Icons.close_rounded, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
+}
+
+/// Opens WhatsApp on the patient's chat with this X-ray ready to paste.
+Future<void> shareXrayOnWhatsApp(
+  BuildContext context,
+  WidgetRef ref,
+  XrayRow x,
+) {
+  final vault = ref.read(xrayVaultProvider);
+  return sharePatientFileOnWhatsApp(
+    context: context,
+    db: ref.read(appDatabaseProvider),
+    patientId: x.patientId,
+    load: () => vault.read(x),
+    label: 'X-ray',
+    ext: extOf(x.fileName, fallback: x.fileType == 'pdf' ? '.pdf' : '.jpg'),
+    date: x.takenAt,
+  );
 }
 
 class _PdfPages extends StatelessWidget {

@@ -91,10 +91,6 @@ Future<ReportsSummary> _build(
   final db = ref.watch(appDatabaseProvider);
   final branchId = ref.watch(activeBranchProvider);
 
-  Expression<bool> branch(GeneratedColumn<String> col) => branchId == null
-      ? const Constant(true)
-      : col.equals(branchId) as Expression<bool>;
-
   final invoices =
       await (db.select(db.invoices)..where(
             (t) =>
@@ -158,12 +154,19 @@ Future<ReportsSummary> _build(
   final appts = allAppts
       .where((a) => !a.startsAt.isBefore(from) && a.startsAt.isBefore(to))
       .toList();
+  // Cancelled, no-show and future bookings are not procedures done.
+  final completed = appts.where((a) => a.status == 'completed').toList();
+  final attended = appts
+      .where((a) => a.status != 'cancelled' && a.status != 'noShow')
+      .toList();
 
   // ── monthly buckets across the window ──
-  final n = ((to.year - from.year) * 12 + (to.month - from.month)).clamp(
-    1,
-    120,
-  );
+  // [to] is exclusive, so the last day shown is the day before it. Count
+  // months up to and INCLUDING that day's month — otherwise a range like
+  // 15 Sep – 10 Oct had only a Sep bar and October's money vanished.
+  final lastDay = to.subtract(const Duration(days: 1));
+  final n = ((lastDay.year - from.year) * 12 + (lastDay.month - from.month) + 1)
+      .clamp(1, 120);
   final monthly = List<double>.filled(n, 0);
   final monthlyExp = List<double>.filled(n, 0);
   final labels = <String>[];
@@ -212,7 +215,7 @@ Future<ReportsSummary> _build(
         ..sort((a, b) => b.value.compareTo(a.value));
 
   final dMap = <String, int>{};
-  for (final a in appts) {
+  for (final a in attended) {
     dMap.update(a.dentist, (v) => v + 1, ifAbsent: () => 1);
   }
   final dentists =
@@ -235,6 +238,12 @@ Future<ReportsSummary> _build(
           )
           .toList();
 
+  // Patients actually seen in the period: a completed visit or an invoice.
+  final seen = <int>{
+    for (final a in completed) a.patientId,
+    for (final i in windowInvoices) i.patientId,
+  };
+
   var outstanding = 0;
   for (final i in invoices) {
     final due = i.total - i.amountPaid;
@@ -243,8 +252,8 @@ Future<ReportsSummary> _build(
 
   return ReportsSummary(
     totalRevenue: payments.fold<int>(0, (s, p) => s + p.amount),
-    patientCount: patients.length,
-    procedureCount: appts.length,
+    patientCount: seen.length,
+    procedureCount: completed.length,
     monthly: monthly,
     monthLabels: labels,
     mix: mix,

@@ -1,9 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:is_dental/core/constants/app_flags.dart';
-import 'package:is_dental/core/router/app_routes.dart';
 import 'package:is_dental/features/patients/presentation/widgets/tooth_chart_screen.dart';
 import 'package:sizer/sizer.dart';
 
