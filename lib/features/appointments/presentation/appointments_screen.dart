@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/constants/app_flags.dart';
+import 'package:is_dental/core/utils/run_once.dart';
 import 'package:is_dental/features/appointments/presentation/widgets/appointment_actions_dialog.dart';
 import 'package:is_dental/features/prescriptions/presentation/widgets/prescription_editor.dart';
 import 'package:sizer/sizer.dart';
@@ -105,7 +106,13 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                         style: TextStyle(fontSize: 8.5.sp, color: d.text1),
                       ),
                     ),
-                    for (final doc in ref.watch(dentistsProvider).value ?? [])
+                    // A dropdown whose value isn't in its list crashes — keep
+                    // the chosen doctor listed while the list loads or after
+                    // they're removed.
+                    for (final doc in {
+                      ...?ref.watch(dentistsProvider).value,
+                      if (dentistFilter != null) dentistFilter,
+                    })
                       DropdownMenuItem<String?>(
                         value: doc,
                         child: Text(
@@ -365,21 +372,30 @@ class _ApptActions extends ConsumerWidget {
   }
 
   // ── bill ──
-  Future<void> _bill(BuildContext context, WidgetRef ref) async {
-    final created = await showInvoiceEditor(
-      context,
-      patientId: appt.patientId,
-      procedure: appt.procedure,
-      // links the bill to this visit, so its dentist gets the commission
-      appointmentId: appt.id,
-    );
-    if (created == true) {
-      final db = ref.read(appDatabaseProvider);
-      await db.setAppointmentBilled(appt.id);
-      // billing means the visit is done
-      await db.setAppointmentStatus(appt.id, AppointmentStatus.completed.name);
-    }
-  }
+  /// A double click opens the invoice once — never two bills for one visit.
+  Future<void> _bill(BuildContext context, WidgetRef ref) =>
+      runOnce('bill:${appt.id}', () async {
+        final created = await showInvoiceEditor(
+          context,
+          patientId: appt.patientId,
+          procedure: appt.procedure,
+          // links the bill to this visit, so its dentist gets the commission
+          appointmentId: appt.id,
+        );
+        if (created == true) {
+          final db = ref.read(appDatabaseProvider);
+          await db.setAppointmentBilled(appt.id);
+          // billing means the visit is done
+          await db.setAppointmentStatus(
+            appt.id,
+            AppointmentStatus.completed.name,
+          );
+        }
+      });
+
+  /// Same for Prescribe: one editor per click burst.
+  Future<void> _prescribeOnce(BuildContext context, WidgetRef ref) =>
+      runOnce('prescribe:${appt.id}', () => _prescribe(context, ref));
 
   // ── prescribe ──
   Future<void> _prescribe(BuildContext context, WidgetRef ref) async {
@@ -482,7 +498,7 @@ class _ApptActions extends ConsumerWidget {
       label: Text('Prescribed', style: labelStyle),
     );
     final Widget prescribeBtn = OutlinedButton.icon(
-      onPressed: () => _prescribe(context, ref),
+      onPressed: () => _prescribeOnce(context, ref),
       icon: const Icon(Icons.medication_rounded, size: 15),
       style: OutlinedButton.styleFrom(
         foregroundColor: d.tealDeep,

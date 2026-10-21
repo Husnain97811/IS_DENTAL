@@ -7,6 +7,7 @@ import 'package:is_dental/features/branches/presentation/branch_controller.dart'
 import 'package:sizer/sizer.dart';
 
 import 'package:is_dental/features/billing/data/invoice_visits.dart';
+import 'package:is_dental/core/utils/run_once.dart';
 import '../data/cash_repository.dart';
 
 const _mon = [
@@ -99,9 +100,7 @@ class _CommissionViewState extends ConsumerState<CommissionView> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                ],
+                inputFormatters: percentInput,
                 style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700),
                 decoration: InputDecoration(
                   suffixText: '%',
@@ -111,7 +110,7 @@ class _CommissionViewState extends ConsumerState<CommissionView> {
                   ),
                 ),
                 onSubmitted: (v) =>
-                    Navigator.pop(ctx, double.tryParse(v.trim()) ?? 0),
+                    Navigator.pop(ctx, double.tryParse(v.trim()) ?? -1),
               ),
             ],
           ),
@@ -127,7 +126,7 @@ class _CommissionViewState extends ConsumerState<CommissionView> {
               foregroundColor: AppPalette.onAccent,
             ),
             onPressed: () =>
-                Navigator.pop(ctx, double.tryParse(c.text.trim()) ?? 0),
+                Navigator.pop(ctx, double.tryParse(c.text.trim()) ?? -1),
             child: const Text('Save'),
           ),
         ],
@@ -138,7 +137,9 @@ class _CommissionViewState extends ConsumerState<CommissionView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Enter a percentage between 0 and 100.'),
+            content: Text(
+              'Enter a percentage between 0 and 100, like 40. The rate was not changed.',
+            ),
           ),
         );
       }
@@ -940,7 +941,11 @@ class _CommissionViewState extends ConsumerState<CommissionView> {
         visualDensity: VisualDensity.compact,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       ),
-      onPressed: () => _pay(l),
+      // a double click opens one payout, never two
+      onPressed: () => runOnce(
+        'payout:${dentistKey(l.dentist)}:${_month.year}-${_month.month}',
+        () => _pay(l),
+      ),
       child: Text(
         label,
         style: TextStyle(fontSize: 9.8.sp, fontWeight: FontWeight.w700),

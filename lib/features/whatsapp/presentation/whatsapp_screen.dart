@@ -8,6 +8,85 @@ import '../../../core/constants/views.dart';
 import 'widgets/wa_channel_dialogs.dart';
 import 'widgets/wa_automation_panel.dart';
 
+// ── shared look ──────────────────────────────────────────────────────────────
+
+/// The white card every section sits on.
+BoxDecoration _cardDeco(DentColors d) => BoxDecoration(
+  color: d.surface,
+  borderRadius: BorderRadius.circular(18),
+  border: Border.all(color: d.line),
+  boxShadow: [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: .035),
+      blurRadius: 18,
+      offset: const Offset(0, 6),
+    ),
+  ],
+);
+
+/// Tinted square behind a section or row icon.
+Widget _iconTile(Color tone, IconData icon, {double box = 40, double? size}) =>
+    Container(
+      width: box,
+      height: box,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(box * .28),
+      ),
+      child: Icon(icon, size: size ?? box * .5, color: tone),
+    );
+
+/// Small uppercase label that opens a group of rows inside a card.
+Widget _sectionLabel(DentColors d, String text) => Padding(
+  padding: const EdgeInsets.fromLTRB(18, 16, 18, 4),
+  child: Text(
+    text,
+    style: TextStyle(
+      color: d.text4,
+      fontSize: 8.5.sp,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 1.1,
+    ),
+  ),
+);
+
+/// A coloured status pill ("CONNECTED", "Sending on WhatsApp" …).
+Widget _pill(String text, Color tone, double fontSize, {IconData? icon}) =>
+    Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: fontSize + 2, color: tone),
+            const SizedBox(width: 4),
+          ] else ...[
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(color: tone, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              color: tone,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+
+// ═════════════════════════════════ screen ═════════════════════════════════
+
 class WhatsAppScreen extends ConsumerWidget {
   const WhatsAppScreen({super.key});
 
@@ -25,13 +104,29 @@ class WhatsAppScreen extends ConsumerWidget {
     // redirect is wired.
     if (!ent.whatsapp) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
+        child: Container(
+          margin: const EdgeInsets.all(40),
+          padding: const EdgeInsets.fromLTRB(36, 32, 36, 30),
+          constraints: const BoxConstraints(maxWidth: 520),
+          decoration: _cardDeco(d),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.lock_outline_rounded, size: 28.sp, color: d.text4),
-              const SizedBox(height: 14),
+              Container(
+                width: 64,
+                height: 64,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: d.teal.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(
+                  Icons.lock_outline_rounded,
+                  size: 28.sp,
+                  color: d.teal,
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
                 'WhatsApp & Reminders',
                 style: TextStyle(
@@ -65,13 +160,22 @@ class WhatsAppScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (visible.isEmpty)
-            Padding(
+            Container(
               padding: const EdgeInsets.all(40),
-              child: Center(
-                child: Text(
-                  'No branch assigned.',
-                  style: TextStyle(color: d.text4, fontSize: 10.sp),
-                ),
+              decoration: _cardDeco(d),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.store_mall_directory_outlined,
+                    size: 28,
+                    color: d.text4,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'No branch assigned.',
+                    style: TextStyle(color: d.text4, fontSize: 10.sp),
+                  ),
+                ],
               ),
             )
           else ...[
@@ -93,6 +197,8 @@ class WhatsAppScreen extends ConsumerWidget {
   }
 }
 
+// ═════════════════════════════════ branch ═════════════════════════════════
+
 class _BranchWaCard extends ConsumerWidget {
   const _BranchWaCard({required this.branch, required this.premium});
   final Branch branch;
@@ -106,49 +212,58 @@ class _BranchWaCard extends ConsumerWidget {
     final b = (ref.watch(branchesStreamProvider).value ?? const <Branch>[])
         .firstWhere((x) => x.id == branch.id, orElse: () => branch);
 
+    final live = b.waEnabled && b.anyWhatsApp;
+    final (statusText, statusTone) = live
+        ? ('Sending on WhatsApp', d.teal)
+        : b.anyWhatsApp
+        ? ('WhatsApp paused', d.warn)
+        : ('Not connected', d.text4);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: d.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: d.line),
-      ),
+      margin: const EdgeInsets.only(bottom: 18),
+      clipBehavior: Clip.antiAlias,
+      decoration: _cardDeco(d),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Offers section (premium only) ──
-          // header
-          Padding(
-            padding: const EdgeInsets.all(18),
+          // ── header ──
+          Container(
+            padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  d.teal.withValues(alpha: live ? .09 : .03),
+                  d.surface,
+                ],
+              ),
+            ),
             child: Row(
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: d.teal.withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: Icon(
-                    Icons.storefront_rounded,
-                    size: 15.sp,
-                    color: d.teal,
-                  ),
-                ),
-                const SizedBox(width: 12),
+                _iconTile(d.teal, Icons.storefront_rounded, size: 15.sp),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        b.name,
-                        style: TextStyle(
-                          color: d.text1,
-                          fontSize: 12.5.sp,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            b.name,
+                            style: TextStyle(
+                              color: d.text1,
+                              fontSize: 12.5.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          _pill(statusText, statusTone, 9.sp),
+                        ],
                       ),
+                      const SizedBox(height: 3),
                       Text(
                         'Reminder channel: ${_channelLabel(b.waReminderChannel)}',
                         style: TextStyle(color: d.text3, fontSize: 9.sp),
@@ -157,37 +272,36 @@ class _BranchWaCard extends ConsumerWidget {
                   ),
                 ),
                 // master WhatsApp switch (notifications always on)
-                Column(
-                  children: [
-                    Switch(
-                      value: b.waEnabled,
-                      activeColor: d.teal,
-                      onChanged: b.anyWhatsApp
-                          ? (v) => ref
-                                .read(appDatabaseProvider)
-                                .setBranchWaEnabled(b.id, v)
-                          : null, // can't enable if nothing connected
-                    ),
-                    Text(
-                      b.waEnabled ? 'WA on' : 'Notif only',
-                      style: TextStyle(color: d.text4, fontSize: 8.5.sp),
-                    ),
-                  ],
+                Tooltip(
+                  message: b.anyWhatsApp
+                      ? 'Off = reminders go as app notifications only'
+                      : 'Connect QR or the Official API first',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Switch(
+                        value: b.waEnabled,
+                        activeColor: d.teal,
+                        onChanged: b.anyWhatsApp
+                            ? (v) => ref
+                                  .read(appDatabaseProvider)
+                                  .setBranchWaEnabled(b.id, v)
+                            : null, // can't enable if nothing connected
+                      ),
+                      Text(
+                        b.waEnabled ? 'WhatsApp on' : 'App only',
+                        style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
           Divider(height: 1, color: d.line),
 
-          if (b.qrConnected) ...[
-            _languageRow(context, ref, d, b),
-            Divider(height: 1, color: d.line),
-            // prescriptions on WhatsApp · weekly summary · message log
-            WaAutomationPanel(branchUuid: b.uuid, branchName: b.name),
-            Divider(height: 1, color: d.line),
-          ],
-
-          // QR connection row
+          // ── connections ──
+          _sectionLabel(d, 'CONNECTIONS'),
           _connectionRow(
             context,
             ref,
@@ -204,9 +318,7 @@ class _BranchWaCard extends ConsumerWidget {
             ),
             onDisconnect: () => _disconnectQr(context, ref, b),
           ),
-          Divider(height: 1, color: d.line),
-
-          // Official API row
+          Divider(height: 1, indent: 72, endIndent: 18, color: d.line),
           _connectionRow(
             context,
             ref,
@@ -218,6 +330,19 @@ class _BranchWaCard extends ConsumerWidget {
             onConnect: () => _setupOfficial(context, ref, b),
             onDisconnect: () => _disconnectOfficial(context, ref, b),
           ),
+          const SizedBox(height: 4),
+          Divider(height: 1, color: d.line),
+
+          // ── automation ──
+          _sectionLabel(d, 'AUTOMATION'),
+          if (b.qrConnected) ...[
+            _languageRow(context, ref, d, b),
+            Divider(height: 1, indent: 70, endIndent: 18, color: d.line),
+            // prescriptions on WhatsApp · weekly summary · message log
+            WaAutomationPanel(branchUuid: b.uuid, branchName: b.name),
+          ] else
+            _automationHint(d),
+          const SizedBox(height: 6),
         ],
       ),
     );
@@ -229,19 +354,60 @@ class _BranchWaCard extends ConsumerWidget {
     _ => 'Notifications only',
   };
 
+  /// What the Automation group holds, until QR is connected.
+  Widget _automationHint(DentColors d) => Padding(
+    padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
+    child: Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: d.surface2,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: d.line),
+      ),
+      child: Row(
+        children: [
+          _iconTile(d.ice, Icons.auto_mode_rounded, box: 38, size: 13.sp),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Connect QR to switch these on',
+                  style: TextStyle(
+                    color: d.text1,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Reminder language, prescriptions on WhatsApp, the weekly '
+                  'owner summary and the message log.',
+                  style: TextStyle(color: d.text3, fontSize: 10.sp),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
   Widget _languageRow(
     BuildContext context,
     WidgetRef ref,
     DentColors d,
     Branch b,
   ) {
-    Widget chip(String code, String label) {
-      final current =
-          ref.watch(branchWaLanguageProvider(b.id)).value ?? b.waLanguage;
-      final on = current == code;
+    final current =
+        ref.watch(branchWaLanguageProvider(b.id)).value ?? b.waLanguage;
 
+    Widget seg(String code, String label) {
+      final on = current == code;
       return Expanded(
-        child: GestureDetector(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
           onTap: on
               ? null
               : () async {
@@ -250,13 +416,23 @@ class _BranchWaCard extends ConsumerWidget {
                       .setBranchWaLanguage(b.id, code);
                   pushBranchLanguage(b.uuid, code);
                 },
-          child: Container(
-            height: 40,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            height: 34,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: on ? d.ice.withValues(alpha: .14) : d.surface2,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: on ? d.ice : d.line),
+              color: on ? d.surface : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: on ? d.ice : Colors.transparent),
+              boxShadow: on
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: .06),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
             ),
             child: Text(
               label,
@@ -276,10 +452,9 @@ class _BranchWaCard extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       child: Row(
         children: [
-          Icon(Icons.translate_rounded, size: 13.sp, color: d.text4),
-          const SizedBox(width: 12),
+          _iconTile(d.ice, Icons.translate_rounded, box: 38, size: 13.sp),
+          const SizedBox(width: 14),
           Expanded(
-            flex: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -291,6 +466,7 @@ class _BranchWaCard extends ConsumerWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   'Language of the WhatsApp reminders sent from this branch',
                   style: TextStyle(color: d.text3, fontSize: 9.5.sp),
@@ -298,13 +474,21 @@ class _BranchWaCard extends ConsumerWidget {
               ],
             ),
           ),
-          Expanded(
-            flex: 1,
+          const SizedBox(width: 12),
+          // segmented English | اردو
+          Container(
+            width: (16.w).clamp(190.0, 250.0),
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: d.surface2,
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: d.line),
+            ),
             child: Row(
               children: [
-                chip('en', 'English'),
-                const SizedBox(width: 8),
-                chip('ur', 'اردو'),
+                seg('en', 'English'),
+                const SizedBox(width: 3),
+                seg('ur', 'اردو'),
               ],
             ),
           ),
@@ -324,17 +508,23 @@ class _BranchWaCard extends ConsumerWidget {
     required VoidCallback onConnect,
     required VoidCallback onDisconnect,
   }) {
+    final buttonShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    );
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       child: Row(
         children: [
-          Icon(icon, size: 13.sp, color: connected ? d.teal : d.text4),
-          const SizedBox(width: 12),
+          _iconTile(connected ? d.teal : d.text4, icon, size: 13.sp),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       title,
@@ -344,28 +534,16 @@ class _BranchWaCard extends ConsumerWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 8),
                     if (connected)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: d.teal.withValues(alpha: .12),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'CONNECTED',
-                          style: TextStyle(
-                            color: d.teal,
-                            fontSize: 9.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                      _pill(
+                        'CONNECTED',
+                        d.teal,
+                        9.sp,
+                        icon: Icons.check_circle_rounded,
                       ),
                   ],
                 ),
+                const SizedBox(height: 2),
                 Text(
                   subtitle,
                   style: TextStyle(color: d.text3, fontSize: 9.5.sp),
@@ -373,26 +551,35 @@ class _BranchWaCard extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(width: 12),
           if (connected)
-            TextButton(
+            OutlinedButton.icon(
               onPressed: onDisconnect,
-              style: TextButton.styleFrom(foregroundColor: d.alert),
-              child: Text(
+              icon: Icon(Icons.link_off_rounded, size: 16, color: d.alert),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: d.alert,
+                side: BorderSide(color: d.alert.withValues(alpha: .35)),
+                minimumSize: const Size(0, 40),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                shape: buttonShape,
+              ),
+              label: Text(
                 'Disconnect',
-                style: TextStyle(fontSize: 10.sp, color: Colors.black),
+                style: TextStyle(fontSize: 10.sp, color: d.alert),
               ),
             )
           else
-            OutlinedButton(
+            FilledButton.icon(
               onPressed: onConnect,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: d.teal,
-                side: BorderSide(color: d.teal.withValues(alpha: .5)),
+              icon: const Icon(Icons.add_link_rounded, size: 17),
+              style: FilledButton.styleFrom(
+                backgroundColor: d.ice,
+                foregroundColor: AppPalette.onAccent,
+                minimumSize: const Size(0, 40),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                shape: buttonShape,
               ),
-              child: Text(
-                'Connect',
-                style: TextStyle(fontSize: 10.sp, color: Colors.black),
-              ),
+              label: Text('Connect', style: TextStyle(fontSize: 10.sp)),
             ),
         ],
       ),
@@ -409,7 +596,8 @@ class _BranchWaCard extends ConsumerWidget {
       kind: DentDialogKind.warning,
       title: 'Disconnect QR?',
       message:
-          'This unlinks WhatsApp QR for ${b.name}.\n After this your patients only get remainders on mobile app only.',
+          'This unlinks WhatsApp QR for ${b.name}.\n'
+          'After this, patients get reminders only as notifications in the mobile app.',
       confirmLabel: 'Disconnect',
       cancelLabel: 'Cancel',
     );
@@ -469,6 +657,8 @@ class _BranchWaCard extends ConsumerWidget {
   }
 }
 
+// ═════════════════════════════════ offers ═════════════════════════════════
+
 class _OffersSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -476,205 +666,225 @@ class _OffersSection extends ConsumerWidget {
     final offers = ref.watch(offersProvider).value ?? const <Offer>[];
     final ent = ref.watch(entitlementsProvider);
 
-    //here check if user has premium tier then show this offer container
-    if (ent.tier == LicenseTier.premium) {
-      if (!ref.watch(canProvider(Perm.manageWhatsapp))) {
-        return Center(
-          child: Text(
-            'You don\'t have access to this screen.',
-            style: TextStyle(color: d.text4, fontSize: 10.sp),
-          ),
-        );
-      }
-      return Container(
-        decoration: BoxDecoration(
-          color: d.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: d.line),
+    // Premium only (the screen checks too); needs the WhatsApp permission
+    if (!ent.offers) return const SizedBox.shrink();
+    if (!ref.watch(canProvider(Perm.manageWhatsapp))) {
+      return Center(
+        child: Text(
+          'You don\'t have access to this screen.',
+          style: TextStyle(color: d.text4, fontSize: 10.sp),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // header
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: d.ice.withValues(alpha: .12),
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: Icon(Icons.campaign_rounded, size: 20, color: d.ice),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Offers & Promotions',
-                          style: TextStyle(
-                            color: d.text1,
-                            fontSize: 12.5.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Text(
-                          'Send promotions to patients with the app',
-                          style: TextStyle(color: d.text3, fontSize: 9.sp),
-                        ),
-                      ],
-                    ),
-                  ),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: d.ice,
-                      foregroundColor: AppPalette.onAccent,
-                      minimumSize: const Size(0, 42),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                    ),
-                    onPressed: () => showOfferComposer(context),
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('New Offer'),
-                  ),
-                ],
+      );
+    }
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: _cardDeco(d),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // header
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [d.ice.withValues(alpha: .08), d.surface],
               ),
             ),
-            if (offers.isNotEmpty) Divider(height: 1, color: d.line),
-
-            // offers list — capped to 40% of screen height, then scrolls
-            if (offers.isEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
-                child: Text(
-                  'No offers yet. Tap "New Offer" to send your first one.',
-                  style: TextStyle(color: d.text4, fontSize: 8.5.sp),
-                ),
-              )
-            else
-              ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: 40.h),
-                child: SingleChildScrollView(
+            child: Row(
+              children: [
+                _iconTile(d.ice, Icons.campaign_rounded, size: 20),
+                const SizedBox(width: 14),
+                Expanded(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final o in offers) _offerCard(context, ref, d, o),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            'Offers & Promotions',
+                            style: TextStyle(
+                              color: d.text1,
+                              fontSize: 12.5.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          _pill(
+                            'Premium',
+                            d.warn,
+                            9.sp,
+                            icon: Icons.workspace_premium_rounded,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Send promotions to patients with the app',
+                        style: TextStyle(color: d.text3, fontSize: 9.sp),
+                      ),
                     ],
                   ),
                 ),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: d.ice,
+                    foregroundColor: AppPalette.onAccent,
+                    minimumSize: const Size(0, 42),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () => showOfferComposer(context),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('New Offer'),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: d.line),
+
+          // offers list — capped to 40% of screen height, then scrolls
+          if (offers.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 22, 18, 24),
+              child: Column(
+                children: [
+                  Icon(Icons.local_offer_outlined, size: 26, color: d.text4),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No offers yet. Tap "New Offer" to send your first one.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+                  ),
+                ],
               ),
-          ],
-        ),
-      );
-    } else {
-      return SizedBox.shrink();
-    }
+            )
+          else
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: 40.h),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    for (var i = 0; i < offers.length; i++)
+                      _offerCard(
+                        context,
+                        ref,
+                        d,
+                        offers[i],
+                        last: i == offers.length - 1,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _offerCard(
     BuildContext context,
     WidgetRef ref,
     DentColors d,
-    Offer o,
-  ) {
+    Offer o, {
+    required bool last,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: d.line)),
+        border: last ? null : Border(bottom: BorderSide(color: d.line)),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: d.ice.withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(Icons.local_offer_rounded, size: 15, color: d.ice),
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      o.title,
-                      style: TextStyle(
-                        color: d.text1,
-                        fontSize: 11.5.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      '${o.sentCount} sent'
-                      '${o.branchId == null ? ' · all branches' : ''}'
-                      '${o.isExpired ? ' · expired' : ''}',
-                      style: TextStyle(color: d.text1, fontSize: 9.5.sp),
-                    ),
-                  ],
-                ),
-              ),
-              // resend
-              _iconAction(d, Icons.send, 'Resend', () async {
-                final ok = await showDentDialog(
-                  context,
-                  kind: DentDialogKind.warning,
-                  title: 'Resend offer?',
-                  message:
-                      'Send "${o.title}" again to all patients with the app.',
-                  confirmLabel: 'Resend',
-                  cancelLabel: 'Cancel',
-                );
-                if (ok != true) return;
-                final res = await ref
-                    .read(offerRepositoryProvider)
-                    .resend(o.id);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        res.ok
-                            ? 'Resent to ${res.sent} patient${res.sent == 1 ? '' : 's'}.'
-                            : (res.error ?? 'Resend failed.'),
-                      ),
-                    ),
-                  );
-                }
-              }),
-              // delete
-              _iconAction(d, Icons.delete_outline_rounded, 'Delete', () async {
-                final ok = await showDentDialog(
-                  context,
-                  kind: DentDialogKind.warning,
-                  title: 'Delete offer?',
-                  message: 'Remove "${o.title}" from history.',
-                  confirmLabel: 'Delete',
-                  cancelLabel: 'Cancel',
-                );
-                if (ok == true) {
-                  await ref.read(offerRepositoryProvider).deleteOffer(o.id);
-                }
-              }, danger: true),
-            ],
+          Opacity(
+            opacity: o.isExpired ? .55 : 1,
+            child: _iconTile(
+              d.ice,
+              Icons.local_offer_rounded,
+              box: 36,
+              size: 15,
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            o.body,
-            style: TextStyle(color: d.text1, fontSize: 9.5.sp),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  o.title,
+                  style: TextStyle(
+                    color: d.text1,
+                    fontSize: 11.5.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${o.sentCount} sent'
+                  '${o.branchId == null ? ' · all branches' : ''}'
+                  '${o.isExpired ? ' · expired' : ''}',
+                  style: TextStyle(
+                    color: o.isExpired ? d.text3 : d.text1,
+                    fontSize: 9.5.sp,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  o.body,
+                  style: TextStyle(color: d.text1, fontSize: 9.5.sp),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
+          // resend
+          _iconAction(d, Icons.send_rounded, 'Resend', () async {
+            final ok = await showDentDialog(
+              context,
+              kind: DentDialogKind.warning,
+              title: 'Resend offer?',
+              message: 'Send "${o.title}" again to all patients with the app.',
+              confirmLabel: 'Resend',
+              cancelLabel: 'Cancel',
+            );
+            if (ok != true) return;
+            final res = await ref.read(offerRepositoryProvider).resend(o.id);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    res.ok
+                        ? 'Resent to ${res.sent} patient${res.sent == 1 ? '' : 's'}.'
+                        : (res.error ?? 'Resend failed.'),
+                  ),
+                ),
+              );
+            }
+          }),
+          // delete
+          _iconAction(d, Icons.delete_outline_rounded, 'Delete', () async {
+            final ok = await showDentDialog(
+              context,
+              kind: DentDialogKind.warning,
+              title: 'Delete offer?',
+              message: 'Remove "${o.title}" from history.',
+              confirmLabel: 'Delete',
+              cancelLabel: 'Cancel',
+            );
+            if (ok == true) {
+              await ref.read(offerRepositoryProvider).deleteOffer(o.id);
+            }
+          }, danger: true),
         ],
       ),
     );
@@ -687,13 +897,15 @@ class _OffersSection extends ConsumerWidget {
     VoidCallback onTap, {
     bool danger = false,
   }) => IconButton(
-    icon: Icon(icon, size: 16, color: danger ? d.alert : d.text4),
+    icon: Icon(icon, size: 16, color: danger ? d.alert : d.text3),
     tooltip: tip,
     onPressed: onTap,
     constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
     padding: EdgeInsets.zero,
   );
 }
+
+// ═════════════════════════════════ inbox ══════════════════════════════════
 
 class _InboxSection extends ConsumerWidget {
   @override
@@ -702,30 +914,23 @@ class _InboxSection extends ConsumerWidget {
     final convosAsync = ref.watch(waConversationsProvider);
 
     return Container(
-      decoration: BoxDecoration(
-        color: d.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: d.line),
-      ),
+      clipBehavior: Clip.antiAlias,
+      decoration: _cardDeco(d),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
+          Container(
             padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [d.teal.withValues(alpha: .08), d.surface],
+              ),
+            ),
             child: Row(
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: d.teal.withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: Icon(Icons.inbox_rounded, size: 20, color: d.teal),
-                ),
-                const SizedBox(width: 12),
+                _iconTile(d.teal, Icons.inbox_rounded, size: 20),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -768,10 +973,21 @@ class _InboxSection extends ConsumerWidget {
             ),
             data: (convos) => convos.isEmpty
                 ? Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Text(
-                      'No messages yet. Patient replies will appear here.',
-                      style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+                    padding: const EdgeInsets.fromLTRB(18, 22, 18, 24),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.mark_chat_read_outlined,
+                          size: 26,
+                          color: d.text4,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'No messages yet. Patient replies will appear here.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+                        ),
+                      ],
                     ),
                   )
                 : ConstrainedBox(
@@ -791,9 +1007,10 @@ class _InboxSection extends ConsumerWidget {
   }
 
   Widget _convoTile(BuildContext context, DentColors d, WaConversation c) {
-    final d2 = context.dent;
+    final name = c.patientName ?? c.waNumber;
+    final initial = name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase();
     return InkWell(
-      onTap: () => _showConversation(context, d2, c),
+      onTap: () => _showConversation(context, d, c),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
         decoration: BoxDecoration(
@@ -807,9 +1024,16 @@ class _InboxSection extends ConsumerWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: d.teal.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(10),
+                shape: BoxShape.circle,
               ),
-              child: Icon(Icons.person_rounded, size: 18, color: d.teal),
+              child: Text(
+                initial,
+                style: TextStyle(
+                  color: d.teal,
+                  fontSize: 9.sp,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -817,7 +1041,7 @@ class _InboxSection extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    c.patientName ?? c.waNumber,
+                    name,
                     style: TextStyle(
                       color: d.text1,
                       fontSize: 9.sp,
@@ -833,10 +1057,12 @@ class _InboxSection extends ConsumerWidget {
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             Text(
               _ago(c.lastAt),
               style: TextStyle(color: d.text4, fontSize: 7.sp),
             ),
+            Icon(Icons.chevron_right_rounded, size: 18, color: d.text4),
           ],
         ),
       ),
@@ -858,6 +1084,8 @@ class _InboxSection extends ConsumerWidget {
                 padding: const EdgeInsets.all(18),
                 child: Row(
                   children: [
+                    _iconTile(d.teal, Icons.chat_rounded, box: 36),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         c.patientName ?? c.waNumber,
@@ -873,34 +1101,52 @@ class _InboxSection extends ConsumerWidget {
               ),
               Divider(height: 1, color: d.line),
               Flexible(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    for (final m in c.messages)
-                      Align(
-                        alignment: m.direction == 'in'
-                            ? Alignment.centerLeft
-                            : Alignment.centerRight,
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 4),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                          constraints: BoxConstraints(maxWidth: 70.w),
-                          decoration: BoxDecoration(
-                            color: m.direction == 'in'
-                                ? d.surface2
-                                : d.teal.withValues(alpha: .15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            m.body,
-                            style: TextStyle(color: d.text1, fontSize: 8.5.sp),
+                child: Container(
+                  color: d.surface2.withValues(alpha: .5),
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      for (final m in c.messages)
+                        Align(
+                          alignment: m.direction == 'in'
+                              ? Alignment.centerLeft
+                              : Alignment.centerRight,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            constraints: BoxConstraints(maxWidth: 70.w),
+                            decoration: BoxDecoration(
+                              color: m.direction == 'in'
+                                  ? d.surface
+                                  : d.teal.withValues(alpha: .15),
+                              border: m.direction == 'in'
+                                  ? Border.all(color: d.line)
+                                  : null,
+                              borderRadius: BorderRadius.only(
+                                topLeft: const Radius.circular(14),
+                                topRight: const Radius.circular(14),
+                                bottomLeft: Radius.circular(
+                                  m.direction == 'in' ? 4 : 14,
+                                ),
+                                bottomRight: Radius.circular(
+                                  m.direction == 'in' ? 14 : 4,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              m.body,
+                              style: TextStyle(
+                                color: d.text1,
+                                fontSize: 8.5.sp,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],

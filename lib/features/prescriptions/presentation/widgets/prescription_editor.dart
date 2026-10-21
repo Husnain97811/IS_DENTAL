@@ -877,6 +877,9 @@ class _VisitPicker extends ConsumerWidget {
     final appts =
         ref.watch(appointmentsForPatientProvider(patientId)).value ??
         const <Appointment>[];
+    // The linked visit may be deleted, or the list still loading — a
+    // dropdown whose value isn't in its items crashes, so keep it listed.
+    final missing = selectedId != null && !appts.any((a) => a.id == selectedId);
 
     return Container(
       height: 44,
@@ -905,6 +908,16 @@ class _VisitPicker extends ConsumerWidget {
                 style: TextStyle(color: d.text3, fontSize: 10.5.sp),
               ),
             ),
+            if (missing)
+              DropdownMenuItem<int?>(
+                value: selectedId,
+                child: Text(
+                  'Linked visit (no longer in the list)',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: d.text3, fontSize: 10.5.sp),
+                ),
+              ),
             for (final a in appts)
               DropdownMenuItem<int?>(
                 value: a.id,
@@ -922,7 +935,8 @@ class _VisitPicker extends ConsumerWidget {
               onPicked(null, '', '');
               return;
             }
-            final a = appts.firstWhere((x) => x.id == id);
+            final a = appts.where((x) => x.id == id).firstOrNull;
+            if (a == null) return; // the "no longer listed" entry — keep it
             onPicked(a.id, '${_fmt(a.startsAt)} · ${a.procedure}', a.dentist);
           },
         ),

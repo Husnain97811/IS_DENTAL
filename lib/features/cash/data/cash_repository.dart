@@ -105,6 +105,14 @@ const _monthNames = [
 String commissionDescription(String dentist, DateTime month) =>
     'Commission · ${dentist.trim()} · ${_monthNames[month.month - 1]} ${month.year}';
 
+/// One key per dentist however the name was typed: "Dr. Muneeba",
+/// "dr muneeba " and "Muneeba" are the same person on the payout sheet.
+String dentistKey(String name) => name
+    .trim()
+    .toLowerCase()
+    .replaceFirst(RegExp(r'^dr(\.\s*|\s+)'), '') // "Dr." / "Dr " — not "Drake"
+    .replaceAll(RegExp(r'[^a-z0-9\u0600-\u06ff]'), '');
+
 String dayKey(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
@@ -510,7 +518,13 @@ class CashRepository {
       _db.dentistRates,
     )..where((t) => t.isDeleted.equals(false))).get();
     final rateOf = {
-      for (final r in rates) r.dentistName.trim().toLowerCase(): r.percent,
+      for (final r in rates) dentistKey(r.dentistName): r.percent,
+    };
+
+    // Rate names come first, so a line shows the name its rate was saved
+    // under (and changing the % updates that same rate).
+    final display = <String, String>{
+      for (final r in rates) dentistKey(r.dentistName): r.dentistName.trim(),
     };
 
     /// The invoice's own visit; otherwise the patient's visit that day, or
@@ -536,13 +550,12 @@ class CashRepository {
     }
 
     final collected = <String, int>{};
-    final display = <String, String>{};
     final lists = <String, List<CommissionPayment>>{};
     for (final p in pays) {
       final inv = invById[p.invoiceId];
       if (inv == null) continue;
       final who = dentistFor(inv);
-      final key = who.dentist.toLowerCase();
+      final key = dentistKey(who.dentist);
       display.putIfAbsent(key, () => who.dentist);
       collected[key] = (collected[key] ?? 0) + p.amount;
       (lists[key] ??= []).add(
@@ -564,44 +577,53 @@ class CashRepository {
       if (a.status != 'completed') continue;
       if (a.startsAt.isBefore(from) || !a.startsAt.isBefore(to)) continue;
       if (branchId != null && a.branchId != branchId) continue;
-      final key = a.dentist.trim().toLowerCase();
+      final key = dentistKey(a.dentist);
       display.putIfAbsent(key, () => a.dentist.trim());
       visits[key] = (visits[key] ?? 0) + 1;
     }
 
-    // Every dentist with a rate shows up, even with nothing this month.
-    for (final r in rates) {
-      display.putIfAbsent(
-        r.dentistName.trim().toLowerCase(),
-        () => r.dentistName.trim(),
-      );
-    }
-
-    // What was already paid out: payout expenses for this month, matched by
-    // their description in the commission category.
+    // What was already paid out this month. A payout carries its own
+    // "month|dentist" tag, so editing the expense's description (or its
+    // category) never makes a paid month look unpaid. Payouts saved before
+    // the tag existed are still recognised by their description.
     final catUuids = {
       for (final c in await _db.lookups('expense_category'))
         if (c.name.trim().toLowerCase() == kCommissionCategory.toLowerCase())
           c.uuid,
     };
+    final monthTag = dayKey(from).substring(0, 7); // 2026-10
+    final monthLabel = '${_monthNames[from.month - 1]} ${from.year}'
+        .toLowerCase();
+    final payouts =
+        await (_db.select(_db.expenses)..where(
+              (t) =>
+                  t.isDeleted.equals(false) &
+                  (t.sourceType.equals('commission') |
+                      (catUuids.isEmpty
+                          ? const Constant(false)
+                          : t.categoryUuid.isIn(catUuids))),
+            ))
+            .get();
     final paidByKey = <String, int>{};
-    if (catUuids.isNotEmpty) {
-      final payouts =
-          await (_db.select(_db.expenses)..where(
-                (t) =>
-                    t.isDeleted.equals(false) & t.categoryUuid.isIn(catUuids),
-              ))
-              .get();
-      final byDesc = <String, int>{};
-      for (final e in payouts) {
-        final k = e.description.trim().toLowerCase();
-        byDesc[k] = (byDesc[k] ?? 0) + e.amount;
+    for (final e in payouts) {
+      String? who;
+      final tag = e.sourceUuid ?? '';
+      if (e.sourceType == 'commission' && tag.contains('|')) {
+        final cut = tag.indexOf('|');
+        if (tag.substring(0, cut) == monthTag) {
+          who = dentistKey(tag.substring(cut + 1));
+        }
+      } else {
+        // "Commission · Dr Ali · Oct 2026"
+        final parts = e.description.split('·').map((x) => x.trim()).toList();
+        if (parts.length == 3 &&
+            parts[0].toLowerCase() == 'commission' &&
+            parts[2].toLowerCase() == monthLabel) {
+          who = dentistKey(parts[1]);
+        }
       }
-      for (final key in display.keys) {
-        if (key.isEmpty) continue;
-        final desc = commissionDescription(display[key]!, from).toLowerCase();
-        paidByKey[key] = byDesc[desc] ?? 0;
-      }
+      if (who == null || who.isEmpty) continue;
+      paidByKey[who] = (paidByKey[who] ?? 0) + e.amount;
     }
 
     final lines =
@@ -640,8 +662,8 @@ extension CommissionPayout on CashRepository {
     final clinicId = await db.currentClinicId() ?? '';
     final category = await _ensureCommissionCategory(db, clinicId);
     final monthStart = DateTime(month.year, month.month);
-    final key =
-        '${dayKey(monthStart).substring(0, 7)}|${dentist.trim().toLowerCase()}';
+    // "2026-10|muneeba" — how the sheet knows this month is paid
+    final key = '${dayKey(monthStart).substring(0, 7)}|${dentistKey(dentist)}';
     await db
         .into(db.expenses)
         .insert(

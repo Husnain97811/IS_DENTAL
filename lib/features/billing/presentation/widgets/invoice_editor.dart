@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
 import '../../../../core/constants/views.dart';
 import 'package:is_dental/features/billing/data/invoice_visits.dart';
+import 'package:is_dental/core/utils/run_once.dart';
 
 /// [appointmentId] — pass it when billing from an appointment, so the
 /// money is credited to that appointment's dentist in Dentist payouts.
@@ -162,12 +163,12 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
   int get _subtotal {
     var sum = 0;
     for (final l in _lines) {
-      sum += int.tryParse(l.amt.text.trim()) ?? 0;
+      sum += parseRupees(l.amt.text) ?? 0;
     }
     return sum;
   }
 
-  int get _adj => int.tryParse(_adjustment.text.trim()) ?? 0;
+  int get _adj => parseRupees(_adjustment.text) ?? 0;
   int get _total => _subtotal - _adj;
 
   Future<void> _addFromCatalog() async {
@@ -262,12 +263,45 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
     final items = <({String description, int amount})>[];
     for (final l in _lines) {
       final desc = l.desc.text.trim();
-      final amt = int.tryParse(l.amt.text.trim()) ?? 0;
+      final amt = parseRupees(l.amt.text);
+      // "1500.50", "15OO" … — say so instead of quietly saving Rs 0
+      if (amt == null) {
+        setState(
+          () => _error =
+              'Check the amount for "${desc.isEmpty ? 'a line' : desc}" — '
+              'whole rupees only, like 1500.',
+        );
+        return;
+      }
       if (desc.isEmpty && amt == 0) continue;
+      if (desc.isEmpty) {
+        setState(() => _error = 'Add a description for the Rs $amt line.');
+        return;
+      }
       items.add((description: desc, amount: amt));
     }
     if (items.isEmpty) {
       setState(() => _error = 'Add at least one line item.');
+      return;
+    }
+    if (parseRupees(_adjustment.text) == null) {
+      setState(() => _error = 'Check the adjustment — whole rupees only.');
+      return;
+    }
+    if (_adj > _subtotal) {
+      setState(
+        () => _error = 'The adjustment can\'t be more than the subtotal.',
+      );
+      return;
+    }
+    if (_status != 'pending' && parseRupees(_received.text) == null) {
+      setState(() => _error = 'Check the amount received — whole rupees only.');
+      return;
+    }
+    if (_patientId != null && _visitsLoading) {
+      setState(
+        () => _error = 'Still finding the patient\'s visits — one moment.',
+      );
       return;
     }
 
@@ -310,7 +344,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
       }
 
       if (_status != 'pending') {
-        final typed = int.tryParse(_received.text.trim()) ?? 0;
+        final typed = parseRupees(_received.text) ?? 0;
         // Blank on "paid" means the whole thing.
         final amount = _status == 'paid' && typed == 0 ? _total : typed;
         if (amount > 0) {
@@ -534,6 +568,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                         TextField(
                           controller: _received,
                           keyboardType: TextInputType.number,
+                          inputFormatters: rupeesInput,
                           onChanged: (_) => setState(() {}),
                           style: TextStyle(fontSize: 12.sp, color: d.text1),
                           decoration: InputDecoration(
@@ -600,6 +635,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                                 TextField(
                                   controller: _lines[i].amt,
                                   keyboardType: TextInputType.number,
+                                  inputFormatters: rupeesInput,
                                   onChanged: (_) => setState(() {}),
                                   style: TextStyle(
                                     fontSize: 12.sp,
@@ -668,6 +704,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                       TextField(
                         controller: _adjustment,
                         keyboardType: TextInputType.number,
+                        inputFormatters: rupeesInput,
                         onChanged: (_) => setState(() {}),
                         style: TextStyle(fontSize: 12.sp, color: d.text1),
                         decoration: const InputDecoration(

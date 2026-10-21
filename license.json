@@ -1,13 +1,13 @@
 {
-  "clinicId": "MICROSOFT-ISL-515159",
-  "clinicName": "Microsoft Certification",
-  "tier": "basic",
-  "cloudPackage": "none",
-  "maxBranches": 1,
-  "maxUsers": 3,
-  "issuedAt": "2026-10-13T18:53:39.168086Z",
-  "expiresAt": "2026-10-23T18:53:39.168086Z",
+  "clinicId": "HUSNAIN-ISL-179286",
+  "clinicName": "Husnain Ahmed",
+  "tier": "standard",
+  "cloudPackage": "cloud",
+  "maxBranches": 2,
+  "maxUsers": 4,
+  "issuedAt": "2026-10-21T13:24:53.365045Z",
+  "expiresAt": "2027-10-21T13:24:53.365045Z",
   "machineFingerprint": "ANY",
-  "signature": "Grics7/Diqf55LONqvmjeIf4MXyRMx+6Y2XdSz664c/gjAH6HhoSIcKZycLplmW8It8IONLakMo90V3i/0fzwHJKQYluFmGtNB8GItP/RffcpTm40fAWLqf40CvzeWZR+lfd1MeyeHXCiI7QydqSmUIl0Jo8QY74rimn2ieS10y14RSN2gtpy/5cz/8DJdVeCtuh60vUlH8XoZ2XjedGQyGIrqLUnSNAJQag00CYJfnGx3EB4RUYNT3o1B5Wecq8fcGY1Yg809lrj9enrAIA7n5f5EbR7gY88/hQ8zUly+pOXkgGMn18RmUMpZrvTPEsCydQ/ap/m4yAYgJxXOKJ+Q==",
-  "maxDevices": 1
+  "signature": "mcvYTvMgv02EO6KbDF7dio9kfRrBJSR1qZrarpDOc7qHXBecD0bEMlw4HVgn7ixlHj31ooQlY/CyTb9ncmtwMJhkLpPC5+kSXnf1vxY1BnwcU4nDXm0hnd7qp6x5Ezj97upwfn51CMnhg1O4HZBpbuo9NDtW2XQzUHpuXYjvCcn9nm+p2FTaJNWFRJLQt0vCyttfRDgSkS+VVSx+9fpE46G3q+MLldIvPGpFvew5ZqRP7Foq+k4ezcQN8yXYUL4e6DMfCw7E0RL4dzYYe7e383/0rOagHjuqc2bnVZ5dB2/HIxf7Mb7PwUCAw8TKEw7y0f+H5bwWuhSzeC5wb27Itw==",
+  "maxDevices": 4
 }

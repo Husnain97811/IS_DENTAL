@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:is_dental/core/db/app_database.dart';
 import 'package:sizer/sizer.dart';
 import '../../../../core/constants/views.dart';
 

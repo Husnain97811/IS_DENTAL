@@ -136,9 +136,29 @@
     "maxBranches": 2,
     "maxUsers": 4,
     "firstIssuedAt": "2026-09-19T15:53:33.192763",
-    "lastIssuedAt": "2026-10-09T13:09:32.988045",
-    "expiresAt": "2027-10-09T13:09:32.988045",
+    "lastIssuedAt": "2026-10-21T18:24:53.365045",
+    "expiresAt": "2027-10-21T18:24:53.365045",
     "history": [
+      {
+        "issuedAt": "2026-10-21T18:24:53.365045",
+        "expiresAt": "2027-10-21T18:24:53.365045",
+        "tier": "standard",
+        "cloudPackage": "cloud",
+        "maxBranches": 2,
+        "maxUsers": 4,
+        "maxDevices": 4,
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-10-21T18:00:19.226399",
+        "expiresAt": "2027-10-21T18:00:19.226399",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 2,
+        "maxUsers": 4,
+        "maxDevices": 4,
+        "kind": "renewal"
+      },
       {
         "issuedAt": "2026-10-09T13:09:32.988045",
         "expiresAt": "2027-10-09T13:09:32.988045",
