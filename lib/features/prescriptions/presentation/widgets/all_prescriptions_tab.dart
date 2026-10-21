@@ -508,7 +508,9 @@ class _RxRowState extends ConsumerState<_RxRow> {
                   d,
                   _RxAction.view,
                   Icons.visibility_outlined,
-                  'View & send',
+                  ref.watch(entitlementsProvider).rxOnWhatsapp
+                      ? 'View & send'
+                      : 'View',
                 ),
                 _item(
                   d,

@@ -3,21 +3,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
 import '../../../../core/constants/views.dart';
+import 'package:is_dental/features/billing/data/invoice_visits.dart';
 
+/// [appointmentId] — pass it when billing from an appointment, so the
+/// money is credited to that appointment's dentist in Dentist payouts.
 Future<bool?> showInvoiceEditor(
   BuildContext context, {
   int? patientId,
   String? procedure,
+  int? appointmentId,
 }) => showDialog<bool>(
   context: context,
-  builder: (_) =>
-      InvoiceEditorDialog(patientId: patientId, procedure: procedure),
+  builder: (_) => InvoiceEditorDialog(
+    patientId: patientId,
+    procedure: procedure,
+    appointmentId: appointmentId,
+  ),
 );
 
 class InvoiceEditorDialog extends ConsumerStatefulWidget {
-  const InvoiceEditorDialog({super.key, this.patientId, this.procedure});
+  const InvoiceEditorDialog({
+    super.key,
+    this.patientId,
+    this.procedure,
+    this.appointmentId,
+  });
   final int? patientId;
   final String? procedure;
+  final int? appointmentId;
   @override
   ConsumerState<InvoiceEditorDialog> createState() => _S();
 }
@@ -42,12 +55,19 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
   String? _error;
   int? _selectedPlanId; // which plan is shown in the bill
 
+  // ── the visit this bill is for (decides the dentist's commission) ──
+  List<InvoiceVisit> _visits = const [];
+  int? _visitId;
+  bool _visitsLoading = false;
+  int _visitsReq = 0; // ignores a slow load for a patient no longer picked
+
   @override
   void initState() {
     super.initState();
     _no = TextEditingController(text: 'INV-${1000 + Random().nextInt(9000)}');
     _adjustment = TextEditingController(text: '0');
     _patientId = widget.patientId;
+    _visitsLoading = _patientId != null; // loaded right after the first frame
 
     _lines.clear();
 
@@ -70,9 +90,51 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (_patientId != null) _loadVisits(_patientId!);
       final no = await ref.read(appDatabaseProvider).nextInvoiceNo();
       if (mounted) setState(() => _no.text = no);
     });
+  }
+
+  /// Loads the patient's recent visits and picks the one being billed:
+  /// the appointment it was opened from, else today's (or the latest) visit.
+  Future<void> _loadVisits(int patientId) async {
+    if (!mounted) return;
+    final req = ++_visitsReq;
+    setState(() => _visitsLoading = true);
+    try {
+      final visits = await patientVisits(
+        ref.read(appDatabaseProvider),
+        patientId,
+        include: widget.patientId == patientId ? widget.appointmentId : null,
+      );
+      if (!mounted || req != _visitsReq) return;
+      final fromAppt =
+          widget.patientId == patientId &&
+              visits.any((v) => v.id == widget.appointmentId)
+          ? widget.appointmentId
+          : null;
+      setState(() {
+        _visits = visits;
+        _visitId = fromAppt ?? likelyVisit(visits, DateTime.now())?.id;
+        _visitsLoading = false;
+      });
+    } catch (_) {
+      if (mounted && req == _visitsReq) {
+        setState(() {
+          _visits = const [];
+          _visitId = null;
+          _visitsLoading = false;
+        });
+      }
+    }
+  }
+
+  void _clearVisits() {
+    _visitsReq++;
+    _visits = const [];
+    _visitId = null;
+    _visitsLoading = false;
   }
 
   /// Fallback if no consultation entry exists in the Treatments catalog.
@@ -238,14 +300,20 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
             items: items,
           );
 
+      final inv = await (db.select(
+        db.invoices,
+      )..where((t) => t.invoiceNo.equals(invNo))).getSingleOrNull();
+
+      // Which visit (and so which dentist) this bill is for.
+      if (inv != null && _visitId != null) {
+        await linkInvoiceToVisit(db, inv.id, _visitId);
+      }
+
       if (_status != 'pending') {
         final typed = int.tryParse(_received.text.trim()) ?? 0;
         // Blank on "paid" means the whole thing.
         final amount = _status == 'paid' && typed == 0 ? _total : typed;
         if (amount > 0) {
-          final inv = await (db.select(
-            db.invoices,
-          )..where((t) => t.invoiceNo.equals(invNo))).getSingleOrNull();
           if (inv != null) {
             await db.insertPayment(
               invoiceId: inv.id,
@@ -336,6 +404,12 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
                     // ── Patient ──
                     _label(d, 'Patient'),
                     _patientPicker(d, patients),
+
+                    // ── Dentist / visit ──
+                    if (_patientId != null) ...[
+                      _label(d, 'Dentist · visit'),
+                      _visitPicker(d),
+                    ],
 
                     // ── Treatment Plan (if any) ──
                     if (plans.isNotEmpty) ...[
@@ -653,6 +727,121 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
     );
   }
 
+  /// Which visit this bill is for. Dentist payouts credits the money to
+  /// that visit's dentist, so it's picked for the receptionist and only
+  /// needs changing when the guess is wrong.
+  Widget _visitPicker(DentColors d) {
+    if (_visitsLoading) {
+      return _box(
+        d,
+        Row(
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2, color: d.ice),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Finding visits…',
+              style: TextStyle(color: d.text3, fontSize: 11.sp),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget note(IconData icon, Color tone, String text) => Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 14, color: tone),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: tone, fontSize: 9.5.sp),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (_visits.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _box(
+            d,
+            Row(
+              children: [
+                Icon(Icons.event_busy_rounded, size: 16, color: d.text4),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'No appointment in the last $kVisitLookbackDays days',
+                    style: TextStyle(color: d.text3, fontSize: 11.sp),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          note(
+            Icons.info_outline_rounded,
+            d.warn,
+            'This bill won\'t count towards any dentist\'s commission. Book the '
+            'visit in Appointments first if a dentist should be credited.',
+          ),
+        ],
+      );
+    }
+
+    final picked = _visits.where((v) => v.id == _visitId).firstOrNull;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _box(
+          d,
+          DropdownButton<int>(
+            isExpanded: true,
+            underline: const SizedBox(),
+            value: _visitId,
+            hint: Text(
+              'Pick the visit this bill is for',
+              style: TextStyle(fontSize: 11.5.sp, color: d.warn),
+            ),
+            items: [
+              for (final v in _visits)
+                DropdownMenuItem<int>(
+                  value: v.id,
+                  child: Text(
+                    v.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 11.5.sp, color: d.text1),
+                  ),
+                ),
+            ],
+            onChanged: (v) => setState(() => _visitId = v),
+          ),
+        ),
+        if (picked != null)
+          note(
+            Icons.badge_outlined,
+            d.tealDeep,
+            'Counts towards ${picked.dentist.trim().isEmpty ? 'this visit\'s dentist' : picked.dentist.trim()}\'s commission.',
+          )
+        else
+          note(
+            Icons.info_outline_rounded,
+            d.warn,
+            'Pick the visit this bill is for — otherwise no dentist gets commission on it.',
+          ),
+      ],
+    );
+  }
+
   /// A dropdown over a thousand patients is unusable — this searches
   /// name, code and phone, and shows the outstanding balance so the
   /// receptionist sees what the patient already owes before billing.
@@ -705,6 +894,7 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
               onPressed: () => setState(() {
                 _patientId = null;
                 _selectedPlanId = null;
+                _clearVisits();
               }),
             ),
           ],
@@ -725,11 +915,15 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
             )
             .take(12);
       },
-      onSelected: (p) => setState(() {
-        _patientId = p.id;
-        _selectedPlanId = null;
-        _error = null;
-      }),
+      onSelected: (p) {
+        setState(() {
+          _patientId = p.id;
+          _selectedPlanId = null;
+          _error = null;
+          _clearVisits();
+        });
+        _loadVisits(p.id);
+      },
       fieldViewBuilder: (ctx, ctrl, focus, onSubmit) => _box(
         d,
         TextField(

@@ -166,6 +166,13 @@ const kRoutePerm = <String, String>{
 /// Licence gate + role permission per route.
 /// Single source of truth — used by the sidebar filter AND the router
 /// redirect. Add new gated screens here only, never in the widgets.
+/// Shown in the sidebar with a lock: the screen opens, but explains that the
+/// feature is on a higher plan (it sells the upgrade instead of hiding it).
+bool navLocked(String route, Entitlements ent) => switch (route) {
+  AppRoutes.showcase => !ent.showcase,
+  _ => false,
+};
+
 bool navAllowed(String route, Entitlements ent, bool Function(String) can) {
   final licensed = switch (route) {
     AppRoutes.whatsapp => ent.whatsapp,

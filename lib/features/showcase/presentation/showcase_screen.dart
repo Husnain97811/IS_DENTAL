@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
 import '../../../core/constants/views.dart';
+import 'package:is_dental/core/widgets/plan_locked.dart';
 import '../data/showcase_cases.dart';
 import 'showcase_slideshow.dart';
 import 'widgets/crop_editor.dart';
@@ -31,6 +32,23 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!ref.watch(entitlementsProvider).showcase) {
+      return const SingleChildScrollView(
+        child: PlanLocked(
+          feature: 'Smile Showcase',
+          icon: Icons.auto_awesome_rounded,
+          pitch:
+              'Turn your best before & after results into marketing — '
+              'with the patient\'s consent, and never their name.',
+          points: [
+            'Gallery of every consented case, best ones starred',
+            'Ready-to-post pictures for Instagram, Facebook and your website',
+            'Full-screen slideshow for the waiting-room TV',
+            'Crop each photo to the smile in seconds',
+          ],
+        ),
+      );
+    }
     final d = context.dent;
     final async = ref.watch(showcaseCasesProvider);
     final all = async.value ?? const <ShowcaseCase>[];

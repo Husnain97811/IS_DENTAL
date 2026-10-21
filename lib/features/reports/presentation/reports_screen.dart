@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
 import '../../../core/constants/views.dart';
+import 'package:is_dental/core/widgets/plan_locked.dart';
 import 'insights_panel.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
@@ -17,6 +18,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   /// 0 = Overview, 1 = Insights.
   int _tab = 0;
+
+  // What the plan includes — set in build, read by the card builders.
+  bool _insightsOk = false; // Insights tab + "at a glance" card
+  bool _statsOk = false; // Still owed · Patients seen · Procedures done
 
   String _m(int v) => v.toString().replaceAllMapped(
     RegExp(r'(\d)(?=(\d{3})+$)'),
@@ -154,6 +159,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     }
 
     final showExp = ref.watch(canProvider(Perm.viewExpenses));
+    final ent = ref.watch(entitlementsProvider);
+    _insightsOk = ent.insights;
+    _statsOk = ent.practiceStats;
     final async = _range == null
         ? ref.watch(reportsSummaryProvider)
         : ref.watch(
@@ -173,7 +181,20 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               _header(d, narrow),
               const SizedBox(height: 18),
               if (_tab == 1)
-                InsightsView(range: _insightsRange, showExpenses: showExp)
+                _insightsOk
+                    ? InsightsView(range: _insightsRange, showExpenses: showExp)
+                    : const PlanLocked(
+                        feature: 'Insights',
+                        icon: Icons.insights_rounded,
+                        pitch:
+                            'See where the clinic is heading, not just where it has been.',
+                        points: [
+                          'Returning vs new patients, month by month',
+                          'Top services by money collected',
+                          'Year-end forecast and patient lifetime value',
+                          'Regular patients who are late for their usual visit',
+                        ],
+                      )
               else
                 async.when(
                   loading: () => const Padding(
@@ -315,12 +336,23 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       children: [
         _profitHero(d, s, narrow, showExp),
         const SizedBox(height: 16),
-        _activityCard(d, s, narrow),
-        const SizedBox(height: 18),
-        InsightsTeaser(
-          range: _insightsRange,
-          onOpen: () => setState(() => _tab = 1),
-        ),
+        if (_statsOk) ...[
+          _activityCard(d, s, narrow),
+          const SizedBox(height: 18),
+        ],
+        if (_insightsOk)
+          InsightsTeaser(
+            range: _insightsRange,
+            onOpen: () => setState(() => _tab = 1),
+          )
+        else
+          const PlanLocked.compact(
+            feature: 'Insights at a glance',
+            icon: Icons.insights_rounded,
+            pitch:
+                'Returning patients, top services, year-end forecast and '
+                'regulars who are overdue — all in one place.',
+          ),
         const SizedBox(height: 18),
 
         // charts
@@ -454,21 +486,26 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
     // Money still owed is all-time (every unpaid invoice), not just this
     // period — so it sits apart from in/out, under its own line.
-    final owed = _flow(
-      d,
-      'Still owed to you',
-      s.outstanding,
-      s.outstanding > 0 ? d.alert : d.ok,
-      Icons.hourglass_bottom_rounded,
-      hint: 'All unpaid invoices',
-    );
+    // Standard and Premium only.
+    final owed = !_statsOk
+        ? null
+        : _flow(
+            d,
+            'Still owed to you',
+            s.outstanding,
+            s.outstanding > 0 ? d.alert : d.ok,
+            Icons.hourglass_bottom_rounded,
+            hint: 'All unpaid invoices',
+          );
 
-    final right = !showExp
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [owed],
-          )
+    final Widget? right = !showExp
+        ? (owed == null
+              ? null
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [owed],
+                ))
         : Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -502,13 +539,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               Text(
                 s.totalRevenue == 0
                     ? 'Nothing collected in this period.'
-                    : '${(spent * 100).round()}% of what you collected went back out.',
+                    : '${(spent * 100).round()}% of what you collected went back out in Expenses.',
                 style: TextStyle(color: d.text4, fontSize: 9.6.sp),
               ),
-              const SizedBox(height: 16),
-              Divider(color: d.line, height: 1),
-              const SizedBox(height: 16),
-              owed,
+              if (owed != null) ...[
+                const SizedBox(height: 16),
+                Divider(color: d.line, height: 1),
+                const SizedBox(height: 16),
+                owed,
+              ],
             ],
           );
 
@@ -519,7 +558,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: d.line),
       ),
-      child: narrow
+      child: right == null
+          ? left
+          : narrow
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -691,7 +732,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             if (hint != null)
               Text(
                 hint,
-                style: TextStyle(color: d.text4, fontSize: 8.8.sp),
+                style: TextStyle(color: d.text4, fontSize: 9.8.sp),
               ),
           ],
         ),

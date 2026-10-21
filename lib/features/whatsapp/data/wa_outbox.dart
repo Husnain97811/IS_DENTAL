@@ -212,6 +212,10 @@ Future<RxWaResult> queuePrescriptionOnWhatsApp(
   bool manual = false,
   String byName = '',
 }) async {
+  // not on this plan — nothing is uploaded or remembered for later
+  if (!c.read(entitlementsProvider).rxOnWhatsapp) {
+    return RxWaResult.notConnected;
+  }
   final db = c.read(appDatabaseProvider);
   List<Map<String, dynamic>> pending = const [];
   try {

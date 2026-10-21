@@ -5,6 +5,7 @@ import '../../../core/constants/views.dart';
 import '../data/expense_repository.dart';
 import '../../cash/data/cash_repository.dart';
 import '../../cash/presentation/commission_view.dart';
+import 'package:is_dental/core/widgets/plan_locked.dart';
 
 String _m(int v) => v.toString().replaceAllMapped(
   RegExp(r'(\d)(?=(\d{3})+$)'),
@@ -67,6 +68,8 @@ class ExpensesScreen extends ConsumerWidget {
     if (!canPayouts) return const _ExpensesList();
 
     final tab = ref.watch(expensesTabProvider);
+    // read here, not inside the LayoutBuilder below
+    final payoutsOnPlan = ref.watch(entitlementsProvider).dentistPayouts;
     return LayoutBuilder(
       builder: (context, c) {
         final narrow = c.maxWidth < 760;
@@ -103,7 +106,20 @@ class ExpensesScreen extends ConsumerWidget {
               child: tab == 1
                   ? SingleChildScrollView(
                       padding: EdgeInsets.fromLTRB(pad, gapV, pad, gapV * 2.4),
-                      child: const CommissionView(),
+                      child: payoutsOnPlan
+                          ? const CommissionView()
+                          : const PlanLocked(
+                              feature: 'Dentist Payouts',
+                              icon: Icons.badge_rounded,
+                              pitch:
+                                  'Set each dentist\'s share once — DentOS works out '
+                                  'what they earned from money actually collected.',
+                              points: [
+                                'Commission per dentist, every month',
+                                'Every payment linked to the visit and the dentist',
+                                'Record payouts — profit stays correct',
+                              ],
+                            ),
                     )
                   : const _ExpensesList(),
             ),

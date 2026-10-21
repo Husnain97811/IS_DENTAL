@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/db/app_database.dart';
 import 'package:is_dental/core/utils/uuids.dart';
 import 'package:is_dental/features/branches/presentation/branch_controller.dart';
+import 'package:is_dental/features/billing/data/invoice_visits.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Daily cash closing + dentist commission
@@ -188,11 +189,19 @@ class CommissionPayment {
     required this.patient,
     required this.invoiceNo,
     required this.amount,
+    required this.invoiceId,
+    required this.patientId,
+    this.guessed = false,
   });
   final DateTime paidAt;
   final String patient;
   final String invoiceNo;
   final int amount;
+  final int invoiceId, patientId;
+
+  /// The invoice isn't linked to a visit; the dentist was worked out from
+  /// the patient's nearest visit. Shown so staff can confirm or change it.
+  final bool guessed;
 }
 
 class CommissionSheet {
@@ -447,12 +456,12 @@ class CashRepository {
   }
 
   /// Commission is paid on money actually COLLECTED in the month, by the
-  /// dentist of the appointment the invoice belongs to.
+  /// dentist of the visit the invoice is linked to.
   ///
-  /// Invoices made before the appointment link existed are matched to the
-  /// patient's appointment on the same day, when there is exactly one
-  /// dentist that day. Anything still unmatched is listed as unassigned, so
-  /// no money silently disappears from the sheet.
+  /// An invoice with no visit is matched to the patient's visit that day,
+  /// or their latest visit before it, when exactly one dentist saw them
+  /// that day. Anything still unmatched is listed as unassigned, so no
+  /// money silently disappears from the sheet.
   Future<CommissionSheet> commission(DateTime month, String? branchId) async {
     final from = DateTime(month.year, month.month);
     final to = DateTime(month.year, month.month + 1);
@@ -476,12 +485,22 @@ class CashRepository {
     )..where((t) => t.isDeleted.equals(false))).get();
     final apptById = {for (final a in appts) a.id: a};
 
-    // patientId + day → dentists who saw them that day (not cancelled).
-    final dentistsByPatientDay = <String, Set<String>>{};
+    // patient → their visits (not cancelled / no-show), for invoices that
+    // aren't linked to a visit yet
+    final visitsByPatient = <int, List<InvoiceVisit>>{};
     for (final a in appts) {
       if (a.status == 'cancelled' || a.status == 'noShow') continue;
-      final k = '${a.patientId}|${dayKey(a.startsAt)}';
-      (dentistsByPatientDay[k] ??= <String>{}).add(a.dentist.trim());
+      final pid = a.patientId;
+      if (pid == null) continue;
+      (visitsByPatient[pid] ??= []).add(
+        InvoiceVisit(
+          id: a.id,
+          dentist: a.dentist,
+          startsAt: a.startsAt,
+          procedure: a.procedure,
+          status: a.status,
+        ),
+      );
     }
 
     final patients = await _db.select(_db.patients).get();
@@ -494,13 +513,26 @@ class CashRepository {
       for (final r in rates) r.dentistName.trim().toLowerCase(): r.percent,
     };
 
-    String dentistFor(InvoiceRow inv) {
+    /// The invoice's own visit; otherwise the patient's visit that day, or
+    /// their latest one in the [kVisitLookbackDays] before it (a treatment
+    /// billed on a later day). Two dentists on that day → not guessed.
+    ({String dentist, bool guessed}) dentistFor(InvoiceRow inv) {
       final a = inv.appointmentId == null ? null : apptById[inv.appointmentId];
-      if (a != null) return a.dentist.trim();
-      final set =
-          dentistsByPatientDay['${inv.patientId}|${dayKey(inv.issuedAt)}'];
-      if (set != null && set.length == 1) return set.first;
-      return '';
+      if (a != null) return (dentist: a.dentist.trim(), guessed: false);
+      final earliest = DateTime(
+        inv.issuedAt.year,
+        inv.issuedAt.month,
+        inv.issuedAt.day - kVisitLookbackDays,
+      );
+      final visits = [
+        for (final v
+            in visitsByPatient[inv.patientId] ?? const <InvoiceVisit>[])
+          if (!v.startsAt.isBefore(earliest)) v,
+      ];
+      final v = likelyVisit(visits, inv.issuedAt);
+      return v == null
+          ? (dentist: '', guessed: false)
+          : (dentist: v.dentist.trim(), guessed: true);
     }
 
     final collected = <String, int>{};
@@ -509,9 +541,9 @@ class CashRepository {
     for (final p in pays) {
       final inv = invById[p.invoiceId];
       if (inv == null) continue;
-      final dentist = dentistFor(inv);
-      final key = dentist.toLowerCase();
-      display.putIfAbsent(key, () => dentist);
+      final who = dentistFor(inv);
+      final key = who.dentist.toLowerCase();
+      display.putIfAbsent(key, () => who.dentist);
       collected[key] = (collected[key] ?? 0) + p.amount;
       (lists[key] ??= []).add(
         CommissionPayment(
@@ -519,6 +551,9 @@ class CashRepository {
           patient: nameById[inv.patientId] ?? '—',
           invoiceNo: inv.invoiceNo,
           amount: p.amount,
+          invoiceId: inv.id,
+          patientId: inv.patientId,
+          guessed: who.guessed,
         ),
       );
     }

@@ -94,12 +94,15 @@ class PatientDetailScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   XrayCard(patientId: patient.id, patientUuid: patient.uuid),
                   const SizedBox(height: 18),
-                  BeforeAfterCard(
-                    patientId: patient.id,
-                    patientUuid: patient.uuid,
-                    patientName: patient.fullName,
-                  ),
-                  const SizedBox(height: 18),
+                  // Before & After photos — Standard and Premium
+                  if (ref.watch(entitlementsProvider).beforeAfterPhotos) ...[
+                    BeforeAfterCard(
+                      patientId: patient.id,
+                      patientUuid: patient.uuid,
+                      patientName: patient.fullName,
+                    ),
+                    const SizedBox(height: 18),
+                  ],
                   _plansCard(context, ref, d, plans),
                 ],
               );

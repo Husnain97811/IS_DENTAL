@@ -2,7 +2,14 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:is_dental/features/billing/presentation/widgets/invoice_drawer.dart';
+import 'package:is_dental/features/patients/presentation/patient_detail_route.dart';
+import 'package:is_dental/features/showcase/data/showcase_cases.dart';
+import 'package:is_dental/features/showcase/presentation/showcase_screen.dart';
+import 'package:sizer/sizer.dart';
 import '../../constants/views.dart';
+import '../../router/nav_destinations.dart';
+import '../../router/app_routes.dart';
 
 String _money(int v) => v.toString().replaceAllMapped(
   RegExp(r'(\d)(?=(\d{3})+$)'),
@@ -414,6 +421,8 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
     // no search box on these screens, nor on an open patient file
     final noSearch =
         _kNoSearch.contains(route) ||
+        (route == AppRoutes.showcase &&
+            !ref.watch(entitlementsProvider).showcase) ||
         (route == AppRoutes.patients &&
             ref.watch(patientDetailDepthProvider) > 0);
     if (noSearch && (_query.isNotEmpty || _portal.isShowing)) {

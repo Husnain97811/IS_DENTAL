@@ -23,7 +23,6 @@ class AppSidebar extends ConsumerWidget {
   };
 
   @override
-  @override
   Widget build(BuildContext context, WidgetRef ref) {
     final d = context.dent;
     final ent = ref.watch(entitlementsProvider);
@@ -152,12 +151,14 @@ class AppSidebar extends ConsumerWidget {
     }
 
     for (final i in indices) {
-      items.add(_navItem(context, i));
+      items.add(
+        _navItem(context, i, locked: navLocked(kNavDestinations[i].route, ent)),
+      );
     }
     return items;
   }
 
-  Widget _navItem(BuildContext context, int index) {
+  Widget _navItem(BuildContext context, int index, {bool locked = false}) {
     final dest = kNavDestinations[index];
     final active = index == currentIndex;
     return Padding(
@@ -213,7 +214,16 @@ class AppSidebar extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  if (dest.badge != null)
+                  if (locked)
+                    Tooltip(
+                      message: 'Standard & Premium',
+                      child: Icon(
+                        Icons.lock_rounded,
+                        size: 10.sp,
+                        color: AppPalette.sideText,
+                      ),
+                    )
+                  else if (dest.badge != null)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,

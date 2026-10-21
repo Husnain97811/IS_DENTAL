@@ -7,6 +7,10 @@ import 'package:is_dental/core/constants/views.dart';
 ///  • cloudPackage — `none` means no backend exists, so every cloud feature
 ///    is impossible and the tier is meaningless (treated as basic).
 ///  • tier — only meaningful when cloud is on.
+///
+/// Screens never check the tier themselves — they ask for a feature here
+/// (`ent.showcase`, `ent.insights` …), so moving a feature between plans is
+/// a one-line change in this file.
 class Entitlements {
   const Entitlements({
     required this.cloud,
@@ -23,17 +27,38 @@ class Entitlements {
   bool get _standardUp =>
       tier == LicenseTier.standard || tier == LicenseTier.premium;
 
+  /// Standard or Premium, on a cloud licence.
+  bool get standard => cloud && _standardUp;
+
   // ── Basic (cloud) ──
   bool get sync => cloud;
   bool get restoreFromCloud => cloud;
 
   // ── Standard and up ──
-  bool get patientApp => cloud && _standardUp;
-  bool get bookingRequests => cloud && _standardUp;
-  bool get patientQr => cloud && _standardUp;
-  bool get clinicQr => cloud && _standardUp;
-  bool get reminders => cloud && _standardUp;
-  bool get whatsapp => cloud && _standardUp;
+  bool get patientApp => standard;
+  bool get bookingRequests => standard;
+  bool get patientQr => standard;
+  bool get clinicQr => standard;
+  bool get reminders => standard;
+  bool get whatsapp => standard;
+
+  /// Prescription PDFs to the patient on WhatsApp — automatic and Send/Resend.
+  bool get rxOnWhatsapp => whatsapp;
+
+  /// Reports → Insights tab and the "Insights at a glance" card.
+  bool get insights => standard;
+
+  /// Reports overview: Still owed to you, Patients seen, Procedures done.
+  bool get practiceStats => standard;
+
+  /// Before & After photos on the patient file.
+  bool get beforeAfterPhotos => standard;
+
+  /// Smile Showcase screen.
+  bool get showcase => standard;
+
+  /// Expenses → Dentist payouts.
+  bool get dentistPayouts => standard;
 
   // ── Premium only ──
   bool get offers => cloud && tier == LicenseTier.premium;

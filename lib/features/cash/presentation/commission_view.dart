@@ -6,6 +6,7 @@ import 'package:is_dental/core/constants/views.dart';
 import 'package:is_dental/features/branches/presentation/branch_controller.dart';
 import 'package:sizer/sizer.dart';
 
+import 'package:is_dental/features/billing/data/invoice_visits.dart';
 import '../data/cash_repository.dart';
 
 const _mon = [
@@ -202,9 +203,9 @@ class _CommissionViewState extends ConsumerState<CommissionView> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
                   child: Text(
-                    'These invoices have no appointment, so the app can\'t tell '
-                    'which dentist did the work. Bill from the appointment '
-                    'to link them automatically.',
+                    'The app couldn\'t tell which dentist did this work. '
+                    'Press Link and pick the visit — the money moves to that '
+                    'dentist straight away.',
                     style: TextStyle(color: d.text4, fontSize: 9.6.sp),
                   ),
                 ),
@@ -248,7 +249,8 @@ class _CommissionViewState extends ConsumerState<CommissionView> {
                                         ),
                                       ),
                                       Text(
-                                        '${p.paidAt.day} ${_short[p.paidAt.month - 1]} · #${p.invoiceNo}',
+                                        '${p.paidAt.day} ${_short[p.paidAt.month - 1]} · #${p.invoiceNo}'
+                                        '${p.guessed ? ' · matched from nearest visit' : ''}',
                                         style: TextStyle(
                                           color: d.text3,
                                           fontSize: 9.2.sp,
@@ -264,6 +266,32 @@ class _CommissionViewState extends ConsumerState<CommissionView> {
                                     color: d.text1,
                                   ),
                                 ),
+                                const SizedBox(width: 10),
+                                if (l.unassigned)
+                                  FilledButton.tonal(
+                                    style: FilledButton.styleFrom(
+                                      visualDensity: VisualDensity.compact,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
+                                    ),
+                                    onPressed: () => _linkVisit(ctx, p),
+                                    child: Text(
+                                      'Link',
+                                      style: TextStyle(fontSize: 9.6.sp),
+                                    ),
+                                  )
+                                else
+                                  IconButton(
+                                    tooltip: 'Change dentist / visit',
+                                    visualDensity: VisualDensity.compact,
+                                    onPressed: () => _linkVisit(ctx, p),
+                                    icon: Icon(
+                                      Icons.swap_horiz_rounded,
+                                      size: 18,
+                                      color: d.text3,
+                                    ),
+                                  ),
                               ],
                             ),
                           );
@@ -272,6 +300,139 @@ class _CommissionViewState extends ConsumerState<CommissionView> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Pick the visit a payment's invoice belongs to. Linking moves the
+  /// money to that visit's dentist (and is synced to the other computers).
+  Future<void> _linkVisit(BuildContext listCtx, CommissionPayment p) async {
+    final d = context.dent;
+    final db = ref.read(appDatabaseProvider);
+    final visits = await patientVisits(db, p.patientId, around: p.paidAt);
+    if (!mounted) return;
+
+    final picked = await showDialog<int>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: d.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 480,
+            maxHeight: MediaQuery.sizeOf(ctx).height * .8,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 10, 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Which visit was #${p.invoiceNo} for?',
+                            style: TextStyle(
+                              fontFamily: AppFonts.display,
+                              color: d.text1,
+                              fontSize: 12.5.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            '${p.patient} · Rs ${_m(p.amount)} paid ${p.paidAt.day} ${_short[p.paidAt.month - 1]}',
+                            style: TextStyle(color: d.text3, fontSize: 9.8.sp),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      icon: Icon(Icons.close_rounded, color: d.text3),
+                    ),
+                  ],
+                ),
+              ),
+              if (visits.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+                  child: Text(
+                    'This patient has no appointment in the $kVisitLookbackDays '
+                    'days before this payment. Book the visit in Appointments '
+                    '(with the dentist who did the work), then link it here.',
+                    style: TextStyle(color: d.text3, fontSize: 10.sp),
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.only(bottom: 8),
+                    children: [
+                      for (final v in visits)
+                        ListTile(
+                          onTap: () => Navigator.pop(ctx, v.id),
+                          leading: CircleAvatar(
+                            radius: 17,
+                            backgroundColor: d.ice.withValues(alpha: .14),
+                            child: Text(
+                              v.dentist.trim().isEmpty
+                                  ? '?'
+                                  : v.dentist.trim()[0].toUpperCase(),
+                              style: TextStyle(
+                                color: d.ice,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            v.dentist.trim().isEmpty
+                                ? 'No dentist on this visit'
+                                : v.dentist.trim(),
+                            style: TextStyle(
+                              color: d.text1,
+                              fontSize: 10.8.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            [
+                              v.when,
+                              if (v.procedure.trim().isNotEmpty)
+                                v.procedure.trim(),
+                            ].join(' · '),
+                            style: TextStyle(color: d.text3, fontSize: 9.4.sp),
+                          ),
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            color: d.text4,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked == null) return;
+
+    await linkInvoiceToVisit(db, p.invoiceId, picked);
+    syncInBackground(ref);
+    ref.invalidate(commissionProvider(_month));
+    if (listCtx.mounted) Navigator.pop(listCtx); // its totals are now stale
+    if (!mounted) return;
+    final who = visits.firstWhere((v) => v.id == picked).dentist.trim();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '#${p.invoiceNo} linked to ${who.isEmpty ? 'that visit' : who}',
         ),
       ),
     );

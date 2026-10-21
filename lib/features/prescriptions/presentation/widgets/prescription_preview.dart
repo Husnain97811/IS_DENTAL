@@ -407,11 +407,12 @@ class _S extends ConsumerState<_Preview> {
               ),
             ),
 
-            // WhatsApp status + send / resend
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-              child: _WaRxBar(rx: rx),
-            ),
+            // WhatsApp status + send / resend (Standard and Premium)
+            if (ref.watch(entitlementsProvider).rxOnWhatsapp)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                child: _WaRxBar(rx: rx),
+              ),
 
             // actions
             Padding(

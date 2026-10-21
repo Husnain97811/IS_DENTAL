@@ -370,6 +370,8 @@ class _ApptActions extends ConsumerWidget {
       context,
       patientId: appt.patientId,
       procedure: appt.procedure,
+      // links the bill to this visit, so its dentist gets the commission
+      appointmentId: appt.id,
     );
     if (created == true) {
       final db = ref.read(appDatabaseProvider);
@@ -400,7 +402,6 @@ class _ApptActions extends ConsumerWidget {
     );
   }
 
-  @override
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final d = context.dent;

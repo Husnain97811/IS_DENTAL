@@ -649,6 +649,7 @@ class _EditorState extends ConsumerState<_Editor> {
     final byName = ref.read(authControllerProvider)?.fullName ?? '';
     // the app's own navigator stays alive after this dialog closes
     final appCtx = Navigator.of(context, rootNavigator: true).context;
+    final waAllowed = ref.read(entitlementsProvider).rxOnWhatsapp;
 
     setState(() => _busy = true);
     try {
@@ -671,7 +672,9 @@ class _EditorState extends ConsumerState<_Editor> {
 
       // new prescription → PDF goes to the patient on WhatsApp (if the branch
       // has it switched on). Runs in the background; print/PDF don't wait.
-      if (isNew) unawaited(_autoSendRx(container, messenger, id, byName));
+      if (isNew && waAllowed) {
+        unawaited(_autoSendRx(container, messenger, id, byName));
+      }
 
       if (mode == _SaveMode.none) return;
 
