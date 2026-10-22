@@ -19,6 +19,15 @@ class Perm {
   static const editExpenses = 'editExpenses'; // edit + delete + lists
   static const viewExpenses = 'viewExpenses'; // totals + profit
 
+  /// Detailed Reporting Hub. Admins only, and only when the owner allows it
+  /// (Settings → Detailed Reporting Hub). Deliberately NOT in [all]: the
+  /// roles grid would offer it to clinicians and receptionists, who may
+  /// never have it.
+  static const viewReportingHub = 'viewReportingHub';
+
+  /// Permissions only an admin can be given.
+  static const adminOnly = {viewReportingHub};
+
   static const all = [
     viewFinancials,
     accessBilling,
@@ -51,6 +60,7 @@ class Perm {
     manageExpenses => 'Add expenses',
     editExpenses => 'Edit & delete expenses',
     viewExpenses => 'View expense totals & profit',
+    viewReportingHub => 'See Detailed Reporting Hub',
     _ => key,
   };
 
@@ -80,12 +90,18 @@ class Perm {
     viewExpenses =>
       'Expense totals, category breakdown and month-by-month. Net profit '
           'also needs "View financials".',
+    viewReportingHub =>
+      'Open the full-screen Hub: every money figure, each dentist, branches '
+          'and system health. Protected by the admin\'s own Hub PIN.',
     _ => '',
   };
 }
 
 /// Sensible starting point when a clinic has never configured anything.
 bool defaultFor(AppRole role, String key) {
+  // Off until the owner switches it on — it shows every money figure.
+  if (key == Perm.viewReportingHub) return role == AppRole.owner;
+
   // Open to everyone until the owner restricts them —
   // keeps existing clinics working exactly as before.
   if (key == Perm.accessBilling ||
@@ -117,6 +133,9 @@ final canProvider = Provider.family<bool, String>((ref, key) {
   final role = ref.watch(authControllerProvider)?.role;
   if (role == null) return false;
   if (role == AppRole.owner) return true;
+
+  // Admin-only permissions can't be given to anyone else, whatever is stored.
+  if (Perm.adminOnly.contains(key) && role != AppRole.admin) return false;
 
   final map = ref.watch(permissionsProvider).value ?? const {};
   return map['${role.name}|$key'] ?? defaultFor(role, key);

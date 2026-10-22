@@ -5,6 +5,7 @@ import 'package:sizer/sizer.dart';
 import '../../../../core/constants/views.dart';
 import 'package:is_dental/features/billing/data/invoice_visits.dart';
 import 'package:is_dental/core/utils/run_once.dart';
+import 'package:is_dental/features/hub/data/activity_log.dart';
 
 /// [appointmentId] — pass it when billing from an appointment, so the
 /// money is credited to that appointment's dentist in Dentist payouts.
@@ -341,6 +342,16 @@ class _S extends ConsumerState<InvoiceEditorDialog> {
       // Which visit (and so which dentist) this bill is for.
       if (inv != null && _visitId != null) {
         await linkInvoiceToVisit(db, inv.id, _visitId);
+      }
+
+      // Reporting Hub → Watch list: who gave this discount.
+      if (_adj > 0) {
+        await logActivity(
+          db,
+          'discount_given',
+          session: ref.read(authControllerProvider),
+          detail: '$invNo|$_adj|$_subtotal',
+        );
       }
 
       if (_status != 'pending') {

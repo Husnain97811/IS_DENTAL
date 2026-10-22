@@ -4,6 +4,9 @@ import 'package:is_dental/core/db/app_database.dart';
 import 'package:is_dental/core/utils/uuids.dart';
 import 'package:is_dental/features/branches/presentation/branch_controller.dart';
 import 'package:is_dental/features/billing/data/invoice_visits.dart';
+import 'package:is_dental/auth/domain/auth_session.dart';
+import 'package:is_dental/auth/presentation/auth_controller.dart';
+import 'package:is_dental/features/hub/data/activity_log.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Daily cash closing + dentist commission
@@ -230,8 +233,11 @@ class CommissionSheet {
 }
 
 class CashRepository {
-  CashRepository(this._db);
+  CashRepository(this._db, [this._who]);
   final AppDatabase _db;
+
+  /// The signed-in user, for the activity record (rate changes).
+  final AuthSession? Function()? _who;
 
   Expression<bool> _branchText(GeneratedColumn<String> col, String? b) =>
       b == null ? const Constant(true) : col.equals(b);
@@ -460,6 +466,19 @@ class CashRepository {
       await (_db.update(
         _db.dentistRates,
       )..where((t) => t.id.equals(existing.id))).write(c);
+    }
+    // Reporting Hub → Watch list: who changed a commission rate, old → new.
+    final newPct = percent.clamp(0, 100).toDouble();
+    final oldPct = existing == null || existing.isDeleted
+        ? null
+        : existing.percent;
+    if (oldPct != newPct) {
+      await logActivity(
+        _db,
+        'rate_changed',
+        session: _who?.call(),
+        detail: '$name|${oldPct ?? ''}|$newPct',
+      );
     }
   }
 
@@ -723,7 +742,10 @@ extension CommissionPayout on CashRepository {
 }
 
 final cashRepositoryProvider = Provider(
-  (ref) => CashRepository(ref.watch(appDatabaseProvider)),
+  (ref) => CashRepository(
+    ref.watch(appDatabaseProvider),
+    () => ref.read(authControllerProvider),
+  ),
 );
 
 final cashDayProvider = FutureProvider.autoDispose.family<CashDay, String>((

@@ -4,11 +4,17 @@ import 'package:go_router/go_router.dart';
 import '../constants/views.dart';
 import 'app_routes.dart';
 import 'package:is_dental/features/patients/presentation/patient_detail_route.dart';
+import 'package:is_dental/features/hub/data/hub_security.dart';
+import 'package:is_dental/features/hub/presentation/hub_entry.dart';
+import 'package:is_dental/features/hub/presentation/reporting_hub_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier(0);
   ref.listen(licenseControllerProvider, (_, __) => refresh.value++);
   ref.listen(authControllerProvider, (_, __) => refresh.value++);
+  // Losing Hub access (plan downgrade, owner switches admins off) moves
+  // anyone inside it straight back to the Dashboard.
+  ref.listen(hubAccessProvider, (_, __) => refresh.value++);
 
   ref.onDispose(refresh.dispose);
 
@@ -44,6 +50,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           if (!std && loc.startsWith('${AppRoutes.dashboard}/requests')) {
             return AppRoutes.dashboard;
           }
+          if (loc.startsWith(kHubRoute)) {
+            final hub = ref.read(hubAccessProvider);
+            if (!hub.allowed || !hub.onPlan) return AppRoutes.dashboard;
+          }
 
           return (loc == '/login' || gate.contains(loc))
               ? AppRoutes.dashboard
@@ -53,6 +63,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
     },
     routes: [
+      // Bare "/" (the error page's Home button, an old link) → Dashboard.
+      GoRoute(path: '/', redirect: (c, s) => AppRoutes.dashboard),
       GoRoute(path: '/splash', builder: (c, s) => const _Splash()),
       GoRoute(path: '/setup', builder: (c, s) => const SetupWizard()),
       GoRoute(path: '/locked', builder: (c, s) => const LockedScreen()),
@@ -62,6 +74,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/reconnect',
         builder: (c, s) => const ReconnectRequiredScreen(),
       ),
+
+      // Detailed Reporting Hub — outside the shell, so it replaces the
+      // sidebar and every clinic screen while it is open.
+      GoRoute(path: kHubRoute, builder: (c, s) => const ReportingHubScreen()),
 
       StatefulShellRoute.indexedStack(
         builder: (context, state, navShell) =>

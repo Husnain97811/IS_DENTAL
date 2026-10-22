@@ -7,6 +7,9 @@ import '../../../../core/theme/dent_colors.dart';
 import '../../../../core/widgets/dent_field.dart';
 import '../../domain/treatment.dart';
 import '../treatments_controller.dart';
+import 'package:is_dental/core/constants/views.dart'
+    show appDatabaseProvider, authControllerProvider;
+import 'package:is_dental/features/hub/data/activity_log.dart';
 
 Future<void> showTreatmentEditor(BuildContext context, {Treatment? existing}) =>
     showDialog(
@@ -45,6 +48,7 @@ class _S extends ConsumerState<TreatmentEditorDialog> {
     if (_name.text.trim().isEmpty) return;
     setState(() => _busy = true);
     final e = widget.existing;
+    final newPrice = int.tryParse(_price.text) ?? 0;
     await ref
         .read(treatmentRepositoryProvider)
         .upsertTreatment(
@@ -53,10 +57,19 @@ class _S extends ConsumerState<TreatmentEditorDialog> {
             uuid: e?.uuid ?? '',
             name: _name.text.trim(),
             category: _cat.text.trim(),
-            price: int.tryParse(_price.text) ?? 0,
+            price: newPrice,
             duration: _dur.text.trim(),
           ),
         );
+    // Reporting Hub → Watch list: price list changes, with who and old → new.
+    if (e == null || e.price != newPrice) {
+      await logActivity(
+        ref.read(appDatabaseProvider),
+        e == null ? 'procedure_added' : 'price_changed',
+        session: ref.read(authControllerProvider),
+        detail: '${_name.text.trim()}|${e?.price ?? ''}|$newPrice',
+      );
+    }
     if (mounted) Navigator.pop(context);
   }
 
@@ -66,6 +79,12 @@ class _S extends ConsumerState<TreatmentEditorDialog> {
     await ref
         .read(treatmentRepositoryProvider)
         .softDeleteTreatment(widget.existing!.id);
+    await logActivity(
+      ref.read(appDatabaseProvider),
+      'procedure_removed',
+      session: ref.read(authControllerProvider),
+      detail: '${widget.existing!.name}|${widget.existing!.price}|',
+    );
     if (mounted) Navigator.pop(context);
   }
 

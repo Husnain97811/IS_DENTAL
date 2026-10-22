@@ -57,6 +57,9 @@ class Entitlements {
   /// Smile Showcase screen.
   bool get showcase => standard;
 
+  /// Detailed Reporting Hub — Standard and Premium only.
+  bool get reportingHub => standard;
+
   /// Expenses → Dentist payouts.
   bool get dentistPayouts => standard;
 

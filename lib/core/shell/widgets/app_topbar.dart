@@ -2,14 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:is_dental/features/billing/presentation/widgets/invoice_drawer.dart';
-import 'package:is_dental/features/patients/presentation/patient_detail_route.dart';
-import 'package:is_dental/features/showcase/data/showcase_cases.dart';
-import 'package:is_dental/features/showcase/presentation/showcase_screen.dart';
-import 'package:sizer/sizer.dart';
+import 'package:is_dental/features/hub/presentation/hub_entry.dart';
 import '../../constants/views.dart';
-import '../../router/nav_destinations.dart';
-import '../../router/app_routes.dart';
 
 String _money(int v) => v.toString().replaceAllMapped(
   RegExp(r'(\d)(?=(\d{3})+$)'),
@@ -519,6 +513,7 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
                       SizedBox(width: gap),
                     ],
                     _notificationBell(context, notifs),
+                    ReportingHubButton(compact: compact, gap: gap),
                     // DB status is a system detail — only where system
                     // settings live.
                     if (route == AppRoutes.dashboard ||

@@ -760,6 +760,28 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _hubPinHashMeta = const VerificationMeta(
+    'hubPinHash',
+  );
+  @override
+  late final GeneratedColumn<String> hubPinHash = GeneratedColumn<String>(
+    'hub_pin_hash',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _hubPinSetAtMeta = const VerificationMeta(
+    'hubPinSetAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> hubPinSetAt = GeneratedColumn<DateTime>(
+    'hub_pin_set_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isDeletedMeta = const VerificationMeta(
     'isDeleted',
   );
@@ -799,6 +821,8 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     passwordHash,
     branchId,
     role,
+    hubPinHash,
+    hubPinSetAt,
     isDeleted,
     updatedAt,
   ];
@@ -884,6 +908,24 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     } else if (isInserting) {
       context.missing(_roleMeta);
     }
+    if (data.containsKey('hub_pin_hash')) {
+      context.handle(
+        _hubPinHashMeta,
+        hubPinHash.isAcceptableOrUnknown(
+          data['hub_pin_hash']!,
+          _hubPinHashMeta,
+        ),
+      );
+    }
+    if (data.containsKey('hub_pin_set_at')) {
+      context.handle(
+        _hubPinSetAtMeta,
+        hubPinSetAt.isAcceptableOrUnknown(
+          data['hub_pin_set_at']!,
+          _hubPinSetAtMeta,
+        ),
+      );
+    }
     if (data.containsKey('is_deleted')) {
       context.handle(
         _isDeletedMeta,
@@ -945,6 +987,14 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
         DriftSqlType.string,
         data['${effectivePrefix}role'],
       )!,
+      hubPinHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}hub_pin_hash'],
+      ),
+      hubPinSetAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}hub_pin_set_at'],
+      ),
       isDeleted: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_deleted'],
@@ -973,6 +1023,11 @@ class User extends DataClass implements Insertable<User> {
   final String passwordHash;
   final String? branchId;
   final String role;
+
+  /// Detailed Reporting Hub PIN — a PBKDF2 hash, never the digits.
+  /// Null until the user sets one. Synced, so it works on every computer.
+  final String? hubPinHash;
+  final DateTime? hubPinSetAt;
   final bool isDeleted;
   final DateTime updatedAt;
   const User({
@@ -986,6 +1041,8 @@ class User extends DataClass implements Insertable<User> {
     required this.passwordHash,
     this.branchId,
     required this.role,
+    this.hubPinHash,
+    this.hubPinSetAt,
     required this.isDeleted,
     required this.updatedAt,
   });
@@ -1008,6 +1065,12 @@ class User extends DataClass implements Insertable<User> {
       map['branch_id'] = Variable<String>(branchId);
     }
     map['role'] = Variable<String>(role);
+    if (!nullToAbsent || hubPinHash != null) {
+      map['hub_pin_hash'] = Variable<String>(hubPinHash);
+    }
+    if (!nullToAbsent || hubPinSetAt != null) {
+      map['hub_pin_set_at'] = Variable<DateTime>(hubPinSetAt);
+    }
     map['is_deleted'] = Variable<bool>(isDeleted);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1031,6 +1094,12 @@ class User extends DataClass implements Insertable<User> {
           ? const Value.absent()
           : Value(branchId),
       role: Value(role),
+      hubPinHash: hubPinHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(hubPinHash),
+      hubPinSetAt: hubPinSetAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(hubPinSetAt),
       isDeleted: Value(isDeleted),
       updatedAt: Value(updatedAt),
     );
@@ -1052,6 +1121,8 @@ class User extends DataClass implements Insertable<User> {
       passwordHash: serializer.fromJson<String>(json['passwordHash']),
       branchId: serializer.fromJson<String?>(json['branchId']),
       role: serializer.fromJson<String>(json['role']),
+      hubPinHash: serializer.fromJson<String?>(json['hubPinHash']),
+      hubPinSetAt: serializer.fromJson<DateTime?>(json['hubPinSetAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1070,6 +1141,8 @@ class User extends DataClass implements Insertable<User> {
       'passwordHash': serializer.toJson<String>(passwordHash),
       'branchId': serializer.toJson<String?>(branchId),
       'role': serializer.toJson<String>(role),
+      'hubPinHash': serializer.toJson<String?>(hubPinHash),
+      'hubPinSetAt': serializer.toJson<DateTime?>(hubPinSetAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1086,6 +1159,8 @@ class User extends DataClass implements Insertable<User> {
     String? passwordHash,
     Value<String?> branchId = const Value.absent(),
     String? role,
+    Value<String?> hubPinHash = const Value.absent(),
+    Value<DateTime?> hubPinSetAt = const Value.absent(),
     bool? isDeleted,
     DateTime? updatedAt,
   }) => User(
@@ -1099,6 +1174,8 @@ class User extends DataClass implements Insertable<User> {
     passwordHash: passwordHash ?? this.passwordHash,
     branchId: branchId.present ? branchId.value : this.branchId,
     role: role ?? this.role,
+    hubPinHash: hubPinHash.present ? hubPinHash.value : this.hubPinHash,
+    hubPinSetAt: hubPinSetAt.present ? hubPinSetAt.value : this.hubPinSetAt,
     isDeleted: isDeleted ?? this.isDeleted,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1116,6 +1193,12 @@ class User extends DataClass implements Insertable<User> {
           : this.passwordHash,
       branchId: data.branchId.present ? data.branchId.value : this.branchId,
       role: data.role.present ? data.role.value : this.role,
+      hubPinHash: data.hubPinHash.present
+          ? data.hubPinHash.value
+          : this.hubPinHash,
+      hubPinSetAt: data.hubPinSetAt.present
+          ? data.hubPinSetAt.value
+          : this.hubPinSetAt,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1134,6 +1217,8 @@ class User extends DataClass implements Insertable<User> {
           ..write('passwordHash: $passwordHash, ')
           ..write('branchId: $branchId, ')
           ..write('role: $role, ')
+          ..write('hubPinHash: $hubPinHash, ')
+          ..write('hubPinSetAt: $hubPinSetAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1152,6 +1237,8 @@ class User extends DataClass implements Insertable<User> {
     passwordHash,
     branchId,
     role,
+    hubPinHash,
+    hubPinSetAt,
     isDeleted,
     updatedAt,
   );
@@ -1169,6 +1256,8 @@ class User extends DataClass implements Insertable<User> {
           other.passwordHash == this.passwordHash &&
           other.branchId == this.branchId &&
           other.role == this.role &&
+          other.hubPinHash == this.hubPinHash &&
+          other.hubPinSetAt == this.hubPinSetAt &&
           other.isDeleted == this.isDeleted &&
           other.updatedAt == this.updatedAt);
 }
@@ -1184,6 +1273,8 @@ class UsersCompanion extends UpdateCompanion<User> {
   final Value<String> passwordHash;
   final Value<String?> branchId;
   final Value<String> role;
+  final Value<String?> hubPinHash;
+  final Value<DateTime?> hubPinSetAt;
   final Value<bool> isDeleted;
   final Value<DateTime> updatedAt;
   const UsersCompanion({
@@ -1197,6 +1288,8 @@ class UsersCompanion extends UpdateCompanion<User> {
     this.passwordHash = const Value.absent(),
     this.branchId = const Value.absent(),
     this.role = const Value.absent(),
+    this.hubPinHash = const Value.absent(),
+    this.hubPinSetAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -1211,6 +1304,8 @@ class UsersCompanion extends UpdateCompanion<User> {
     required String passwordHash,
     this.branchId = const Value.absent(),
     required String role,
+    this.hubPinHash = const Value.absent(),
+    this.hubPinSetAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : clinicId = Value(clinicId),
@@ -1229,6 +1324,8 @@ class UsersCompanion extends UpdateCompanion<User> {
     Expression<String>? passwordHash,
     Expression<String>? branchId,
     Expression<String>? role,
+    Expression<String>? hubPinHash,
+    Expression<DateTime>? hubPinSetAt,
     Expression<bool>? isDeleted,
     Expression<DateTime>? updatedAt,
   }) {
@@ -1243,6 +1340,8 @@ class UsersCompanion extends UpdateCompanion<User> {
       if (passwordHash != null) 'password_hash': passwordHash,
       if (branchId != null) 'branch_id': branchId,
       if (role != null) 'role': role,
+      if (hubPinHash != null) 'hub_pin_hash': hubPinHash,
+      if (hubPinSetAt != null) 'hub_pin_set_at': hubPinSetAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1259,6 +1358,8 @@ class UsersCompanion extends UpdateCompanion<User> {
     Value<String>? passwordHash,
     Value<String?>? branchId,
     Value<String>? role,
+    Value<String?>? hubPinHash,
+    Value<DateTime?>? hubPinSetAt,
     Value<bool>? isDeleted,
     Value<DateTime>? updatedAt,
   }) {
@@ -1273,6 +1374,8 @@ class UsersCompanion extends UpdateCompanion<User> {
       passwordHash: passwordHash ?? this.passwordHash,
       branchId: branchId ?? this.branchId,
       role: role ?? this.role,
+      hubPinHash: hubPinHash ?? this.hubPinHash,
+      hubPinSetAt: hubPinSetAt ?? this.hubPinSetAt,
       isDeleted: isDeleted ?? this.isDeleted,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1311,6 +1414,12 @@ class UsersCompanion extends UpdateCompanion<User> {
     if (role.present) {
       map['role'] = Variable<String>(role.value);
     }
+    if (hubPinHash.present) {
+      map['hub_pin_hash'] = Variable<String>(hubPinHash.value);
+    }
+    if (hubPinSetAt.present) {
+      map['hub_pin_set_at'] = Variable<DateTime>(hubPinSetAt.value);
+    }
     if (isDeleted.present) {
       map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
@@ -1333,6 +1442,8 @@ class UsersCompanion extends UpdateCompanion<User> {
           ..write('passwordHash: $passwordHash, ')
           ..write('branchId: $branchId, ')
           ..write('role: $role, ')
+          ..write('hubPinHash: $hubPinHash, ')
+          ..write('hubPinSetAt: $hubPinSetAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -21575,6 +21686,691 @@ class DentistRatesCompanion extends UpdateCompanion<DentistRateRow> {
   }
 }
 
+class $ActivityEventsTable extends ActivityEvents
+    with TableInfo<$ActivityEventsTable, ActivityEventRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ActivityEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _clinicIdMeta = const VerificationMeta(
+    'clinicId',
+  );
+  @override
+  late final GeneratedColumn<String> clinicId = GeneratedColumn<String>(
+    'clinic_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<String> branchId = GeneratedColumn<String>(
+    'branch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _userUuidMeta = const VerificationMeta(
+    'userUuid',
+  );
+  @override
+  late final GeneratedColumn<String> userUuid = GeneratedColumn<String>(
+    'user_uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _userNameMeta = const VerificationMeta(
+    'userName',
+  );
+  @override
+  late final GeneratedColumn<String> userName = GeneratedColumn<String>(
+    'user_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _deviceMeta = const VerificationMeta('device');
+  @override
+  late final GeneratedColumn<String> device = GeneratedColumn<String>(
+    'device',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _detailMeta = const VerificationMeta('detail');
+  @override
+  late final GeneratedColumn<String> detail = GeneratedColumn<String>(
+    'detail',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _happenedAtMeta = const VerificationMeta(
+    'happenedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> happenedAt = GeneratedColumn<DateTime>(
+    'happened_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    uuid,
+    clinicId,
+    branchId,
+    kind,
+    userUuid,
+    userName,
+    device,
+    detail,
+    happenedAt,
+    isDeleted,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'activity_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ActivityEventRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('clinic_id')) {
+      context.handle(
+        _clinicIdMeta,
+        clinicId.isAcceptableOrUnknown(data['clinic_id']!, _clinicIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clinicIdMeta);
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('user_uuid')) {
+      context.handle(
+        _userUuidMeta,
+        userUuid.isAcceptableOrUnknown(data['user_uuid']!, _userUuidMeta),
+      );
+    }
+    if (data.containsKey('user_name')) {
+      context.handle(
+        _userNameMeta,
+        userName.isAcceptableOrUnknown(data['user_name']!, _userNameMeta),
+      );
+    }
+    if (data.containsKey('device')) {
+      context.handle(
+        _deviceMeta,
+        device.isAcceptableOrUnknown(data['device']!, _deviceMeta),
+      );
+    }
+    if (data.containsKey('detail')) {
+      context.handle(
+        _detailMeta,
+        detail.isAcceptableOrUnknown(data['detail']!, _detailMeta),
+      );
+    }
+    if (data.containsKey('happened_at')) {
+      context.handle(
+        _happenedAtMeta,
+        happenedAt.isAcceptableOrUnknown(data['happened_at']!, _happenedAtMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ActivityEventRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ActivityEventRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      clinicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clinic_id'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch_id'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      userUuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_uuid'],
+      )!,
+      userName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_name'],
+      )!,
+      device: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device'],
+      )!,
+      detail: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}detail'],
+      )!,
+      happenedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}happened_at'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ActivityEventsTable createAlias(String alias) {
+    return $ActivityEventsTable(attachedDatabase, alias);
+  }
+}
+
+class ActivityEventRow extends DataClass
+    implements Insertable<ActivityEventRow> {
+  final int id;
+  final String uuid;
+  final String clinicId;
+  final String branchId;
+
+  /// hub_open · hub_exit · hub_pin_wrong · hub_pin_locked · hub_pin_set ·
+  /// hub_pin_changed · hub_pin_reset · hub_idle_lock · hub_idle_exit
+  final String kind;
+
+  /// Who did it — names are snapshots, so they survive the user being
+  /// removed later.
+  final String userUuid;
+  final String userName;
+
+  /// Computer letter (A, B …).
+  final String device;
+  final String detail;
+  final DateTime happenedAt;
+  final bool isDeleted;
+  final DateTime updatedAt;
+  const ActivityEventRow({
+    required this.id,
+    required this.uuid,
+    required this.clinicId,
+    required this.branchId,
+    required this.kind,
+    required this.userUuid,
+    required this.userName,
+    required this.device,
+    required this.detail,
+    required this.happenedAt,
+    required this.isDeleted,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['uuid'] = Variable<String>(uuid);
+    map['clinic_id'] = Variable<String>(clinicId);
+    map['branch_id'] = Variable<String>(branchId);
+    map['kind'] = Variable<String>(kind);
+    map['user_uuid'] = Variable<String>(userUuid);
+    map['user_name'] = Variable<String>(userName);
+    map['device'] = Variable<String>(device);
+    map['detail'] = Variable<String>(detail);
+    map['happened_at'] = Variable<DateTime>(happenedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ActivityEventsCompanion toCompanion(bool nullToAbsent) {
+    return ActivityEventsCompanion(
+      id: Value(id),
+      uuid: Value(uuid),
+      clinicId: Value(clinicId),
+      branchId: Value(branchId),
+      kind: Value(kind),
+      userUuid: Value(userUuid),
+      userName: Value(userName),
+      device: Value(device),
+      detail: Value(detail),
+      happenedAt: Value(happenedAt),
+      isDeleted: Value(isDeleted),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ActivityEventRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ActivityEventRow(
+      id: serializer.fromJson<int>(json['id']),
+      uuid: serializer.fromJson<String>(json['uuid']),
+      clinicId: serializer.fromJson<String>(json['clinicId']),
+      branchId: serializer.fromJson<String>(json['branchId']),
+      kind: serializer.fromJson<String>(json['kind']),
+      userUuid: serializer.fromJson<String>(json['userUuid']),
+      userName: serializer.fromJson<String>(json['userName']),
+      device: serializer.fromJson<String>(json['device']),
+      detail: serializer.fromJson<String>(json['detail']),
+      happenedAt: serializer.fromJson<DateTime>(json['happenedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'uuid': serializer.toJson<String>(uuid),
+      'clinicId': serializer.toJson<String>(clinicId),
+      'branchId': serializer.toJson<String>(branchId),
+      'kind': serializer.toJson<String>(kind),
+      'userUuid': serializer.toJson<String>(userUuid),
+      'userName': serializer.toJson<String>(userName),
+      'device': serializer.toJson<String>(device),
+      'detail': serializer.toJson<String>(detail),
+      'happenedAt': serializer.toJson<DateTime>(happenedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ActivityEventRow copyWith({
+    int? id,
+    String? uuid,
+    String? clinicId,
+    String? branchId,
+    String? kind,
+    String? userUuid,
+    String? userName,
+    String? device,
+    String? detail,
+    DateTime? happenedAt,
+    bool? isDeleted,
+    DateTime? updatedAt,
+  }) => ActivityEventRow(
+    id: id ?? this.id,
+    uuid: uuid ?? this.uuid,
+    clinicId: clinicId ?? this.clinicId,
+    branchId: branchId ?? this.branchId,
+    kind: kind ?? this.kind,
+    userUuid: userUuid ?? this.userUuid,
+    userName: userName ?? this.userName,
+    device: device ?? this.device,
+    detail: detail ?? this.detail,
+    happenedAt: happenedAt ?? this.happenedAt,
+    isDeleted: isDeleted ?? this.isDeleted,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ActivityEventRow copyWithCompanion(ActivityEventsCompanion data) {
+    return ActivityEventRow(
+      id: data.id.present ? data.id.value : this.id,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      clinicId: data.clinicId.present ? data.clinicId.value : this.clinicId,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      userUuid: data.userUuid.present ? data.userUuid.value : this.userUuid,
+      userName: data.userName.present ? data.userName.value : this.userName,
+      device: data.device.present ? data.device.value : this.device,
+      detail: data.detail.present ? data.detail.value : this.detail,
+      happenedAt: data.happenedAt.present
+          ? data.happenedAt.value
+          : this.happenedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ActivityEventRow(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('branchId: $branchId, ')
+          ..write('kind: $kind, ')
+          ..write('userUuid: $userUuid, ')
+          ..write('userName: $userName, ')
+          ..write('device: $device, ')
+          ..write('detail: $detail, ')
+          ..write('happenedAt: $happenedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    uuid,
+    clinicId,
+    branchId,
+    kind,
+    userUuid,
+    userName,
+    device,
+    detail,
+    happenedAt,
+    isDeleted,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ActivityEventRow &&
+          other.id == this.id &&
+          other.uuid == this.uuid &&
+          other.clinicId == this.clinicId &&
+          other.branchId == this.branchId &&
+          other.kind == this.kind &&
+          other.userUuid == this.userUuid &&
+          other.userName == this.userName &&
+          other.device == this.device &&
+          other.detail == this.detail &&
+          other.happenedAt == this.happenedAt &&
+          other.isDeleted == this.isDeleted &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ActivityEventsCompanion extends UpdateCompanion<ActivityEventRow> {
+  final Value<int> id;
+  final Value<String> uuid;
+  final Value<String> clinicId;
+  final Value<String> branchId;
+  final Value<String> kind;
+  final Value<String> userUuid;
+  final Value<String> userName;
+  final Value<String> device;
+  final Value<String> detail;
+  final Value<DateTime> happenedAt;
+  final Value<bool> isDeleted;
+  final Value<DateTime> updatedAt;
+  const ActivityEventsCompanion({
+    this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
+    this.clinicId = const Value.absent(),
+    this.branchId = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.userUuid = const Value.absent(),
+    this.userName = const Value.absent(),
+    this.device = const Value.absent(),
+    this.detail = const Value.absent(),
+    this.happenedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  ActivityEventsCompanion.insert({
+    this.id = const Value.absent(),
+    required String uuid,
+    required String clinicId,
+    this.branchId = const Value.absent(),
+    required String kind,
+    this.userUuid = const Value.absent(),
+    this.userName = const Value.absent(),
+    this.device = const Value.absent(),
+    this.detail = const Value.absent(),
+    this.happenedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : uuid = Value(uuid),
+       clinicId = Value(clinicId),
+       kind = Value(kind);
+  static Insertable<ActivityEventRow> custom({
+    Expression<int>? id,
+    Expression<String>? uuid,
+    Expression<String>? clinicId,
+    Expression<String>? branchId,
+    Expression<String>? kind,
+    Expression<String>? userUuid,
+    Expression<String>? userName,
+    Expression<String>? device,
+    Expression<String>? detail,
+    Expression<DateTime>? happenedAt,
+    Expression<bool>? isDeleted,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (uuid != null) 'uuid': uuid,
+      if (clinicId != null) 'clinic_id': clinicId,
+      if (branchId != null) 'branch_id': branchId,
+      if (kind != null) 'kind': kind,
+      if (userUuid != null) 'user_uuid': userUuid,
+      if (userName != null) 'user_name': userName,
+      if (device != null) 'device': device,
+      if (detail != null) 'detail': detail,
+      if (happenedAt != null) 'happened_at': happenedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  ActivityEventsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? uuid,
+    Value<String>? clinicId,
+    Value<String>? branchId,
+    Value<String>? kind,
+    Value<String>? userUuid,
+    Value<String>? userName,
+    Value<String>? device,
+    Value<String>? detail,
+    Value<DateTime>? happenedAt,
+    Value<bool>? isDeleted,
+    Value<DateTime>? updatedAt,
+  }) {
+    return ActivityEventsCompanion(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      clinicId: clinicId ?? this.clinicId,
+      branchId: branchId ?? this.branchId,
+      kind: kind ?? this.kind,
+      userUuid: userUuid ?? this.userUuid,
+      userName: userName ?? this.userName,
+      device: device ?? this.device,
+      detail: detail ?? this.detail,
+      happenedAt: happenedAt ?? this.happenedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (clinicId.present) {
+      map['clinic_id'] = Variable<String>(clinicId.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<String>(branchId.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (userUuid.present) {
+      map['user_uuid'] = Variable<String>(userUuid.value);
+    }
+    if (userName.present) {
+      map['user_name'] = Variable<String>(userName.value);
+    }
+    if (device.present) {
+      map['device'] = Variable<String>(device.value);
+    }
+    if (detail.present) {
+      map['detail'] = Variable<String>(detail.value);
+    }
+    if (happenedAt.present) {
+      map['happened_at'] = Variable<DateTime>(happenedAt.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ActivityEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
+          ..write('clinicId: $clinicId, ')
+          ..write('branchId: $branchId, ')
+          ..write('kind: $kind, ')
+          ..write('userUuid: $userUuid, ')
+          ..write('userName: $userName, ')
+          ..write('device: $device, ')
+          ..write('detail: $detail, ')
+          ..write('happenedAt: $happenedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -21622,6 +22418,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ToothFindingsTable toothFindings = $ToothFindingsTable(this);
   late final $CashClosingsTable cashClosings = $CashClosingsTable(this);
   late final $DentistRatesTable dentistRates = $DentistRatesTable(this);
+  late final $ActivityEventsTable activityEvents = $ActivityEventsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -21659,6 +22456,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     toothFindings,
     cashClosings,
     dentistRates,
+    activityEvents,
   ];
 }
 
@@ -22049,6 +22847,8 @@ typedef $$UsersTableCreateCompanionBuilder =
       required String passwordHash,
       Value<String?> branchId,
       required String role,
+      Value<String?> hubPinHash,
+      Value<DateTime?> hubPinSetAt,
       Value<bool> isDeleted,
       Value<DateTime> updatedAt,
     });
@@ -22064,6 +22864,8 @@ typedef $$UsersTableUpdateCompanionBuilder =
       Value<String> passwordHash,
       Value<String?> branchId,
       Value<String> role,
+      Value<String?> hubPinHash,
+      Value<DateTime?> hubPinSetAt,
       Value<bool> isDeleted,
       Value<DateTime> updatedAt,
     });
@@ -22123,6 +22925,16 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
 
   ColumnFilters<String> get role => $composableBuilder(
     column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get hubPinHash => $composableBuilder(
+    column: $table.hubPinHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get hubPinSetAt => $composableBuilder(
+    column: $table.hubPinSetAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -22196,6 +23008,16 @@ class $$UsersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get hubPinHash => $composableBuilder(
+    column: $table.hubPinHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get hubPinSetAt => $composableBuilder(
+    column: $table.hubPinSetAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isDeleted => $composableBuilder(
     column: $table.isDeleted,
     builder: (column) => ColumnOrderings(column),
@@ -22248,6 +23070,16 @@ class $$UsersTableAnnotationComposer
   GeneratedColumn<String> get role =>
       $composableBuilder(column: $table.role, builder: (column) => column);
 
+  GeneratedColumn<String> get hubPinHash => $composableBuilder(
+    column: $table.hubPinHash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get hubPinSetAt => $composableBuilder(
+    column: $table.hubPinSetAt,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 
@@ -22293,6 +23125,8 @@ class $$UsersTableTableManager
                 Value<String> passwordHash = const Value.absent(),
                 Value<String?> branchId = const Value.absent(),
                 Value<String> role = const Value.absent(),
+                Value<String?> hubPinHash = const Value.absent(),
+                Value<DateTime?> hubPinSetAt = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => UsersCompanion(
@@ -22306,6 +23140,8 @@ class $$UsersTableTableManager
                 passwordHash: passwordHash,
                 branchId: branchId,
                 role: role,
+                hubPinHash: hubPinHash,
+                hubPinSetAt: hubPinSetAt,
                 isDeleted: isDeleted,
                 updatedAt: updatedAt,
               ),
@@ -22321,6 +23157,8 @@ class $$UsersTableTableManager
                 required String passwordHash,
                 Value<String?> branchId = const Value.absent(),
                 required String role,
+                Value<String?> hubPinHash = const Value.absent(),
+                Value<DateTime?> hubPinSetAt = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => UsersCompanion.insert(
@@ -22334,6 +23172,8 @@ class $$UsersTableTableManager
                 passwordHash: passwordHash,
                 branchId: branchId,
                 role: role,
+                hubPinHash: hubPinHash,
+                hubPinSetAt: hubPinSetAt,
                 isDeleted: isDeleted,
                 updatedAt: updatedAt,
               ),
@@ -33571,6 +34411,341 @@ typedef $$DentistRatesTableProcessedTableManager =
       DentistRateRow,
       PrefetchHooks Function()
     >;
+typedef $$ActivityEventsTableCreateCompanionBuilder =
+    ActivityEventsCompanion Function({
+      Value<int> id,
+      required String uuid,
+      required String clinicId,
+      Value<String> branchId,
+      required String kind,
+      Value<String> userUuid,
+      Value<String> userName,
+      Value<String> device,
+      Value<String> detail,
+      Value<DateTime> happenedAt,
+      Value<bool> isDeleted,
+      Value<DateTime> updatedAt,
+    });
+typedef $$ActivityEventsTableUpdateCompanionBuilder =
+    ActivityEventsCompanion Function({
+      Value<int> id,
+      Value<String> uuid,
+      Value<String> clinicId,
+      Value<String> branchId,
+      Value<String> kind,
+      Value<String> userUuid,
+      Value<String> userName,
+      Value<String> device,
+      Value<String> detail,
+      Value<DateTime> happenedAt,
+      Value<bool> isDeleted,
+      Value<DateTime> updatedAt,
+    });
+
+class $$ActivityEventsTableFilterComposer
+    extends Composer<_$AppDatabase, $ActivityEventsTable> {
+  $$ActivityEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userUuid => $composableBuilder(
+    column: $table.userUuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userName => $composableBuilder(
+    column: $table.userName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get device => $composableBuilder(
+    column: $table.device,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get detail => $composableBuilder(
+    column: $table.detail,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get happenedAt => $composableBuilder(
+    column: $table.happenedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ActivityEventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ActivityEventsTable> {
+  $$ActivityEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clinicId => $composableBuilder(
+    column: $table.clinicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userUuid => $composableBuilder(
+    column: $table.userUuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userName => $composableBuilder(
+    column: $table.userName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get device => $composableBuilder(
+    column: $table.device,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get detail => $composableBuilder(
+    column: $table.detail,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get happenedAt => $composableBuilder(
+    column: $table.happenedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ActivityEventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ActivityEventsTable> {
+  $$ActivityEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get clinicId =>
+      $composableBuilder(column: $table.clinicId, builder: (column) => column);
+
+  GeneratedColumn<String> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get userUuid =>
+      $composableBuilder(column: $table.userUuid, builder: (column) => column);
+
+  GeneratedColumn<String> get userName =>
+      $composableBuilder(column: $table.userName, builder: (column) => column);
+
+  GeneratedColumn<String> get device =>
+      $composableBuilder(column: $table.device, builder: (column) => column);
+
+  GeneratedColumn<String> get detail =>
+      $composableBuilder(column: $table.detail, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get happenedAt => $composableBuilder(
+    column: $table.happenedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ActivityEventsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ActivityEventsTable,
+          ActivityEventRow,
+          $$ActivityEventsTableFilterComposer,
+          $$ActivityEventsTableOrderingComposer,
+          $$ActivityEventsTableAnnotationComposer,
+          $$ActivityEventsTableCreateCompanionBuilder,
+          $$ActivityEventsTableUpdateCompanionBuilder,
+          (
+            ActivityEventRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ActivityEventsTable,
+              ActivityEventRow
+            >,
+          ),
+          ActivityEventRow,
+          PrefetchHooks Function()
+        > {
+  $$ActivityEventsTableTableManager(
+    _$AppDatabase db,
+    $ActivityEventsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ActivityEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ActivityEventsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ActivityEventsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
+                Value<String> clinicId = const Value.absent(),
+                Value<String> branchId = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String> userUuid = const Value.absent(),
+                Value<String> userName = const Value.absent(),
+                Value<String> device = const Value.absent(),
+                Value<String> detail = const Value.absent(),
+                Value<DateTime> happenedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => ActivityEventsCompanion(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                branchId: branchId,
+                kind: kind,
+                userUuid: userUuid,
+                userName: userName,
+                device: device,
+                detail: detail,
+                happenedAt: happenedAt,
+                isDeleted: isDeleted,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String uuid,
+                required String clinicId,
+                Value<String> branchId = const Value.absent(),
+                required String kind,
+                Value<String> userUuid = const Value.absent(),
+                Value<String> userName = const Value.absent(),
+                Value<String> device = const Value.absent(),
+                Value<String> detail = const Value.absent(),
+                Value<DateTime> happenedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => ActivityEventsCompanion.insert(
+                id: id,
+                uuid: uuid,
+                clinicId: clinicId,
+                branchId: branchId,
+                kind: kind,
+                userUuid: userUuid,
+                userName: userName,
+                device: device,
+                detail: detail,
+                happenedAt: happenedAt,
+                isDeleted: isDeleted,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ActivityEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ActivityEventsTable,
+      ActivityEventRow,
+      $$ActivityEventsTableFilterComposer,
+      $$ActivityEventsTableOrderingComposer,
+      $$ActivityEventsTableAnnotationComposer,
+      $$ActivityEventsTableCreateCompanionBuilder,
+      $$ActivityEventsTableUpdateCompanionBuilder,
+      (
+        ActivityEventRow,
+        BaseReferences<_$AppDatabase, $ActivityEventsTable, ActivityEventRow>,
+      ),
+      ActivityEventRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -33639,4 +34814,6 @@ class $AppDatabaseManager {
       $$CashClosingsTableTableManager(_db, _db.cashClosings);
   $$DentistRatesTableTableManager get dentistRates =>
       $$DentistRatesTableTableManager(_db, _db.dentistRates);
+  $$ActivityEventsTableTableManager get activityEvents =>
+      $$ActivityEventsTableTableManager(_db, _db.activityEvents);
 }

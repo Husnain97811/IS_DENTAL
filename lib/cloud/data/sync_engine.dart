@@ -71,6 +71,7 @@ class SyncEngine {
     await step('lookups', () => _syncLookups(clinicId));
     await step('devices', () => _syncDevices(clinicId));
     await step('expenses', () => _syncExpenses(clinicId));
+    await step('activity', () => _syncActivity(clinicId));
     // housekeeping — remove decided requests older than 30 days
     await step('purge_requests', () => _db.purgeOldDecidedRequests());
 
@@ -173,6 +174,8 @@ class SyncEngine {
       'push_dentist_rates',
       'pull_tooth_findings',
       'push_tooth_findings',
+      'pull_activity',
+      'push_activity',
     ];
     for (final k in cursorKeys) {
       await _db.setSetting('sync_$k', '');
@@ -212,6 +215,9 @@ class SyncEngine {
     await part('cash_closings', () => _restoreCashClosings(clinicId));
     await part('dentist_rates', () => _restoreDentistRates(clinicId));
     await part('tooth_findings', () => _restoreToothFindings(clinicId));
+    // The activity record is append-only and NOT wiped above: lines made
+    // here but not yet pushed must survive a restore.
+    await part('activity', () => _restoreActivity(clinicId));
     // amountPaid and patients.balance are CACHES. The restored values came
     // from whichever machine pushed last; rebuild them from the payments
     // that actually landed here.
@@ -274,6 +280,12 @@ class SyncEngine {
               role: Value(r['role'] ?? 'receptionist'),
               email: Value(r['email']),
               phone: Value(r['phone']),
+              hubPinHash: Value(r['hub_pin_hash']),
+              hubPinSetAt: Value(
+                r['hub_pin_set_at'] == null
+                    ? null
+                    : DateTime.parse(r['hub_pin_set_at']),
+              ),
               isDeleted: Value(r['is_deleted'] ?? false),
               updatedAt: Value(DateTime.parse(r['updated_at'])),
             ),
@@ -2516,6 +2528,77 @@ class SyncEngine {
     }
   }
 
+  // ================= ACTIVITY RECORD (append-only) =================
+  Future<void> _syncActivity(String clinicId) async {
+    final since = await _cur('push_activity');
+    final changed =
+        await (_db.select(_db.activityEvents)
+              ..where((t) => t.updatedAt.isBiggerThanValue(since))
+              ..orderBy([(t) => OrderingTerm.asc(t.updatedAt)])
+              ..limit(500))
+            .get();
+    if (changed.isNotEmpty) {
+      await _sb.from('activity_events').upsert([
+        for (final e in changed)
+          {
+            'uuid': e.uuid,
+            'clinic_id': clinicId,
+            'branch_id': e.branchId,
+            'kind': e.kind,
+            'user_uuid': e.userUuid,
+            'user_name': e.userName,
+            'device': e.device,
+            'detail': e.detail,
+            'happened_at': _iso(e.happenedAt),
+            'is_deleted': e.isDeleted,
+            'updated_at': _iso(e.updatedAt),
+          },
+      ], onConflict: 'uuid');
+      await _setCur('push_activity', _max(changed.map((e) => e.updatedAt)));
+    }
+
+    final pullSince = await _cur('pull_activity');
+    for (final r in await _pull('activity_events', clinicId, pullSince)) {
+      await _row('activity_events', r['uuid'], () async {
+        await _applyActivity(r, clinicId);
+        final u = DateTime.parse(r['updated_at']);
+        if (u.isAfter(pullSince)) await _setCur('pull_activity', u);
+      });
+    }
+  }
+
+  Future<void> _applyActivity(Map<String, dynamic> r, String clinicId) => _db
+      .into(_db.activityEvents)
+      .insert(
+        ActivityEventsCompanion.insert(
+          uuid: r['uuid'],
+          clinicId: clinicId,
+          kind: r['kind'] ?? '',
+          branchId: Value(r['branch_id'] ?? ''),
+          userUuid: Value(r['user_uuid'] ?? ''),
+          userName: Value(r['user_name'] ?? ''),
+          device: Value(r['device'] ?? ''),
+          detail: Value(r['detail'] ?? ''),
+          happenedAt: Value(
+            DateTime.parse(r['happened_at'] ?? r['updated_at']),
+          ),
+          isDeleted: Value(r['is_deleted'] ?? false),
+          updatedAt: Value(DateTime.parse(r['updated_at'])),
+        ),
+        // a line never changes once written — the first copy wins
+        mode: InsertMode.insertOrIgnore,
+      );
+
+  Future<void> _restoreActivity(String clinicId) async {
+    for (final r in await _pullAll('activity_events', clinicId)) {
+      await _row(
+        'activity_events',
+        r['uuid'],
+        () => _applyActivity(r, clinicId),
+      );
+    }
+  }
+
   Future<void> _syncUsers(String clinicId) async {
     final since = await _cur('push_users');
     final changed =
@@ -2538,6 +2621,8 @@ class SyncEngine {
             'role': usr.role,
             'email': usr.email,
             'phone': usr.phone,
+            'hub_pin_hash': usr.hubPinHash,
+            'hub_pin_set_at': _iso(usr.hubPinSetAt),
             'is_deleted': usr.isDeleted,
             'updated_at': _iso(usr.updatedAt),
           },
@@ -2575,6 +2660,18 @@ class SyncEngine {
                 role: Value(r['role'] ?? 'receptionist'),
                 email: Value(r['email']),
                 phone: Value(r['phone']),
+                // Only when the cloud row has the column — a row from a
+                // database without it must never wipe a PIN set here.
+                hubPinHash: r.containsKey('hub_pin_hash')
+                    ? Value(r['hub_pin_hash'])
+                    : const Value.absent(),
+                hubPinSetAt: r.containsKey('hub_pin_set_at')
+                    ? Value(
+                        r['hub_pin_set_at'] == null
+                            ? null
+                            : DateTime.parse(r['hub_pin_set_at']),
+                      )
+                    : const Value.absent(),
                 isDeleted: Value(r['is_deleted'] ?? false),
                 updatedAt: Value(u),
               ),

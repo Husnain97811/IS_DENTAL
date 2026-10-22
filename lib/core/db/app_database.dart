@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/views.dart';
 import 'database_connection.dart';
 import 'package:is_dental/features/cash/data/cash_tables.dart';
+import 'package:is_dental/features/hub/data/hub_tables.dart';
 part 'app_database.g.dart';
 
 /// Key/value store for app meta: license blob, anti-rollback clock, setup flag, theme.
@@ -36,6 +37,11 @@ class Users extends Table {
   TextColumn get branchId =>
       text().nullable()(); // null = clinic-wide (owner/admin)
   TextColumn get role => text()(); // owner | admin | clinician | receptionist
+
+  /// Detailed Reporting Hub PIN — a PBKDF2 hash, never the digits.
+  /// Null until the user sets one. Synced, so it works on every computer.
+  TextColumn get hubPinHash => text().nullable()();
+  DateTimeColumn get hubPinSetAt => dateTime().nullable()();
 
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
@@ -77,6 +83,7 @@ class Users extends Table {
     ToothFindings,
     CashClosings,
     DentistRates,
+    ActivityEvents,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -84,7 +91,7 @@ class AppDatabase extends _$AppDatabase {
   static const _kLastSync = 'last_sync_at';
 
   @override
-  int get schemaVersion => 32;
+  int get schemaVersion => 33;
   Future<String?> clinicName() async =>
       (await select(clinicProfile).getSingleOrNull())?.name;
 
@@ -651,8 +658,32 @@ class AppDatabase extends _$AppDatabase {
           } catch (_) {}
         }
       }
+      if (from < 33) {
+        // Detailed Reporting Hub: per-user PIN + the activity record
+        for (final c in <GeneratedColumn>[
+          users.hubPinHash,
+          users.hubPinSetAt,
+        ]) {
+          try {
+            await m.addColumn(users, c);
+          } catch (_) {}
+        }
+        try {
+          await m.createTable(activityEvents);
+        } catch (_) {}
+        try {
+          await _v33Indexes();
+        } catch (_) {}
+      }
     },
   );
+
+  Future<void> _v33Indexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_activity_kind_at '
+      'ON activity_events (kind, happened_at);',
+    );
+  }
   // ───────────────────────── v24: payments, balance, expenses ──────────────
 
   /// One payment row per already-paid invoice, so no figure on screen changes
@@ -1618,6 +1649,7 @@ class AppDatabase extends _$AppDatabase {
       'ON patient_xrays (patient_id, kind);',
     );
     await _v24Indexes();
+    await _v33Indexes();
   }
 
   Future<void> _v24Indexes() async {
