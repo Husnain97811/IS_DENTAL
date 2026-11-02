@@ -12,9 +12,42 @@ class LicenseController extends AsyncNotifier<LicenseState> {
   @override
   Future<LicenseState> build() async {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(minutes: 15), (_) => reload());
+    _timer = Timer.periodic(const Duration(minutes: 15), (_) async {
+      await reload();
+      unawaited(_checkCloudLicence());
+    });
     ref.onDispose(() => _timer?.cancel());
+    // A renewal saved on the cloud by the licence tool reaches this
+    // computer by itself — a few seconds after start-up, then every 15
+    // minutes. Never blocks start-up.
+    _startupCheck?.cancel();
+    _startupCheck = Timer(const Duration(seconds: 4), _checkCloudLicence);
+    ref.onDispose(() => _startupCheck?.cancel());
     return _resolve();
+  }
+
+  Timer? _startupCheck;
+  bool _checking = false;
+
+  /// Applies a newer licence from the clinic's cloud record, if there is
+  /// one. Works on the locked screen too, so a renewal unlocks an expired
+  /// install without anyone typing a key. Offline licences never call out.
+  Future<void> _checkCloudLicence() async {
+    if (_checking) return;
+    _checking = true;
+    try {
+      final cur = (await _lic.resolveLicense()).license;
+      if (cur == null || cur.cloudPackage != CloudPackage.cloud) return;
+      final raw = await _conn.cloudLicence(cur.clinicId);
+      if (raw == null) return;
+      if (await _lic.applyFromCloud(raw)) {
+        state = AsyncData(await _resolve());
+      }
+    } catch (_) {
+      // best-effort; the next check tries again
+    } finally {
+      _checking = false;
+    }
   }
 
   Future<LicenseState> _resolve() async {
@@ -92,6 +125,9 @@ class LicenseController extends AsyncNotifier<LicenseState> {
   }
 
   Future<void> reload() async => state = AsyncData(await _resolve());
+
+  /// Settings → Licence → "Check for a renewal now".
+  Future<void> checkCloudNow() => _checkCloudLicence();
 
   /// Called by the wizard once a join or recovery has restored the data.
   Future<void> completeJoin({

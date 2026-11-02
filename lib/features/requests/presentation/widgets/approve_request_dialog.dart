@@ -29,6 +29,7 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
   late int _durationMin;
   bool _busy = false;
   String? _error;
+  int? _patientId; // local id, for the "same patient" check
 
   BookingRequestView get req => widget.request;
 
@@ -39,19 +40,29 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
     _date = DateTime(req.slotPkt.year, req.slotPkt.month, req.slotPkt.day);
     _time = TimeOfDay(hour: req.slotPkt.hour, minute: req.slotPkt.minute);
     _durationMin = req.durationMin;
+    ref
+        .read(bookingRequestRepositoryProvider)
+        .localPatientId(req.patientUuid)
+        .then((id) {
+          if (mounted) setState(() => _patientId = id);
+        });
   }
 
-  bool get _modified {
-    final orig = req.slotPkt;
-    final newPkt = DateTime(
-      _date.year,
-      _date.month,
-      _date.day,
-      _time.hour,
-      _time.minute,
-    );
-    return newPkt != orig || _durationMin != req.durationMin;
-  }
+  DateTime get _slot =>
+      DateTime(_date.year, _date.month, _date.day, _time.hour, _time.minute);
+
+  bool get _modified => _slot != req.slotPkt || _durationMin != req.durationMin;
+
+  /// Only the SAME doctor, or the SAME patient, at an overlapping time —
+  /// other doctors' patients at that time are fine.
+  ({Appointment appt, bool sameDoctor})? _clash(List<Appointment> day) =>
+      findBookingClash(
+        day,
+        start: _slot,
+        durationMin: _durationMin,
+        dentist: req.dentist,
+        patientId: _patientId,
+      );
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -87,22 +98,24 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
       return;
     }
 
-    // Build the final PKT slot, convert back to UTC for storage (PKT = UTC+5).
-    // final pktSlot = DateTime(
-    //   _date.year,
-    //   _date.month,
-    //   _date.day,
-    //   _time.hour,
-    //   _time.minute,
-    // );
-    // final utcSlot = pktSlot.subtract(const Duration(hours: 5));
-    final slot = DateTime(
-      _date.year,
-      _date.month,
-      _date.day,
-      _time.hour,
-      _time.minute,
+    // Last check right before booking — another computer may have just
+    // booked this doctor at the same time.
+    final day =
+        ref.read(allAppointmentsForDayProvider(_date)).value ?? const [];
+    final clash = findBookingClash(
+      day,
+      start: _slot,
+      durationMin: _durationMin,
+      dentist: req.dentist,
+      patientId: patientId,
     );
+    if (clash != null) {
+      setState(() {
+        _busy = false;
+        _error = clashMessage(clash);
+      });
+      return;
+    }
 
     final staff = ref.read(authControllerProvider)?.username ?? 'unknown';
 
@@ -113,7 +126,7 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
         dentist: req.dentist,
         chair: 1,
         procedure: req.procedure,
-        finalSlotUtc: slot,
+        finalSlotUtc: _slot,
         durationMin: _durationMin,
         staffUsername: staff,
         wasModified: _modified,
@@ -151,6 +164,11 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
   Widget build(BuildContext context) {
     final d = context.dent;
     String two(int v) => v.toString().padLeft(2, '0');
+
+    // live: tells staff about a clash as soon as they pick a time
+    final dayAppts =
+        ref.watch(allAppointmentsForDayProvider(_date)).value ?? const [];
+    final clash = _clash(dayAppts);
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: 52.w),
@@ -268,14 +286,39 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
                     ),
                   ),
 
-                  if (_modified)
+                  if (clash != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.event_busy_rounded,
+                            size: 16,
+                            color: d.alert,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '${clashMessage(clash)} Change the date or time '
+                              'to approve.',
+                              style: TextStyle(
+                                color: d.alert,
+                                fontSize: 9.5.sp,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (_modified)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: Row(
                         children: [
                           Icon(
                             Icons.info_outline_rounded,
-                            size: 13,
+                            size: 15,
                             color: d.ice,
                           ),
                           const SizedBox(width: 6),
@@ -283,10 +326,7 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
                             child: Text(
                               'Time changed from the patient\'s request — '
                               'they\'ll see the confirmed time in the app.',
-                              style: TextStyle(
-                                color: d.text3,
-                                fontSize: 7.5.sp,
-                              ),
+                              style: TextStyle(color: d.text3, fontSize: 9.sp),
                             ),
                           ),
                         ],
@@ -298,7 +338,7 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
                       padding: const EdgeInsets.only(top: 12),
                       child: Text(
                         _error!,
-                        style: TextStyle(color: d.alert, fontSize: 8.5.sp),
+                        style: TextStyle(color: d.alert, fontSize: 9.5.sp),
                       ),
                     ),
                 ],
@@ -314,7 +354,7 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
                   foregroundColor: AppPalette.onAccent,
                   minimumSize: const Size.fromHeight(46),
                 ),
-                onPressed: _busy ? null : _approve,
+                onPressed: _busy || clash != null ? null : _approve,
                 icon: _busy
                     ? const SizedBox(
                         width: 16,
@@ -327,6 +367,7 @@ class _S extends ConsumerState<_ApproveRequestDialog> {
                     : const Icon(Icons.check_rounded, size: 18),
                 label: Text(
                   _modified ? 'Confirm (modified)' : 'Confirm & Book',
+                  style: TextStyle(fontSize: 10.5.sp),
                 ),
               ),
             ),

@@ -21,6 +21,36 @@ String _time(DateTime t) {
   return '$h:${t.minute.toString().padLeft(2, '0')} ${t.hour < 12 ? 'AM' : 'PM'}';
 }
 
+/// Text the built-in font can draw: long dashes, arrows and curly quotes
+/// become their plain forms; anything else outside Latin-1 is dropped.
+String _latin(String s) {
+  const map = {
+    '—': '-',
+    '–': '-',
+    '→': '->',
+    '←': '<-',
+    '≈': '~',
+    '▲': '+',
+    '▼': '-',
+    '‘': "'",
+    '’': "'",
+    '“': '"',
+    '”': '"',
+    '•': '*',
+    '…': '...',
+  };
+  final b = StringBuffer();
+  for (final r in s.runes) {
+    final c = String.fromCharCode(r);
+    if (r <= 0xFF) {
+      b.write(c);
+    } else if (map.containsKey(c)) {
+      b.write(map[c]);
+    }
+  }
+  return b.toString();
+}
+
 String _pct(int cur, int prev) {
   if (prev <= 0) return '';
   final p = ((cur - prev) / prev * 100).round();
@@ -58,8 +88,8 @@ Future<Uint8List> buildHubPdf(
     child: pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text(text, style: st(14, bold: true)),
-        if (sub != null) pw.Text(sub, style: st(9, color: muted)),
+        pw.Text(_latin(text), style: st(14, bold: true)),
+        if (sub != null) pw.Text(_latin(sub), style: st(9, color: muted)),
       ],
     ),
   );
@@ -79,10 +109,11 @@ Future<Uint8List> buildHubPdf(
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Text(t.$1, style: st(8.5, color: muted)),
+              pw.Text(_latin(t.$1), style: st(8.5, color: muted)),
               pw.SizedBox(height: 3),
-              pw.Text(t.$2, style: st(13, bold: true)),
-              if (t.$3.isNotEmpty) pw.Text(t.$3, style: st(8, color: muted)),
+              pw.Text(_latin(t.$2), style: st(13, bold: true)),
+              if (t.$3.isNotEmpty)
+                pw.Text(_latin(t.$3), style: st(8, color: muted)),
             ],
           ),
         ),
@@ -98,7 +129,7 @@ Future<Uint8List> buildHubPdf(
     pw.Widget cell(String text, int col, {bool header = false}) => pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
       child: pw.Text(
-        text,
+        _latin(text),
         textAlign: right.contains(col) ? pw.TextAlign.right : pw.TextAlign.left,
         style: header ? st(8.5, bold: true, color: muted) : st(9),
       ),
@@ -124,6 +155,9 @@ Future<Uint8List> buildHubPdf(
     );
   }
 
+  final sc = data.scores.clinic;
+  String pts(double v) =>
+      v == v.roundToDouble() ? '${v.round()}' : v.toStringAsFixed(1);
   final t = data.today;
   final m = data.money;
   final f = data.forecast;
@@ -139,7 +173,7 @@ Future<Uint8List> buildHubPdf(
           : pw.Padding(
               padding: const pw.EdgeInsets.only(bottom: 10),
               child: pw.Text(
-                '$clinicName · owner report · ${_date(data.loadedAt)}',
+                _latin('$clinicName · owner report · ${_date(data.loadedAt)}'),
                 style: st(8, color: muted),
               ),
             ),
@@ -168,16 +202,80 @@ Future<Uint8List> buildHubPdf(
                 style: st(8, bold: true, color: accent),
               ),
               pw.SizedBox(height: 4),
-              pw.Text('Owner report · $clinicName', style: st(18, bold: true)),
+              pw.Text(
+                _latin('Owner report · $clinicName'),
+                style: st(18, bold: true),
+              ),
               pw.SizedBox(height: 4),
               pw.Text(
-                '$scopeName · $periodLabel · prepared ${_date(data.loadedAt)} '
-                '${_time(data.loadedAt)} for $preparedFor',
+                _latin(
+                  '$scopeName · $periodLabel · prepared ${_date(data.loadedAt)} '
+                  '${_time(data.loadedAt)} for $preparedFor',
+                ),
                 style: st(9, color: muted),
               ),
             ],
           ),
         ),
+
+        heading('Clinic health', 'Last 30 full days, out of 100'),
+        tiles([
+          (
+            'Health score',
+            sc.value == null ? 'Not yet' : '${sc.value} / 100',
+            sc.label,
+          ),
+          (
+            'Change',
+            sc.change == null
+                ? '-'
+                : '${sc.change! > 0 ? '+' : ''}${sc.change}',
+            'vs the 30 days before',
+          ),
+          if (sc.partial)
+            (
+              'Partial',
+              '${sc.missingParts.length} not measured',
+              sc.completeOn == null
+                  ? 'complete later'
+                  : 'complete by ${_date(sc.completeOn!)}',
+            ),
+        ]),
+        pw.SizedBox(height: 10),
+        table(
+          ['Part', 'Points', 'What we saw'],
+          [
+            for (final p in sc.parts)
+              [
+                p.label,
+                p.counted ? '${pts(p.earned!)} / ${p.weight}' : 'not yet',
+                p.counted ? p.text(false) : (p.missing ?? p.text(false)),
+              ],
+          ],
+          rightCols: [1],
+        ),
+        if (data.scores.branches.isNotEmpty) ...[
+          pw.SizedBox(height: 10),
+          table(
+            ['Branch', 'Health', 'Biggest drag'],
+            [
+              for (final b in data.branches)
+                if (data.scores.branches[b.uuid] != null)
+                  () {
+                    final bs = data.scores.branches[b.uuid]!;
+                    final top = bs.drags.isEmpty ? null : bs.drags.first;
+                    return [
+                      b.name,
+                      bs.value == null
+                          ? 'not yet'
+                          : '${bs.value} · ${bs.label}',
+                      top == null ? '-' : '${top.label}: ${top.text(false)}',
+                    ];
+                  }(),
+            ],
+            rightCols: [1],
+          ),
+        ],
 
         heading('Right now', 'Today and this month so far'),
         tiles([

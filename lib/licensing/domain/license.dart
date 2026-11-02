@@ -6,6 +6,19 @@ enum CloudPackage { none, cloud }
 
 enum LicenseStatus { notActivated, active, expired, invalid, reconnectRequired }
 
+/// Paid add-ons a licence can carry on top of its tier.
+class LicenseFeature {
+  /// Reception screen + patient call. Premium includes it; a Standard
+  /// licence gets it only when this is ticked in the licence tool.
+  static const reception = 'reception';
+
+  /// Owner phone app (Settings → Connected phones). Standard or Premium;
+  /// ticked in the licence tool at renewal.
+  static const ownerApp = 'ownerapp';
+
+  static const all = {reception, ownerApp};
+}
+
 class License {
   const License({
     required this.clinicId,
@@ -19,6 +32,7 @@ class License {
     required this.machineFingerprint,
     required this.signature,
     this.maxDevices = 1,
+    this.features = const [],
   });
 
   final String clinicId, clinicName, machineFingerprint, signature;
@@ -40,6 +54,17 @@ class License {
   /// that can mint a code.
   final int maxDevices;
 
+  /// Paid add-ons ([LicenseFeature]). SIGNED — unlike maxDevices, these
+  /// unlock features on the computer that reads them, so a clinic must not
+  /// be able to type one in.
+  ///
+  /// Kept out of the signed bytes when empty, so every licence issued
+  /// before add-ons existed still verifies exactly as before. Always sorted,
+  /// so the tool and the app build the same bytes.
+  final List<String> features;
+
+  bool has(String feature) => features.contains(feature);
+
   /// Deterministic bytes the vendor signs and the app verifies.
   /// The vendor signing tool MUST emit these fields in this exact order.
   String canonicalPayload() => jsonEncode({
@@ -52,6 +77,7 @@ class License {
     'issuedAt': issuedAt.toUtc().toIso8601String(),
     'expiresAt': expiresAt.toUtc().toIso8601String(),
     'machineFingerprint': machineFingerprint,
+    if (features.isNotEmpty) 'features': [...features]..sort(),
   });
 
   Map<String, dynamic> toJson() => {
@@ -72,6 +98,9 @@ class License {
     machineFingerprint: j['machineFingerprint'],
     signature: j['signature'],
     maxDevices: (j['maxDevices'] as num?)?.toInt() ?? 1,
+    features: [
+      for (final f in (j['features'] as List?) ?? const []) f.toString(),
+    ]..sort(),
   );
 }
 

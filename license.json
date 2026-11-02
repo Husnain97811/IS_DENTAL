@@ -5,9 +5,13 @@
   "cloudPackage": "cloud",
   "maxBranches": 2,
   "maxUsers": 4,
-  "issuedAt": "2026-10-21T13:24:53.365045Z",
-  "expiresAt": "2027-10-21T13:24:53.365045Z",
+  "issuedAt": "2026-11-01T06:14:39.119351Z",
+  "expiresAt": "2027-11-01T06:14:39.119351Z",
   "machineFingerprint": "ANY",
-  "signature": "mcvYTvMgv02EO6KbDF7dio9kfRrBJSR1qZrarpDOc7qHXBecD0bEMlw4HVgn7ixlHj31ooQlY/CyTb9ncmtwMJhkLpPC5+kSXnf1vxY1BnwcU4nDXm0hnd7qp6x5Ezj97upwfn51CMnhg1O4HZBpbuo9NDtW2XQzUHpuXYjvCcn9nm+p2FTaJNWFRJLQt0vCyttfRDgSkS+VVSx+9fpE46G3q+MLldIvPGpFvew5ZqRP7Foq+k4ezcQN8yXYUL4e6DMfCw7E0RL4dzYYe7e383/0rOagHjuqc2bnVZ5dB2/HIxf7Mb7PwUCAw8TKEw7y0f+H5bwWuhSzeC5wb27Itw==",
+  "features": [
+    "ownerapp",
+    "reception"
+  ],
+  "signature": "Z7LfHZfTy8geDTYdTuSQB6z84m6oOrVDD6xIKyBo/uTI6G9grDLI+CzGSssY+Su7zRRXu3lhBXDpU+tdB8ImHTonZK19SaoJ1u0fIB9KpvpFJORq89aWscIqfVVyZcuODMu8qPhpLJBKpZhduRNIpaJ/eY+GlqJJ/TDtEslzPF2fa3SN0OcHWkOxfg8X2Sf0Ca6+8SBWbA5gcJ+OwLGdkvgQuoLLGeZSsmk3nQzTHe2eR1frRBh2ckzowMiufRQ3VlfQoBaPhkXmHPrgm2IU5RvRF2lk2OAeElBVLG9oq3vO421YtpVMhvv9J33MdPx3Hrx19q0/1XepCZ6rfvf35g==",
   "maxDevices": 4
 }

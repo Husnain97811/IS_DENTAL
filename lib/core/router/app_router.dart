@@ -7,6 +7,9 @@ import 'package:is_dental/features/patients/presentation/patient_detail_route.da
 import 'package:is_dental/features/hub/data/hub_security.dart';
 import 'package:is_dental/features/hub/presentation/hub_entry.dart';
 import 'package:is_dental/features/hub/presentation/reporting_hub_screen.dart';
+import 'package:is_dental/features/drive/data/drive_sync.dart';
+import 'package:is_dental/features/reception/data/reception_mode.dart';
+import 'package:is_dental/features/reception/presentation/reception_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier(0);
@@ -15,6 +18,12 @@ final routerProvider = Provider<GoRouter>((ref) {
   // Losing Hub access (plan downgrade, owner switches admins off) moves
   // anyone inside it straight back to the Dashboard.
   ref.listen(hubAccessProvider, (_, __) => refresh.value++);
+  // A computer turned into the reception screen opens it without a login.
+  ref.listen(receptionModeProvider, (_, __) => refresh.value++);
+  // Google Drive sync runs for the whole life of the app on every computer
+  // that connected it (normal or reception screen). The router lives that
+  // long, so it keeps the sync alive.
+  ref.listen(driveSyncProvider, (_, __) {});
 
   ref.onDispose(refresh.dispose);
 
@@ -33,8 +42,24 @@ final routerProvider = Provider<GoRouter>((ref) {
           return loc == '/reconnect' ? null : '/reconnect';
         // and extend the active cleanup list to include '/reconnect':
         case LicenseStatus.active when ls.setupComplete:
+          // ── reception screen: no login, nothing else reachable ──
+          final reception = ref.read(receptionModeProvider);
+          if (!reception.hasValue) {
+            // not read yet — wait on the splash, never flash the login
+            return loc == '/splash' ? null : '/splash';
+          }
+          if (reception.value != null) {
+            return loc == kReceptionRoute ? null : kReceptionRoute;
+          }
+
           final authed = ref.read(authControllerProvider) != null;
-          const gate = {'/splash', '/setup', '/locked', '/reconnect'};
+          const gate = {
+            '/splash',
+            '/setup',
+            '/locked',
+            '/reconnect',
+            kReceptionRoute,
+          };
           if (!authed) return loc == '/login' ? null : '/login';
 
           // ── licence gating ──
@@ -78,6 +103,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Detailed Reporting Hub — outside the shell, so it replaces the
       // sidebar and every clinic screen while it is open.
       GoRoute(path: kHubRoute, builder: (c, s) => const ReportingHubScreen()),
+
+      // Waiting-room screen — outside the shell, no sidebar, no login.
+      GoRoute(
+        path: kReceptionRoute,
+        builder: (c, s) => const ReceptionScreen(),
+      ),
 
       StatefulShellRoute.indexedStack(
         builder: (context, state, navShell) =>

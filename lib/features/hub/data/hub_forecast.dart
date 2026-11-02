@@ -85,6 +85,7 @@ class HubForecast {
     this.owedHistory = 0,
     this.atRisk = const [],
     this.atRiskTotal = 0,
+    this.regulars = 0,
     this.heat = const [],
     this.heatFrom = 9,
     this.heatTo = 21,
@@ -136,6 +137,10 @@ class HubForecast {
   // ── regulars at risk ──
   final List<HubAtRisk> atRisk;
   final int atRiskTotal;
+
+  /// Patients with 3 or more separate courses of treatment (the base the
+  /// at-risk share is taken from).
+  final int regulars;
 
   // ── chairs: average bookings, [weekday 0=Mon][hour - heatFrom] ──
   final List<List<double>> heat;
@@ -587,8 +592,8 @@ Future<HubForecast> loadHubForecast({
   booked.addAll(todayBooked.map((a) => a.patientId));
 
   final risky = <({int pid, int visits, int gap, int since})>[];
+  var regulars = 0;
   for (final e in days.entries) {
-    if (booked.contains(e.key)) continue;
     final sorted = e.value.toList()..sort();
     // visits within 14 days of each other are one course of treatment
     final starts = <DateTime>[];
@@ -598,6 +603,10 @@ Future<HubForecast> loadHubForecast({
       }
     }
     if (starts.length < 3) continue;
+    // gone two years or more: no longer a regular
+    if (today.difference(sorted.last).inDays >= 730) continue;
+    regulars++;
+    if (booked.contains(e.key)) continue;
     final gaps = [
       for (var i = 1; i < starts.length; i++)
         starts[i].difference(starts[i - 1]).inDays,
@@ -721,6 +730,7 @@ Future<HubForecast> loadHubForecast({
     owedHistory: enough ? sampleInv.length : 0,
     atRisk: atRisk,
     atRiskTotal: risky.length,
+    regulars: regulars,
     heat: heat,
     heatFrom: from,
     heatTo: to,

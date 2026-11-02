@@ -19,6 +19,10 @@ class Perm {
   static const editExpenses = 'editExpenses'; // edit + delete + lists
   static const viewExpenses = 'viewExpenses'; // totals + profit
 
+  /// Call patients dialog: Next / Previous / Repeat, shown on the reception
+  /// screen. Also needs the plan (Premium, or Standard with the add-on).
+  static const callPatients = 'callPatients';
+
   /// Detailed Reporting Hub. Admins only, and only when the owner allows it
   /// (Settings → Detailed Reporting Hub). Deliberately NOT in [all]: the
   /// roles grid would offer it to clinicians and receptionists, who may
@@ -43,6 +47,7 @@ class Perm {
     manageExpenses,
     editExpenses,
     viewExpenses,
+    callPatients,
   ];
 
   static String label(String key) => switch (key) {
@@ -60,6 +65,7 @@ class Perm {
     manageExpenses => 'Add expenses',
     editExpenses => 'Edit & delete expenses',
     viewExpenses => 'View expense totals & profit',
+    callPatients => 'Call patients',
     viewReportingHub => 'See Detailed Reporting Hub',
     _ => key,
   };
@@ -90,6 +96,9 @@ class Perm {
     viewExpenses =>
       'Expense totals, category breakdown and month-by-month. Net profit '
           'also needs "View financials".',
+    callPatients =>
+      'Call the next patient to the doctor. The name shows on the '
+          'reception screen and is announced.',
     viewReportingHub =>
       'Open the full-screen Hub: every money figure, each dentist, branches '
           'and system health. Protected by the admin\'s own Hub PIN.',
@@ -107,7 +116,8 @@ bool defaultFor(AppRole role, String key) {
   if (key == Perm.accessBilling ||
       key == Perm.billAppointments ||
       key == Perm.prescribe ||
-      key == Perm.takePayments) {
+      key == Perm.takePayments ||
+      key == Perm.callPatients) {
     return true;
   }
 

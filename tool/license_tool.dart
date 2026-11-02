@@ -95,7 +95,14 @@ String _canonical(Map<String, dynamic> p) => jsonEncode({
   'issuedAt': (p['issuedAt'] as DateTime).toUtc().toIso8601String(),
   'expiresAt': (p['expiresAt'] as DateTime).toUtc().toIso8601String(),
   'machineFingerprint': p['machineFingerprint'],
+  // Paid add-ons. Left out when empty so the bytes of every licence issued
+  // before add-ons existed are unchanged. Must match License.canonicalPayload.
+  if ((p['features'] as List? ?? const []).isNotEmpty)
+    'features': [...(p['features'] as List).cast<String>()]..sort(),
 });
+
+/// Add-ons the tool may put on a licence. Must match LicenseFeature.all.
+const _knownFeatures = {'reception', 'ownerapp'};
 
 AsymmetricKeyPair _loadOrCreateKeys() {
   final f = File(_keyFile);
@@ -170,6 +177,7 @@ Future<String?> _pushToSupabase({
   required String clinicName,
   required String tier,
   required DateTime expiresAt,
+  required String licenceBlob,
 }) async {
   final creds = _supabaseCreds();
   if (creds.url == null || creds.key == null) {
@@ -193,6 +201,9 @@ Future<String?> _pushToSupabase({
         'tier': tier,
         'status': 'active',
         'expires_at': expiresAt.toUtc().toIso8601String(),
+        // Every computer of the clinic picks this up within 15 minutes and
+        // applies it after checking the signature — nobody types a key.
+        'licence_blob': licenceBlob,
       }),
     );
 
@@ -248,6 +259,7 @@ void _recordIssue({
   required int maxBranches,
   required int maxUsers,
   required int maxDevices,
+  required List<String> features,
   required DateTime issuedAt,
   required DateTime expiresAt,
   required bool isRenewal,
@@ -262,6 +274,7 @@ void _recordIssue({
     'maxBranches': maxBranches,
     'maxUsers': maxUsers,
     'maxDevices': maxDevices,
+    'features': features,
     'kind': isRenewal ? 'renewal' : 'new',
   };
 
@@ -275,6 +288,7 @@ void _recordIssue({
     r['maxBranches'] = maxBranches;
     r['maxUsers'] = maxUsers;
     r['maxDevices'] = maxDevices;
+    r['features'] = features;
     r['expiresAt'] = expiresAt.toIso8601String();
     r['lastIssuedAt'] = issuedAt.toIso8601String();
     (r['history'] as List).insert(0, issue);
@@ -289,6 +303,7 @@ void _recordIssue({
       'maxBranches': maxBranches,
       'maxUsers': maxUsers,
       'maxDevices': maxDevices,
+      'features': features,
       'firstIssuedAt': issuedAt.toIso8601String(),
       'lastIssuedAt': issuedAt.toIso8601String(),
       'expiresAt': expiresAt.toIso8601String(),
@@ -355,6 +370,38 @@ Future<void> _handleMint(HttpRequest req) async {
   final maxUsers = int.tryParse('${body['maxUsers']}') ?? 3;
   final maxDevices = int.tryParse('${body['maxDevices']}') ?? 1;
   final days = int.tryParse('${body['validDays']}') ?? 365;
+  final asked = {
+    for (final f in (body['features'] as List? ?? const [])) f.toString(),
+  };
+  final unknown = asked.difference(_knownFeatures);
+  if (unknown.isNotEmpty) {
+    return _json(req, {
+      'ok': false,
+      'error': 'Unknown add-on: ${unknown.join(', ')}.',
+    });
+  }
+  // Premium already includes the reception add-on — keep it off a Premium
+  // licence. The owner phone app is chosen for Standard AND Premium.
+  final features =
+      (tier == 'premium' ? asked.where((f) => f != 'reception') : asked)
+          .toList()
+        ..sort();
+  if (features.contains('reception') &&
+      (tier != 'standard' || cloudPackage != 'cloud')) {
+    return _json(req, {
+      'ok': false,
+      'error':
+          'Reception screen & patient call needs a Standard or Premium '
+          'Cloud licence.',
+    });
+  }
+  if (features.contains('ownerapp') &&
+      (tier == 'basic' || cloudPackage != 'cloud')) {
+    return _json(req, {
+      'ok': false,
+      'error': 'The owner phone app needs a Standard or Premium Cloud licence.',
+    });
+  }
 
   if (clinicName.isEmpty) {
     return _json(req, {'ok': false, 'error': 'Clinic name is required.'});
@@ -392,6 +439,7 @@ Future<void> _handleMint(HttpRequest req) async {
     'issuedAt': issuedAt,
     'expiresAt': expiresAt,
     'machineFingerprint': 'ANY',
+    'features': features,
   });
 
   // Attached AFTER signing, deliberately. _canonical() is the signed
@@ -411,6 +459,7 @@ Future<void> _handleMint(HttpRequest req) async {
       clinicName: clinicName,
       tier: tier,
       expiresAt: expiresAt,
+      licenceBlob: jsonEncode(licence),
     );
     if (err != null) {
       if (isRenewal) {
@@ -445,6 +494,7 @@ Future<void> _handleMint(HttpRequest req) async {
     maxBranches: maxBranches,
     maxUsers: maxUsers,
     maxDevices: maxDevices,
+    features: features,
     issuedAt: issuedAt,
     expiresAt: expiresAt,
     isRenewal: isRenewal,
@@ -452,7 +502,7 @@ Future<void> _handleMint(HttpRequest req) async {
 
   stdout.writeln(
     '${isRenewal ? "RENEWAL" : "NEW"}  $clinicId  ·  $clinicName'
-    '  ·  $tier/$cloudPackage  ·  expires ${expiresAt.toIso8601String().split("T").first}'
+    '  ·  $tier/$cloudPackage${features.isEmpty ? '' : ' +${features.join('+')}'}  ·  expires ${expiresAt.toIso8601String().split("T").first}'
     '${cloudPackage == "cloud" && cloudNote == null ? "  ·  cloud updated" : ""}',
   );
 
@@ -729,6 +779,12 @@ const _html = r'''
   .n-ok{background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.35);color:#166534}
   .n-alert{background:rgba(190,18,60,.07);border:1px solid rgba(190,18,60,.3);color:#9f1239}
   .search{height:40px;margin-bottom:10px}
+  label.check{display:flex;gap:10px;align-items:flex-start;text-transform:none;letter-spacing:0;
+    font-size:13px;font-weight:500;color:var(--t2);margin:16px 0 2px;cursor:pointer}
+  label.check input{width:18px;height:18px;margin-top:1px;flex:none}
+  label.check .muted{color:var(--t4)}
+  label.check.off{opacity:.45;cursor:not-allowed}
+  .p-addon{background:rgba(124,58,237,.14);color:#6d28d9}
   .list{max-height:560px;overflow-y:auto}
   .clinic{padding:13px 18px;border-bottom:1px solid var(--line);cursor:pointer}
   .clinic:last-child{border-bottom:none}
@@ -817,6 +873,13 @@ const _html = r'''
               <option value="none">None (offline)</option>
             </select></div>
         </div>
+
+        <label class="check" id="recBox"><input type="checkbox" id="fReception">
+          <span><b>Reception screen &amp; patient call</b> add-on
+          <span class="muted">— for a Standard plan. Premium already includes it.</span></span></label>
+        <label class="check" id="ownBox"><input type="checkbox" id="fOwnerApp">
+          <span><b>Owner phone app</b> add-on
+          <span class="muted">— Standard or Premium. Lets the owner connect up to 2 phones.</span></span></label>
 
         <div class="row3">
           <div><label>Branches</label><input id="maxBranches" type="number" min="1" value="1"></div>
@@ -996,8 +1059,26 @@ function pickExisting(){
     $('maxBranches').value = c.maxBranches || 1;
     $('maxUsers').value = c.maxUsers || 3;
     $('maxDevices').value = c.maxDevices || 1;
+    $('fReception').checked = (c.features||[]).includes('reception');
+    $('fOwnerApp').checked = (c.features||[]).includes('ownerapp');
+    checkAddon();
   }
 }
+
+// The add-on only means something on a Standard cloud licence.
+function checkAddon(){
+  const ok = $('tier').value === 'standard' && $('cloudPackage').value === 'cloud';
+  $('fReception').disabled = !ok;
+  if(!ok) $('fReception').checked = false;
+  $('recBox').classList.toggle('off', !ok);
+  // The owner phone app: Standard or Premium, Cloud.
+  const own = $('tier').value !== 'basic' && $('cloudPackage').value === 'cloud';
+  $('fOwnerApp').disabled = !own;
+  if(!own) $('fOwnerApp').checked = false;
+  $('ownBox').classList.toggle('off', !own);
+}
+$('tier').addEventListener('change', checkAddon);
+$('cloudPackage').addEventListener('change', checkAddon);
 
 function checkDevices(){
   const n = parseInt($('maxDevices').value||'1',10);
@@ -1029,10 +1110,12 @@ function render(){
         const exp = dl < 0 ? `<span class="pill p-exp">expired</span>`
                   : dl <= 30 ? `<span class="pill p-soon">${dl}d left</span>` : '';
         const cloud = c.cloudPackage==='none' ? `<span class="pill p-none">offline</span>` : '';
+        const addon = ((c.features||[]).includes('reception') ? `<span class="pill p-addon">+reception</span>` : '')
+                    + ((c.features||[]).includes('ownerapp') ? `<span class="pill p-addon">+owner app</span>` : '');
         return `<div class="clinic" onclick="renewThis('${c.clinicId}')">
           <div class="top">
             <b>${esc(c.clinicName)}</b>
-            <span class="pill p-${c.tier}">${c.tier}</span>${cloud}${exp}
+            <span class="pill p-${c.tier}">${c.tier}</span>${addon}${cloud}${exp}
             <span style="margin-left:auto"></span>
             <button class="copy" onclick="event.stopPropagation();copyId('${c.clinicId}')">Copy ID</button>
           </div>
@@ -1091,6 +1174,10 @@ function preflight(){
       warn.push(`Tier drops from <b>${c.tier}</b> to <b>${newTier}</b> — the clinic loses those features.`);
     if(c && c.cloudPackage==='cloud' && newCloud==='none')
       warn.push(`Cloud package removed — sync, the patient app and reminders stop working.`);
+    if(c && (c.features||[]).includes('reception') && !$('fReception').checked && newTier!=='premium')
+      warn.push(`Reception screen &amp; patient call add-on removed.`);
+    if(c && (c.features||[]).includes('ownerapp') && !$('fOwnerApp').checked)
+      warn.push(`Owner phone app add-on removed — connected phones stop working.`);
     if(c && parseInt($('maxBranches').value) < (c.maxBranches||1))
       warn.push(`Branch limit drops from <b>${c.maxBranches}</b> to <b>${$('maxBranches').value}</b>.`);
     if(c && parseInt($('maxUsers').value) < (c.maxUsers||1))
@@ -1193,6 +1280,10 @@ async function mint(){
     maxUsers: $('maxUsers').value,
     maxDevices: $('maxDevices').value,
     validDays: $('validDays').value,
+    features: [
+      ...($('fReception').checked ? ['reception'] : []),
+      ...($('fOwnerApp').checked ? ['ownerapp'] : []),
+    ],
   };
   try{
     const r = await fetch('/api/mint', {method:'POST',body:JSON.stringify(payload)});
@@ -1201,7 +1292,7 @@ async function mint(){
            else{
       clinics = j.clinics || clinics; fillExisting(); fillResetClinics(); render();
             const cloudLine = j.cloudUpdated
-        ? '<br>Supabase clinic row updated.'
+        ? '<br>Supabase clinic row updated — every computer of the clinic applies this licence by itself within 15 minutes.'
         : (j.cloudNote ? `<br><span style="color:#92400e">${esc(j.cloudNote)}</span>` : '');
       $('result').innerHTML = `
         <div class="out">
@@ -1237,6 +1328,7 @@ function exportCsv(){
 }
 
 updateExpiry();
+checkAddon();
 load();
 </script>
 </body>

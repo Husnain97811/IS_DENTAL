@@ -92,36 +92,22 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
       return;
     }
 
-    // Conflict check
-    final existing =
-        ref.read(appointmentsForDayFamilyProvider(_date)).value ?? const [];
-    final newEnd = slot.add(Duration(minutes: _durationMin));
-    Appointment? conflict;
-    for (final a in existing) {
-      final aEnd = a.startsAt.add(Duration(minutes: a.durationMin));
-      if (rangesOverlap(slot, newEnd, a.startsAt, aEnd)) {
-        conflict = a;
-        break;
-      }
-    }
-    if (conflict != null) {
-      final cEnd = conflict.startsAt.add(
-        Duration(minutes: conflict.durationMin),
-      );
-      String hm(DateTime t) {
-        final h = t.hour == 0 ? 12 : (t.hour > 12 ? t.hour - 12 : t.hour);
-        final m = t.minute.toString().padLeft(2, '0');
-        return '$h:$m ${t.hour >= 12 ? 'PM' : 'AM'}';
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'This time is already booked '
-            '(${hm(conflict.startsAt)}–${hm(cEnd)}). Choose another time.',
-          ),
-        ),
-      );
+    // Clash check — only the SAME doctor, or the SAME patient, at an
+    // overlapping time. Other doctors' patients at 8:50 are fine.
+    final dayAppts =
+        ref.read(allAppointmentsForDayProvider(_date)).value ?? const [];
+    final clash = findBookingClash(
+      dayAppts,
+      start: slot,
+      durationMin: _durationMin,
+      dentist: dentist,
+      // a brand-new patient has no other bookings yet
+      patientId: choice is ExistingPatientChoice ? choice.patient.id : null,
+    );
+    if (clash != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(clashMessage(clash))));
       return;
     }
 
@@ -190,7 +176,6 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
     final d = context.dent;
     final patients =
         ref.watch(patientsStreamProvider).value ?? const <Patient>[];
-    final slots = ref.watch(daySlotsProvider(_date));
     final dentists = ref.watch(dentistsProvider).value ?? [];
     final procedures = ref.watch(proceduresProvider);
     String hm(DateTime t) {
@@ -214,6 +199,11 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
     } else if (_dentist == null || !dentists.contains(_dentist)) {
       _dentist = dentists.first;
     }
+
+    // Slots of THIS doctor only — after the dentist is settled above.
+    final slots = ref.watch(
+      dentistSlotsProvider((day: _date, dentist: _dentist, exceptId: null)),
+    );
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: 60.w, maxHeight: 80.h),
@@ -335,7 +325,15 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                                     ),
                                   ),
                               ],
-                              onChanged: (v) => setState(() => _dentist = v),
+                              // another doctor has different free slots —
+                              // a picked time may not suit them
+                              onChanged: (v) => setState(() {
+                                if (v != _dentist) {
+                                  _slot = null;
+                                  _customTime = false;
+                                }
+                                _dentist = v;
+                              }),
                             ),
                           ),
 
@@ -376,7 +374,12 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
                     ),
 
                     // ── Slots ──
-                    _label(d, 'Available slots'),
+                    _label(
+                      d,
+                      _dentist == null
+                          ? 'Available slots'
+                          : 'Available slots · $_dentist',
+                    ),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,

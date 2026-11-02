@@ -4,6 +4,8 @@ import 'package:is_dental/core/constants/views.dart';
 import 'package:is_dental/features/cash/data/cash_repository.dart';
 
 import '../../data/hub_data.dart';
+import '../../data/hub_score.dart';
+import '../widgets/health_score.dart';
 import '../widgets/hub_ui.dart';
 
 /// Branches side by side for the period: money, visits, no-shows, what is
@@ -97,7 +99,17 @@ class BranchesSection extends StatelessWidget {
           HubGrid(
             minWidth: 320,
             maxColumns: 3,
-            children: [for (final b in list) _BranchCard(b: b)],
+            children: [
+              for (final b in list)
+                _BranchCard(
+                  b: b,
+                  score: data.scores.branches[b.uuid],
+                  chairs: [
+                    for (final c in data.scores.chairs)
+                      if (c.uuid == b.uuid) c,
+                  ],
+                ),
+            ],
           ),
         ],
       ],
@@ -143,8 +155,16 @@ class _Compare extends StatelessWidget {
 }
 
 class _BranchCard extends StatelessWidget {
-  const _BranchCard({required this.b});
+  const _BranchCard({
+    required this.b,
+    required this.score,
+    required this.chairs,
+  });
   final HubBranch b;
+
+  /// Last 30 days, whatever the period above (null = not worked out).
+  final HubScore? score;
+  final List<HubChairInfo> chairs;
 
   @override
   Widget build(BuildContext context) {
@@ -227,6 +247,10 @@ class _BranchCard extends StatelessWidget {
               ),
             ],
           ),
+          if (score != null) ...[
+            const SizedBox(height: 12),
+            HubBranchHealth(score: score!, branchName: b.name, chairs: chairs),
+          ],
           const SizedBox(height: 14),
           Text(
             'COLLECTED',

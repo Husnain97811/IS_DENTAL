@@ -17,6 +17,7 @@ class Entitlements {
     required this.tier,
     required this.maxBranches,
     required this.maxUsers,
+    this.features = const <String>{},
   });
 
   final bool cloud;
@@ -24,8 +25,13 @@ class Entitlements {
   final int maxBranches;
   final int maxUsers;
 
+  /// Signed add-ons from the licence ([LicenseFeature]).
+  final Set<String> features;
+
   bool get _standardUp =>
       tier == LicenseTier.standard || tier == LicenseTier.premium;
+
+  bool get _premium => cloud && tier == LicenseTier.premium;
 
   /// Standard or Premium, on a cloud licence.
   bool get standard => cloud && _standardUp;
@@ -64,7 +70,21 @@ class Entitlements {
   bool get dentistPayouts => standard;
 
   // ── Premium only ──
-  bool get offers => cloud && tier == LicenseTier.premium;
+  bool get offers => _premium;
+
+  /// Call patients dialog + reception screen. Premium, or a Standard
+  /// licence with the "Reception & patient call" add-on ticked. Needs the
+  /// cloud — calls travel through it.
+  bool get patientCall =>
+      _premium || (standard && features.contains(LicenseFeature.reception));
+
+  /// True when the clinic has patient call only because of the add-on
+  /// (shown on the Licence panel).
+  bool get patientCallAddOn => patientCall && !_premium;
+
+  /// Owner phone app — Settings → Connected phones. A Standard or Premium
+  /// cloud licence with the "Owner phone app" add-on ticked at renewal.
+  bool get ownerPhone => standard && features.contains(LicenseFeature.ownerApp);
 
   // ── Tier-only (works offline) ──
   bool get unlimitedXrays => tier != LicenseTier.basic;
@@ -97,5 +117,6 @@ final entitlementsProvider = Provider<Entitlements>((ref) {
     tier: cloud ? lic.tier : LicenseTier.basic,
     maxBranches: lic.maxBranches,
     maxUsers: lic.maxUsers,
+    features: cloud ? lic.features.toSet() : const <String>{},
   );
 });

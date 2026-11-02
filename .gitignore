@@ -43,9 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-
-
+tool/.phone_sim.json
+lib/features/drive/data/drive_config.dart
+tool/.env
 # .env
 vendor_keypair.json
 license.json
-.env
+.envtool/.phone_sim.json

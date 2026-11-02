@@ -26,6 +26,8 @@ class HubPinGate extends ConsumerStatefulWidget {
     required this.onExit,
     this.onCancel,
     this.relock = false,
+    this.title,
+    this.message,
   });
 
   final HubGateMode mode;
@@ -38,11 +40,15 @@ class HubPinGate extends ConsumerStatefulWidget {
   /// Leave the Hub.
   final VoidCallback onExit;
 
-  /// Change PIN only — back to the Hub without changing anything.
+  /// Back without doing anything: change PIN, or an unlock asked for by
+  /// wall mode (shown instead of "Exit Hub").
   final VoidCallback? onCancel;
 
   /// Locked after a quiet spell (different wording).
   final bool relock;
+
+  /// Unlock only — own wording, e.g. "Leave wall mode".
+  final String? title, message;
 
   @override
   ConsumerState<HubPinGate> createState() => _HubPinGateState();
@@ -249,7 +255,8 @@ class _HubPinGateState extends ConsumerState<HubPinGate> {
     _Step.current =>
       _mode == HubGateMode.change
           ? 'Enter your current PIN'
-          : (widget.relock ? 'The Hub is locked' : 'Enter your Hub PIN'),
+          : (widget.title ??
+                (widget.relock ? 'The Hub is locked' : 'Enter your Hub PIN')),
     _Step.code => 'Reset your Hub PIN',
     _Step.pin =>
       _mode == HubGateMode.change ? 'Choose a new PIN' : 'Choose your Hub PIN',
@@ -263,10 +270,11 @@ class _HubPinGateState extends ConsumerState<HubPinGate> {
     _Step.current =>
       _mode == HubGateMode.change
           ? 'To change your PIN, enter the one you use now.'
-          : (widget.relock
-                ? 'Nothing happened for 5 minutes, so the numbers were '
-                      'hidden. Enter your PIN to carry on.'
-                : 'This screen shows every money figure in the clinic.'),
+          : (widget.message ??
+                (widget.relock
+                    ? 'Nothing happened for 5 minutes, so the numbers were '
+                          'hidden. Enter your PIN to carry on.'
+                    : 'This screen shows every money figure in the clinic.')),
     _Step.code =>
       'Contact Inover Studio support with your clinic ID and username below. '
           'They will send you a reset code that works once, for one day.',
@@ -621,7 +629,11 @@ class _HubPinGateState extends ConsumerState<HubPinGate> {
     switch (_mode) {
       case HubGateMode.unlock:
         items.add(link('Forgot PIN?', () => _go(HubGateMode.reset)));
-        items.add(link('Exit Hub', widget.onExit, color: d.alert));
+        items.add(
+          widget.onCancel != null
+              ? link('Cancel', widget.onCancel!)
+              : link('Exit Hub', widget.onExit, color: d.alert),
+        );
       case HubGateMode.reset:
         items.add(
           link(

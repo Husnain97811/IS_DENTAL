@@ -298,7 +298,11 @@ class _ReState extends ConsumerState<_RescheduleDialog> {
   Widget build(BuildContext context) {
     final d = context.dent;
     final a = widget.appt;
-    final slots = ref.watch(daySlotsProvider(_day));
+    // This doctor's free slots; the appointment being moved doesn't block
+    // its own time.
+    final slots = ref.watch(
+      dentistSlotsProvider((day: _day, dentist: a.dentist, exceptId: a.id)),
+    );
     final today = DateTime.now();
     final todayMidnight = DateTime(today.year, today.month, today.day);
 
@@ -321,7 +325,7 @@ class _ReState extends ConsumerState<_RescheduleDialog> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '${a.patientName} · ${a.procedure}',
+                    '${a.patientName} · ${a.procedure} · ${a.dentist}',
                     style: TextStyle(color: d.text2, fontSize: 10.5.sp),
                   ),
                   Text(
@@ -400,7 +404,7 @@ class _ReState extends ConsumerState<_RescheduleDialog> {
 
                     const SizedBox(height: 16),
                     Text(
-                      'AVAILABLE SLOTS',
+                      'AVAILABLE SLOTS · ${a.dentist.toUpperCase()}',
                       style: TextStyle(
                         color: d.text4,
                         fontSize: 8.5.sp,
@@ -476,9 +480,9 @@ class _ReState extends ConsumerState<_RescheduleDialog> {
   }
 
   Widget _slotChip(DentColors d, DateTime t, bool busy) {
-    // the appointment's own current slot shouldn't read as busy
-    final isOwn = t.isAtSameMomentAs(widget.appt.startsAt);
-    final blocked = busy && !isOwn;
+    // the grid already ignores this appointment, so `busy` means another
+    // patient of the same doctor
+    final blocked = busy;
     final selected = _slot != null && _slot!.isAtSameMomentAs(t);
     return GestureDetector(
       onTap: blocked ? null : () => setState(() => _slot = t),
@@ -512,12 +516,32 @@ class _ReState extends ConsumerState<_RescheduleDialog> {
   }
 
   Future<void> _save() async {
-    setState(() => _busy = true);
     final a = widget.appt;
+    final slot = _slot!;
+
+    // The same patient may already be booked with another doctor then.
+    final dayAppts =
+        ref.read(allAppointmentsForDayProvider(_day)).value ?? const [];
+    final clash = findBookingClash(
+      dayAppts,
+      start: slot,
+      durationMin: a.durationMin,
+      dentist: a.dentist,
+      patientId: a.patientId,
+      exceptId: a.id,
+    );
+    if (clash != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(clashMessage(clash))));
+      return;
+    }
+
+    setState(() => _busy = true);
     try {
       await ref
           .read(appointmentRepositoryProvider)
-          .reschedule(id: a.id, startsAt: _slot!);
+          .reschedule(id: a.id, startsAt: slot);
       syncInBackground(ref);
       if (_notify) {
         notifyAppointmentChange(
@@ -530,7 +554,7 @@ class _ReState extends ConsumerState<_RescheduleDialog> {
       Navigator.pop(context);
 
       // follow the appointment to its new date
-      final newDay = DateTime(_slot!.year, _slot!.month, _slot!.day);
+      final newDay = DateTime(slot.year, slot.month, slot.day);
       ref.read(selectedDateProvider.notifier).state = newDay;
       ref.read(viewedMonthProvider.notifier).state = (
         year: newDay.year,
@@ -539,9 +563,7 @@ class _ReState extends ConsumerState<_RescheduleDialog> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Rescheduled to ${_fmtFull(_slot!)} — showing that day.',
-          ),
+          content: Text('Rescheduled to ${_fmtFull(slot)} — showing that day.'),
         ),
       );
     } catch (e) {

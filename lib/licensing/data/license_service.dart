@@ -123,6 +123,41 @@ class LicenseService {
     return (ok: true, error: null);
   }
 
+  /// A licence the licence tool left on the clinic's cloud record.
+  ///
+  /// Applied only when ALL of these hold, otherwise nothing changes:
+  ///  • it is signed by Inover Studio (a cloud row can't forge one)
+  ///  • it is for THIS clinic
+  ///  • it was issued AFTER the licence this computer holds — an old one
+  ///    replayed from the cloud can never roll a renewal back
+  ///  • it has not expired (anti-rollback clock)
+  ///
+  /// Returns true when a newer licence was stored.
+  Future<bool> applyFromCloud(String raw) async {
+    final License lic;
+    try {
+      lic = License.fromJson(jsonDecode(_extractJson(raw)));
+    } catch (_) {
+      return false;
+    }
+    if (!_verifier.verify(lic)) return false;
+
+    final current = await _stored();
+    final clinicId = await _db.currentClinicId() ?? current?.clinicId;
+    if (clinicId == null || lic.clinicId != clinicId) return false;
+    if (current != null &&
+        _verifier.verify(current) &&
+        !lic.issuedAt.isAfter(current.issuedAt)) {
+      return false;
+    }
+    if ((await _clock.now()).isAfter(lic.expiresAt)) return false;
+
+    await _clock.healTo(lic.issuedAt);
+    await _db.setSetting(_kLicense, jsonEncode(lic.toJson()));
+    await syncProfileTier(lic);
+    return true;
+  }
+
   /// After re-activating, keep the stored clinic profile in step with the
   /// new licence. Only the tier changes — name, branch and currency are
   /// whatever the clinic set at setup.

@@ -146,37 +146,43 @@ class _SlideshowState extends ConsumerState<_Slideshow>
         cursor: _chrome ? SystemMouseCursors.basic : SystemMouseCursors.none,
         child: Scaffold(
           backgroundColor: _bg,
-          body: LayoutBuilder(
-            builder: (context, box) {
-              // the photo frame: as large as fits under the headline
-              final frameW = math.min(
-                box.maxWidth * .82,
-                (box.maxHeight * .62) * 4 / 3,
-              );
+          body: Builder(
+            builder: (context) {
+              // StackFit.expand: the slideshow fills the whole screen. Without
+              // it the Stack took the size of its only unpositioned child —
+              // the hidden preload below, which is 0 × 0 — so every slide,
+              // the dots and the controls were laid out at 0 × 0 and nothing
+              // showed but the background.
               return Stack(
+                fit: StackFit.expand,
                 children: [
                   // warms up the next slide's photos so it appears instantly
-                  Offstage(
-                    child: SizedBox(
-                      width: 40,
-                      height: 30,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: CroppedPhoto(
-                              photo: next.before,
-                              crop: next.beforeCrop,
-                              dark: true,
+                  // (positioned, so it never decides the Stack's size)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    child: Offstage(
+                      child: SizedBox(
+                        width: 40,
+                        height: 30,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: CroppedPhoto(
+                                photo: next.before,
+                                crop: next.beforeCrop,
+                                dark: true,
+                              ),
                             ),
-                          ),
-                          Expanded(
-                            child: CroppedPhoto(
-                              photo: next.after,
-                              crop: next.afterCrop,
-                              dark: true,
+                            Expanded(
+                              child: CroppedPhoto(
+                                photo: next.after,
+                                crop: next.afterCrop,
+                                dark: true,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -186,7 +192,6 @@ class _SlideshowState extends ConsumerState<_Slideshow>
                       child: _Slide(
                         key: ValueKey(c.id),
                         c: c,
-                        frameW: frameW,
                         clock: _clock,
                         clinicName: widget.clinicName,
                         wipeFrom: _holdBefore,
@@ -279,157 +284,218 @@ class _SlideshowState extends ConsumerState<_Slideshow>
   }
 }
 
-/// One slide: headline, the photo frame with the sweep, clinic name.
+/// One slide. On a wide screen (TV, laptop) the photo frame takes 70% of
+/// the width with the title beside it; on a tall screen (tablet upright)
+/// the title sits above a frame 90% wide. Photos always fill the frame —
+/// cropped, never stretched.
 class _Slide extends StatelessWidget {
   const _Slide({
     super.key,
     required this.c,
-    required this.frameW,
     required this.clock,
     required this.clinicName,
     required this.wipeFrom,
     required this.wipeTo,
   });
   final ShowcaseCase c;
-  final double frameW, wipeFrom, wipeTo;
+  final double wipeFrom, wipeTo;
   final Animation<double> clock;
   final String clinicName;
 
   @override
-  Widget build(BuildContext context) {
-    final frameH = frameW * 3 / 4;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'BEFORE  &  AFTER',
-            style: TextStyle(
-              color: Colors.white54,
-              fontSize: 10.sp,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 4,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            c.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24.sp,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            c.durationLine,
-            style: TextStyle(color: Colors.white70, fontSize: 12.sp),
-          ),
-          SizedBox(height: frameH * .06),
-          Container(
-            width: frameW,
-            height: frameH,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black54,
-                  blurRadius: 40,
-                  offset: Offset(0, 18),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final w = box.maxWidth, h = box.maxHeight;
+      if (!w.isFinite || !h.isFinite || w <= 0 || h <= 0) {
+        return const SizedBox.shrink();
+      }
+
+      // ── wide: photo 70% of the width, text on the right ──
+      if (w >= h * 1.15) {
+        final side = w * .03;
+        final frameW = w * .70;
+        // leave room for the controls above and the dots below
+        final frameH = math.max(0.0, math.min(h - 140, frameW * 3 / 4));
+        final infoW = w - frameW - side * 3;
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: side),
+          child: Row(
+            children: [
+              _frame(frameW, frameH),
+              SizedBox(width: side),
+              SizedBox(
+                width: infoW,
+                height: h,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 80, bottom: 60),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: SizedBox(width: infoW, child: _info(center: false)),
+                  ),
                 ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(22),
-              child: AnimatedBuilder(
-                animation: clock,
-                builder: (_, __) {
-                  // hold the Before, sweep across, hold the After
-                  final t = Curves.easeInOutCubic.transform(
-                    ((clock.value - wipeFrom) / (wipeTo - wipeFrom)).clamp(
-                      0.0,
-                      1.0,
-                    ),
-                  );
-                  return Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CroppedPhoto(
-                        photo: c.before,
-                        crop: c.beforeCrop,
-                        dark: true,
-                      ),
-                      ClipRect(
-                        clipper: _Reveal(t),
-                        child: CroppedPhoto(
-                          photo: c.after,
-                          crop: c.afterCrop,
-                          dark: true,
-                        ),
-                      ),
-                      if (t > 0 && t < 1)
-                        Positioned(
-                          left: frameW * t - 1.5,
-                          top: 0,
-                          bottom: 0,
-                          child: Container(
-                            width: 3,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black45,
-                                  blurRadius: 10,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      Positioned(
-                        left: 18,
-                        top: 18,
-                        child: Opacity(
-                          opacity: (1 - t).clamp(0.0, 1.0),
-                          child: _tag('BEFORE', Colors.black54),
-                        ),
-                      ),
-                      Positioned(
-                        right: 18,
-                        top: 18,
-                        child: Opacity(
-                          opacity: t.clamp(0.0, 1.0),
-                          child: _tag('AFTER', const Color(0xFF0F766E)),
-                        ),
-                      ),
-                    ],
-                  );
-                },
+              ),
+            ],
+          ),
+        );
+      }
+
+      // ── tall: title on top, frame 90% wide ──
+      final frameW = w * .90;
+      final frameH = math.min(h * .58, frameW * 3 / 4);
+      return Padding(
+        padding: const EdgeInsets.only(top: 70, bottom: 56),
+        child: Column(
+          children: [
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: SizedBox(width: frameW, child: _info(center: true)),
               ),
             ),
-          ),
-          SizedBox(height: frameH * .07),
-          Text(
-            clinicName,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Real patients · shared with their consent',
-            style: TextStyle(color: Colors.white38, fontSize: 9.sp),
-          ),
-        ],
+            const SizedBox(height: 16),
+            _frame(frameW, frameH),
+            const SizedBox(height: 16),
+          ],
+        ),
+      );
+    },
+  );
+
+  /// Headline, how long it took, and the clinic.
+  Widget _info({required bool center}) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: center
+        ? CrossAxisAlignment.center
+        : CrossAxisAlignment.start,
+    children: [
+      Text(
+        'BEFORE  &  AFTER',
+        style: TextStyle(
+          color: Colors.white54,
+          fontSize: 12.5.sp,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 4,
+        ),
       ),
-    );
-  }
+      const SizedBox(height: 12),
+      Text(
+        c.title,
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+        textAlign: center ? TextAlign.center : TextAlign.start,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 22.sp,
+          fontWeight: FontWeight.w800,
+          height: 1.1,
+        ),
+      ),
+      const SizedBox(height: 10),
+      Text(
+        c.durationLine,
+        textAlign: center ? TextAlign.center : TextAlign.start,
+        style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+      ),
+      const SizedBox(height: 28),
+      Container(
+        width: 64,
+        height: 3,
+        decoration: BoxDecoration(
+          color: const Color(0xFF2DD4BF),
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+      const SizedBox(height: 28),
+      Text(
+        clinicName,
+        textAlign: center ? TextAlign.center : TextAlign.start,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 14.sp,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        'Real patients · shared with their consent',
+        textAlign: center ? TextAlign.center : TextAlign.start,
+        style: TextStyle(color: Colors.white38, fontSize: 9.5.sp),
+      ),
+    ],
+  );
+
+  /// The photo frame: Before, then the sweep reveals After.
+  Widget _frame(double frameW, double frameH) => Container(
+    width: frameW,
+    height: frameH,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(24),
+      boxShadow: const [
+        BoxShadow(color: Colors.black54, blurRadius: 40, offset: Offset(0, 18)),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: AnimatedBuilder(
+        animation: clock,
+        builder: (_, __) {
+          // hold the Before, sweep across, hold the After
+          final t = Curves.easeInOutCubic.transform(
+            ((clock.value - wipeFrom) / (wipeTo - wipeFrom)).clamp(0.0, 1.0),
+          );
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              CroppedPhoto(photo: c.before, crop: c.beforeCrop, dark: true),
+              ClipRect(
+                clipper: _Reveal(t),
+                child: CroppedPhoto(
+                  photo: c.after,
+                  crop: c.afterCrop,
+                  dark: true,
+                ),
+              ),
+              if (t > 0 && t < 1)
+                Positioned(
+                  left: frameW * t - 1.5,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 3,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(color: Colors.black45, blurRadius: 10),
+                      ],
+                    ),
+                  ),
+                ),
+              Positioned(
+                left: 20,
+                top: 20,
+                child: Opacity(
+                  opacity: (1 - t).clamp(0.0, 1.0),
+                  child: _tag('BEFORE', Colors.black54),
+                ),
+              ),
+              Positioned(
+                right: 20,
+                top: 20,
+                child: Opacity(
+                  opacity: t.clamp(0.0, 1.0),
+                  child: _tag('AFTER', const Color(0xFF0F766E)),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    ),
+  );
 
   Widget _tag(String t, Color bg) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
     decoration: BoxDecoration(
       color: bg,
       borderRadius: BorderRadius.circular(30),

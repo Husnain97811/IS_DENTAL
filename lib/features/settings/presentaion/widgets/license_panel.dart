@@ -47,6 +47,15 @@ class _S extends ConsumerState<LicencePanel> {
               'Plan',
               '${ent.tierLabel == 'Basic' ? "Basic" : ent.tierLabel}${ent.cloud ? " · Cloud" : " · Offline"}',
             ),
+            if (ent.patientCallAddOn || ent.ownerPhone)
+              _row(
+                d,
+                'Add-ons',
+                [
+                  if (ent.patientCallAddOn) 'Reception screen & patient call',
+                  if (ent.ownerPhone) 'Owner phone app',
+                ].join(' · '),
+              ),
             _rowCopy(d, 'Clinic ID', lic.clinicId),
             _row(d, 'Branches', '${lic.maxBranches} allowed'),
             _row(d, 'Staff logins', '${lic.maxUsers} allowed'),
@@ -104,36 +113,85 @@ class _S extends ConsumerState<LicencePanel> {
 
             const SizedBox(height: 14),
             Text(
-              'Applying a new licence changes only your plan. '
-              'Patients, staff, settings and cloud data are untouched.',
+              ent.cloud
+                  ? 'Renewals reach every computer by themselves within '
+                        '15 minutes. Paste a licence here only if yours '
+                        'hasn\'t arrived. Patients, staff, settings and '
+                        'cloud data are never touched.'
+                  : 'Applying a new licence changes only your plan. '
+                        'Patients, staff, settings and cloud data are untouched.',
               style: TextStyle(color: d.text4, fontSize: 9.sp),
             ),
             const SizedBox(height: 14),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: d.ice,
-                  foregroundColor: AppPalette.onAccent,
-                  minimumSize: const Size(0, 44),
-                  padding: const EdgeInsets.symmetric(horizontal: 22),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (ent.cloud) ...[
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: d.text2,
+                      side: BorderSide(color: d.line),
+                      minimumSize: const Size(0, 44),
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                    ),
+                    onPressed: _busy ? null : _checkCloud,
+                    child: Text(
+                      'Check for a renewal',
+                      style: TextStyle(fontSize: 10.5.sp),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: d.ice,
+                    foregroundColor: AppPalette.onAccent,
+                    minimumSize: const Size(0, 44),
+                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                  ),
+                  onPressed: _busy ? null : _apply,
+                  child: _busy
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          'Apply licence',
+                          style: TextStyle(fontSize: 10.5.sp),
+                        ),
                 ),
-                onPressed: _busy ? null : _apply,
-                child: _busy
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(
-                        'Apply licence',
-                        style: TextStyle(fontSize: 10.5.sp),
-                      ),
-              ),
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _checkCloud() async {
+    final before = ref.read(licenseControllerProvider).value?.license?.issuedAt;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    await ref.read(licenseControllerProvider.notifier).checkCloudNow();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    final after = ref.read(licenseControllerProvider).value?.license;
+    final renewed =
+        after != null && before != null && after.issuedAt.isAfter(before);
+    await showDentDialog(
+      context,
+      kind: renewed ? DentDialogKind.success : DentDialogKind.warning,
+      title: renewed ? 'Licence renewed' : 'No new licence yet',
+      message: renewed
+          ? 'Your new licence has been applied. It now runs until '
+                '${_fmt(after!.expiresAt)}.'
+          : 'This computer already has the latest licence. If you have just '
+                'renewed, check the internet connection and try again in a '
+                'minute.',
+      confirmLabel: 'OK',
     );
   }
 

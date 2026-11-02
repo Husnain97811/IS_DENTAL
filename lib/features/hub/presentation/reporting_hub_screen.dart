@@ -10,6 +10,7 @@ import 'package:is_dental/core/constants/views.dart';
 import 'package:is_dental/core/router/app_routes.dart';
 import 'package:is_dental/features/cash/data/cash_repository.dart';
 import 'package:is_dental/core/utils/app_activity.dart';
+import 'package:is_dental/core/utils/screen_keeper.dart';
 
 import '../data/hub_data.dart';
 import '../data/hub_pdf.dart';
@@ -21,7 +22,9 @@ import 'sections/health_section.dart';
 import 'sections/money_section.dart';
 import 'sections/right_now_section.dart';
 import 'sections/watch_list_section.dart';
+import 'sections/what_if_section.dart';
 import 'sections/whats_coming_section.dart';
+import 'wall/wall_mode.dart';
 import 'widgets/hub_loading.dart';
 import 'widgets/hub_pin_gate.dart';
 import 'widgets/hub_ui.dart';
@@ -29,6 +32,7 @@ import 'widgets/hub_ui.dart';
 enum HubSection {
   rightNow('Right now', Icons.dashboard_outlined),
   whatsComing("What's coming", Icons.auto_graph_rounded),
+  whatIf('What if', Icons.science_outlined),
   money('Money', Icons.payments_outlined),
   dentists('Dentists', Icons.groups_outlined),
   watchList('Watch list', Icons.policy_outlined),
@@ -41,6 +45,9 @@ enum HubSection {
 }
 
 enum _Phase { starting, gate, loading, ready, failed }
+
+/// What the PIN is being asked for while the wall view is up.
+enum _WallAsk { none, exit, reveal }
 
 /// The Detailed Reporting Hub — a full-screen mode for the owner (and
 /// admins the owner allows). Replaces the sidebar and every clinic screen
@@ -93,6 +100,13 @@ class _ReportingHubScreenState extends ConsumerState<ReportingHubScreen> {
   VoidCallback? _restoreTheme;
   final _scroll = ScrollController();
 
+  // ── wall mode ──
+  bool _wall = false;
+  _WallAsk _wallAsk = _WallAsk.none;
+  DateTime? _wallSince, _wallRevealUntil;
+  int _wallSeconds = 20;
+  Timer? _revealTimer, _askTimer;
+
   @override
   void initState() {
     super.initState();
@@ -109,7 +123,14 @@ class _ReportingHubScreenState extends ConsumerState<ReportingHubScreen> {
     HardwareKeyboard.instance.removeHandler(_onKey);
     _idleTimer?.cancel();
     _autoTimer?.cancel();
+    _revealTimer?.cancel();
+    _askTimer?.cancel();
     _scroll.dispose();
+    if (_wall) {
+      // closed by the app while on the wall: give the screen back
+      unawaited(ScreenKeeper.leave());
+      _sec?.log(_session, 'hub_wall_off', detail: '${_wallMinutes()} min');
+    }
     // Not during unmount itself — providers can't change mid-build.
     final restore = _restoreTheme;
     if (restore != null) Future.microtask(restore);
@@ -278,6 +299,13 @@ class _ReportingHubScreenState extends ConsumerState<ReportingHubScreen> {
 
   void _checkIdle() {
     if (!mounted || _left || _phase == _Phase.starting) return;
+    if (_wall) {
+      // A wall screen is meant to sit untouched. Nothing on it can be used
+      // without the PIN, so it never locks itself or signs anyone out.
+      _lastActivity = DateTime.now();
+      ref.read(appActivityProvider.notifier).ping();
+      return;
+    }
     final idle = DateTime.now().difference(_lastActivity);
     if (idle >= _exitAfter) {
       _leave(idle: true);
@@ -340,8 +368,14 @@ class _ReportingHubScreenState extends ConsumerState<ReportingHubScreen> {
   }
 
   Future<void> _go(HubGo go, {String? arg, String? label}) async {
-    if (go == HubGo.watchList) {
-      setState(() => _section = HubSection.watchList);
+    if (go.inHub) {
+      final to = switch (go) {
+        HubGo.money => HubSection.money,
+        HubGo.whatsComing => HubSection.whatsComing,
+        HubGo.health => HubSection.health,
+        _ => HubSection.watchList,
+      };
+      setState(() => _section = to);
       if (_scroll.hasClients) _scroll.jumpTo(0);
       return;
     }
@@ -353,7 +387,11 @@ class _ReportingHubScreenState extends ConsumerState<ReportingHubScreen> {
       HubGo.requests => ('${AppRoutes.dashboard}/requests', 'Booking requests'),
       HubGo.whatsapp => (AppRoutes.whatsapp, 'WhatsApp'),
       HubGo.settings => (AppRoutes.settings, 'Settings'),
-      HubGo.watchList => (AppRoutes.dashboard, 'Watch list'), // handled above
+      // these open a Hub section — handled above
+      HubGo.watchList ||
+      HubGo.money ||
+      HubGo.whatsComing ||
+      HubGo.health => (AppRoutes.dashboard, 'Hub'),
     };
     final ok = await showHubConfirm(
       context,
@@ -372,6 +410,137 @@ class _ReportingHubScreenState extends ConsumerState<ReportingHubScreen> {
       ref.read(billingTabProvider.notifier).set(1);
     }
     _leave(to: route, label: name);
+  }
+
+  // ───────────────────────────── wall mode ─────────────────────────────
+
+  int _wallMinutes() =>
+      _wallSince == null ? 0 : DateTime.now().difference(_wallSince!).inMinutes;
+
+  Future<void> _enterWall() async {
+    final ok = await showHubConfirm(
+      context,
+      icon: Icons.tv_rounded,
+      tone: context.dent.ice,
+      title: 'Start wall mode?',
+      message:
+          'The Hub fills the screen and shows today, the chairs, this month, '
+          'tomorrow, alerts and the health score in turn. Amounts stay '
+          'hidden until you enter your PIN, leaving needs your PIN, and the '
+          'screen is kept awake.',
+      confirm: 'Start wall mode',
+      cancel: 'Not now',
+    );
+    if (!ok || !mounted) return;
+    var seconds = 20;
+    try {
+      final raw = await ref
+          .read(appDatabaseProvider)
+          .getSetting(kWallIntervalKey);
+      final v = int.tryParse(raw ?? '');
+      if (v != null && kWallIntervals.contains(v)) seconds = v;
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _wall = true;
+      _wallSince = DateTime.now();
+      _wallAsk = _WallAsk.none;
+      _wallRevealUntil = null;
+      _wallSeconds = seconds;
+    });
+    _sec?.log(_session, 'hub_wall_on', detail: _scopeName(null));
+    unawaited(ScreenKeeper.enter());
+  }
+
+  void _askWall(_WallAsk ask) {
+    setState(() => _wallAsk = ask);
+    // nobody typed a PIN within a minute: back to the slides
+    _askTimer?.cancel();
+    _askTimer = Timer(const Duration(minutes: 1), () {
+      if (mounted && _wallAsk == ask) setState(() => _wallAsk = _WallAsk.none);
+    });
+  }
+
+  void _wallPinOk() {
+    _askTimer?.cancel();
+    if (_wallAsk == _WallAsk.exit) {
+      _revealTimer?.cancel();
+      _sec?.log(_session, 'hub_wall_off', detail: '${_wallMinutes()} min');
+      setState(() {
+        _wall = false;
+        _wallAsk = _WallAsk.none;
+        _wallRevealUntil = null;
+        _lastActivity = DateTime.now();
+      });
+      unawaited(ScreenKeeper.leave());
+      return;
+    }
+    const showFor = Duration(minutes: 10);
+    _revealTimer?.cancel();
+    _revealTimer = Timer(showFor, () {
+      if (mounted) setState(() => _wallRevealUntil = null);
+    });
+    _sec?.log(_session, 'hub_wall_show');
+    setState(() {
+      _wallAsk = _WallAsk.none;
+      _wallRevealUntil = DateTime.now().add(showFor);
+    });
+  }
+
+  void _wallHide() {
+    _revealTimer?.cancel();
+    setState(() => _wallRevealUntil = null);
+  }
+
+  void _setWallSeconds(int s) {
+    setState(() => _wallSeconds = s);
+    ref
+        .read(appDatabaseProvider)
+        .setSetting(kWallIntervalKey, '$s')
+        .catchError((_) {}); // a preference — losing it is harmless
+  }
+
+  Widget _wallView(List<Branch> branches, String clinic) {
+    final asking = _wallAsk != _WallAsk.none;
+    final exit = _wallAsk == _WallAsk.exit;
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: WallMode(
+            data: _data!,
+            clinic: clinic,
+            scope: _scopeName(branches),
+            revealUntil: _wallRevealUntil,
+            seconds: _wallSeconds,
+            paused: asking,
+            onSeconds: _setWallSeconds,
+            onAskExit: () => _askWall(_WallAsk.exit),
+            onAskReveal: () => _askWall(_WallAsk.reveal),
+            onHide: _wallHide,
+          ),
+        ),
+        if (asking)
+          Positioned.fill(
+            child: ColoredBox(
+              color: Colors.black.withValues(alpha: .55),
+              child: HubPinGate(
+                key: ValueKey('wall-$_wallAsk'),
+                mode: HubGateMode.unlock,
+                user: _user!,
+                session: _session!,
+                title: exit ? 'Leave wall mode' : 'Show amounts',
+                message: exit
+                    ? 'Enter your Hub PIN to go back to the Hub.'
+                    : 'Enter your Hub PIN. Amounts show for 10 minutes, '
+                          'then hide again.',
+                onDone: _wallPinOk,
+                onExit: () => setState(() => _wallAsk = _WallAsk.none),
+                onCancel: () => setState(() => _wallAsk = _WallAsk.none),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   // ───────────────────────────── helpers ─────────────────────────────
@@ -431,9 +600,12 @@ class _ReportingHubScreenState extends ConsumerState<ReportingHubScreen> {
         ref.watch(clinicProfileProvider).value?.name ?? 'Your clinic';
     final dark = ref.watch(themeModeProvider) == ThemeMode.dark;
 
+    final onWall = _wall && _phase == _Phase.ready && _data != null;
+
     return HubScope(
-      hidden: _hidden,
+      hidden: onWall ? _wallRevealUntil == null : _hidden,
       onGo: _go,
+      onReload: () => _load(full: false),
       child: Listener(
         behavior: HitTestBehavior.translucent,
         onPointerDown: (_) => _touch(),
@@ -441,18 +613,26 @@ class _ReportingHubScreenState extends ConsumerState<ReportingHubScreen> {
         onPointerSignal: (_) => _touch(),
         child: Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          body: LayoutBuilder(
-            builder: (context, c) {
-              final compact = c.maxWidth < 1280;
-              return Column(
-                children: [
-                  _header(d, branches, compact, clinic: clinic, dark: dark),
-                  Divider(height: 1, color: d.line),
-                  Expanded(child: _body(d, branches, compact)),
-                ],
-              );
-            },
-          ),
+          body: onWall
+              ? _wallView(branches, clinic)
+              : LayoutBuilder(
+                  builder: (context, c) {
+                    final compact = c.maxWidth < 1280;
+                    return Column(
+                      children: [
+                        _header(
+                          d,
+                          branches,
+                          compact,
+                          clinic: clinic,
+                          dark: dark,
+                        ),
+                        Divider(height: 1, color: d.line),
+                        Expanded(child: _body(d, branches, compact)),
+                      ],
+                    );
+                  },
+                ),
         ),
       ),
     );
@@ -670,6 +850,12 @@ class _ReportingHubScreenState extends ConsumerState<ReportingHubScreen> {
               _scopePicker(d, branches),
               const SizedBox(width: 10),
             ],
+            headerButton(
+              icon: Icons.tv_rounded,
+              label: 'Wall mode',
+              onTap: _enterWall,
+            ),
+            const SizedBox(width: 6),
             headerButton(
               icon: Icons.picture_as_pdf_outlined,
               label: 'Owner report',
@@ -929,6 +1115,7 @@ class _ReportingHubScreenState extends ConsumerState<ReportingHubScreen> {
     final page = switch (_section) {
       HubSection.rightNow => RightNowSection(data: data),
       HubSection.whatsComing => WhatsComingSection(data: data),
+      HubSection.whatIf => WhatIfSection(data: data),
       HubSection.watchList => WatchListSection(
         data: data,
         period: _period,

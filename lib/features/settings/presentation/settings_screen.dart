@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:is_dental/features/drive/presentation/drive_panel.dart';
+import 'package:is_dental/features/phones/presentation/phones_panel.dart';
+import 'package:is_dental/features/reception/presentation/reception_panel.dart';
 import 'package:is_dental/features/settings/presentaion/widgets/xray_transfer_panel.dart';
 
 import 'package:qr_flutter/qr_flutter.dart';
@@ -21,7 +24,10 @@ class _S extends ConsumerState<SettingsScreen> {
   final _name = TextEditingController(),
       _branch = TextEditingController(),
       _currency = TextEditingController();
-  bool _loaded = false, _saving = false;
+  bool _loaded = false;
+
+  /// Space between panels in a column.
+  static const _gap = 18.0;
 
   @override
   void dispose() {
@@ -30,8 +36,6 @@ class _S extends ConsumerState<SettingsScreen> {
     _currency.dispose();
     super.dispose();
   }
-
-  //temporary init
 
   @override
   void initState() {
@@ -43,6 +47,18 @@ class _S extends ConsumerState<SettingsScreen> {
       await ref.read(permissionRepositoryProvider).seedIfEmpty();
     });
   }
+
+  /// Panels with the same gap between each — and no gap for a panel that
+  /// isn't shown, because the conditions are decided here, not inside it.
+  Widget _stack(List<Widget> panels) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      for (var i = 0; i < panels.length; i++) ...[
+        if (i > 0) const SizedBox(height: _gap),
+        panels[i],
+      ],
+    ],
+  );
 
   Widget _myProfileCard(DentColors d, AuthSession? session) {
     final branches = ref.watch(branchesStreamProvider).value ?? [];
@@ -129,7 +145,7 @@ class _S extends ConsumerState<SettingsScreen> {
                     ),
                     Text(
                       '@${session?.username ?? ''}',
-                      style: TextStyle(color: d.text3, fontSize: 8.5.sp),
+                      style: TextStyle(color: d.text3, fontSize: 9.sp),
                     ),
                   ],
                 ),
@@ -141,22 +157,6 @@ class _S extends ConsumerState<SettingsScreen> {
         ],
       ),
     );
-  }
-
-  Future<String> syncNow(WidgetRef ref) async {
-    try {
-      debugPrint('SYNC: signing in…');
-      await ref.read(cloudServiceProvider).ensureSignedIn();
-      final clinicId = await ref.read(appDatabaseProvider).currentClinicId();
-      debugPrint('SYNC: start for $clinicId');
-      await ref.read(syncEngineProvider).syncAll(clinicId!);
-      await ref.read(appDatabaseProvider).recordSyncNow(); // ← add this
-      debugPrint('SYNC: done');
-      return 'Synced';
-    } catch (e) {
-      debugPrint('SYNC: FAILED $e');
-      return 'Sync failed: $e';
-    }
   }
 
   Future<void> _confirmRestore(DentColors d) async {
@@ -217,7 +217,7 @@ class _S extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 4),
               Text(
                 'Do not close the app',
-                style: TextStyle(color: d.text4, fontSize: 8.sp),
+                style: TextStyle(color: d.text4, fontSize: 9.sp),
               ),
             ],
           ),
@@ -267,8 +267,6 @@ class _S extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final d = context.dent;
     final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
-    final premium = ref.watch(isPremiumProvider);
-    final basic = ref.watch(isBasicProvider);
     ref.watch(clinicProfileProvider).whenData((p) {
       if (!_loaded && p != null) {
         _name.text = p.name;
@@ -277,6 +275,39 @@ class _S extends ConsumerState<SettingsScreen> {
         _loaded = true;
       }
     });
+
+    // Everything that decides which panels show — watched here, never
+    // inside the LayoutBuilder below.
+    final session = ref.watch(authControllerProvider);
+    final ent = ref.watch(entitlementsProvider);
+    final role = session?.role;
+    final isOwner = role == AppRole.owner;
+    final canManageStaff = isOwner || role == AppRole.admin;
+    final canBackup = ref.watch(canProvider(Perm.manageBackup));
+    final canExportXrays = ref.watch(canProvider(Perm.exportXrays));
+
+    // ── left: the clinic, its plan and what patients see ──
+    final left = _stack([
+      if (!isOwner) _myProfileCard(d, session),
+      _profilePanel(d),
+      if (isOwner) const LicencePanel(),
+      if (isOwner && ent.ownerPhone) const PhonesPanel(),
+      if (isOwner && ent.patientCall) const ReceptionPanel(),
+      if (ent.clinicQr) _patientAppPanel(d),
+      _appearancePanel(d, isDark),
+    ]);
+
+    // ── right: people, places and data ──
+    final right = _stack([
+      if (canManageStaff) _staffPanel(d),
+      if (isOwner) _branchesPanel(d),
+      _hoursPanel(d),
+      if (isOwner) const DevicesPanel(),
+      _dataPanel(d),
+      if (ent.sync && canBackup) const DrivePanel(),
+      if (isOwner || canExportXrays) const XrayTransferPanel(),
+    ]);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(26, 24, 26, 40),
       child: Column(
@@ -291,144 +322,31 @@ class _S extends ConsumerState<SettingsScreen> {
           SizedBox(height: 2.2.h),
           LayoutBuilder(
             builder: (context, c) {
-              final session = ref.watch(authControllerProvider);
-              final role = session?.role;
-              final isOwner = role == AppRole.owner;
-              final isAdmin = role == AppRole.admin;
-              final canManageStaff = isOwner || isAdmin;
-              final left = Column(
-                children: [
-                  _profilePanel(d),
-                  const SizedBox(height: 18),
-                  _patientAppPanel(d),
-                  // Owner only: what each role may see
-                  if (isOwner) ...[
-                    const PermissionsPanel(),
-                    const SizedBox(height: 18),
-                  ],
-                  const SizedBox(height: 18),
-                  _appearancePanel(d, isDark),
-                ],
-              );
-
-              final right = Column(
-                children: [
-                  // Owner only: licence — upgrade, renew, clinic id
-
-                  // Everyone except owner sees their own profile card
-                  if (!isOwner) ...[
-                    _myProfileCard(d, session),
-                    const SizedBox(height: 18),
-                  ],
-                  // Owner/admin: staff management
-
-                  // Owner/admin: staff management
-                  if (canManageStaff) ...[
-                    _staffPanel(d),
-                    const SizedBox(height: 18),
-                  ],
-
-                  // Owner only: branches
-                  if (isOwner) ...[
-                    _branchesPanel(d),
-                    const SizedBox(height: 18),
-                    const DevicesPanel(),
-                    const SizedBox(height: 18),
-                  ],
-                  _hoursPanel(d),
-
-                  const SizedBox(height: 18),
-
-                  _dataPanel(d),
-                  // Shows only for the owner and anyone granted
-                  // "Export X-rays" — the panel checks that itself.
-                  const SizedBox(height: 18),
-                  const XrayTransferPanel(),
-
-                  if (isOwner) ...[
-                    const SizedBox(height: 18),
-
-                    const LicencePanel(),
-
-                    // // TEMPORARY — remove before shipping.
-                    // const SizedBox(height: 18),
-                    // DentPanel(
-                    //   title: 'Dev tools',
-                    //   subtitle: 'Remove before release',
-                    //   child: Padding(
-                    //     padding: const EdgeInsets.all(16),
-                    //     child: Column(
-                    //       crossAxisAlignment: CrossAxisAlignment.stretch,
-                    //       children: [
-                    //         FutureBuilder<String>(
-                    //           future: () async {
-                    //             final db = ref.read(appDatabaseProvider);
-                    //             final seed = await db.seedAllowed();
-                    //             final dev = await db.localDevice();
-                    //             return 'seed_allowed: $seed · '
-                    //                 'device: ${dev.letter}';
-                    //           }(),
-                    //           builder: (_, snap) => Text(
-                    //             snap.data ?? '…',
-                    //             style: TextStyle(
-                    //               fontFamily: AppFonts.mono,
-                    //               color: d.text2,
-                    //               fontSize: 10.sp,
-                    //             ),
-                    //           ),
-                    //         ),
-                    //         const SizedBox(height: 12),
-                    //         OutlinedButton(
-                    //           onPressed: () async {
-                    //             final db = ref.read(appDatabaseProvider);
-                    //             final now = await db.seedAllowed();
-                    //             await db.setSeedAllowed(!now);
-                    //             setState(() {});
-                    //           },
-                    //           child: const Text('Toggle seed_allowed'),
-                    //         ),
-                    //         const SizedBox(height: 8),
-                    //         OutlinedButton(
-                    //           onPressed: () async {
-                    //             final db = ref.read(appDatabaseProvider);
-                    //             await db.delete(db.lookupLists).go();
-                    //             setState(() {});
-                    //           },
-                    //           child: const Text('Wipe expense lists'),
-                    //         ),
-                    //         const SizedBox(height: 8),
-                    //         OutlinedButton(
-                    //           onPressed: () async {
-                    //             final db = ref.read(appDatabaseProvider);
-                    //             final d = await db.localDevice();
-                    //             await db.setLocalDeviceLetter(
-                    //               d.letter == 'A' ? 'B' : 'A',
-                    //             );
-                    //             setState(() {});
-                    //           },
-                    //           child: const Text('Toggle device letter A/B'),
-                    //         ),
-                    //       ],
-                    //     ),
-                    //   ),
-                    // ),
-                  ],
-                ],
-              );
-              if (c.maxWidth < 900)
+              if (c.maxWidth < 900) {
                 return Column(
-                  children: [left, const SizedBox(height: 18), right],
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    left,
+                    const SizedBox(height: _gap),
+                    right,
+                  ],
                 );
+              }
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(child: left),
-                  const SizedBox(width: 18),
+                  const SizedBox(width: _gap),
                   Expanded(child: right),
                 ],
               );
             },
           ),
+          // Owner only: the roles grid needs the full width to stay readable.
+          if (isOwner) ...[
+            const SizedBox(height: _gap),
+            const PermissionsPanel(),
+          ],
         ],
       ),
     );
@@ -455,7 +373,7 @@ class _S extends ConsumerState<SettingsScreen> {
           padding: const EdgeInsets.all(18),
           child: Text(
             'No branch assigned.',
-            style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+            style: TextStyle(color: d.text4, fontSize: 9.5.sp),
           ),
         ),
       );
@@ -523,10 +441,11 @@ class _S extends ConsumerState<SettingsScreen> {
                       ),
                       if (canEdit)
                         IconButton(
+                          tooltip: 'Edit hours',
                           icon: Icon(
                             Icons.edit_outlined,
-                            size: 16,
-                            color: d.text4,
+                            size: 18,
+                            color: d.text3,
                           ),
                           onPressed: () => _showHoursEditor(d, b),
                         ),
@@ -576,7 +495,7 @@ class _S extends ConsumerState<SettingsScreen> {
               onTap: () => pick(isOpen),
               borderRadius: BorderRadius.circular(11),
               child: Container(
-                height: 46,
+                height: 52,
                 padding: const EdgeInsets.symmetric(horizontal: 13),
                 decoration: BoxDecoration(
                   color: d.surface2,
@@ -591,20 +510,20 @@ class _S extends ConsumerState<SettingsScreen> {
                       children: [
                         Text(
                           label,
-                          style: TextStyle(color: d.text4, fontSize: 7.sp),
+                          style: TextStyle(color: d.text4, fontSize: 8.5.sp),
                         ),
                         Text(
                           '${(mins ~/ 60).toString().padLeft(2, '0')}:${(mins % 60).toString().padLeft(2, '0')}',
                           style: TextStyle(
                             color: d.text1,
-                            fontSize: 10.sp,
+                            fontSize: 10.5.sp,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
                     const Spacer(),
-                    Icon(Icons.access_time_rounded, size: 15, color: d.text4),
+                    Icon(Icons.access_time_rounded, size: 16, color: d.text4),
                   ],
                 ),
               ),
@@ -617,7 +536,7 @@ class _S extends ConsumerState<SettingsScreen> {
               borderRadius: BorderRadius.circular(18),
             ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
+              constraints: const BoxConstraints(maxWidth: 460),
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
@@ -641,14 +560,14 @@ class _S extends ConsumerState<SettingsScreen> {
                       'SLOT LENGTH',
                       style: TextStyle(
                         color: d.text4,
-                        fontSize: 7.sp,
+                        fontSize: 8.5.sp,
                         fontWeight: FontWeight.w700,
                         letterSpacing: .5,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Container(
-                      height: 46,
+                      height: 48,
                       padding: const EdgeInsets.symmetric(horizontal: 13),
                       decoration: BoxDecoration(
                         color: d.surface2,
@@ -666,7 +585,7 @@ class _S extends ConsumerState<SettingsScreen> {
                               child: Text(
                                 '$m min',
                                 style: TextStyle(
-                                  fontSize: 9.sp,
+                                  fontSize: 10.sp,
                                   color: d.text1,
                                 ),
                               ),
@@ -680,7 +599,7 @@ class _S extends ConsumerState<SettingsScreen> {
                       'CLOSED DAYS',
                       style: TextStyle(
                         color: d.text4,
-                        fontSize: 7.sp,
+                        fontSize: 8.5.sp,
                         fontWeight: FontWeight.w700,
                         letterSpacing: .5,
                       ),
@@ -702,7 +621,7 @@ class _S extends ConsumerState<SettingsScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 14,
-                                vertical: 8,
+                                vertical: 9,
                               ),
                               decoration: BoxDecoration(
                                 color: closed.contains(i)
@@ -719,7 +638,7 @@ class _S extends ConsumerState<SettingsScreen> {
                                 dayNames[i - 1],
                                 style: TextStyle(
                                   color: closed.contains(i) ? d.alert : d.text2,
-                                  fontSize: 8.5.sp,
+                                  fontSize: 9.5.sp,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -785,38 +704,11 @@ class _S extends ConsumerState<SettingsScreen> {
         _fieldRowLocked(d, 'Clinic Name', 'Set during clinic setup', _name),
         _fieldRowLocked(d, 'Branch', 'Set during clinic setup', _branch),
         _fieldRowLocked(d, 'Currency', 'Billing currency', _currency),
-        // Padding(
-        //   padding: const EdgeInsets.fromLTRB(18, 4, 18, 16),
-        //   child: Row(
-        //     children: [
-        //       const Spacer(),
-        //       FilledButton(
-        //         style: FilledButton.styleFrom(
-        //           backgroundColor: d.ice,
-        //           foregroundColor: AppPalette.onAccent,
-        //         ),
-        //         onPressed: _saving ? null : _save,
-        //         child: _saving
-        //             ? const SizedBox(
-        //                 width: 16,
-        //                 height: 16,
-        //                 child: CircularProgressIndicator(
-        //                   strokeWidth: 2,
-        //                   color: AppPalette.onAccent,
-        //                 ),
-        //               )
-        //             : const Text('Save'),
-        //       ),
-        //     ],
-        //   ),
-        // ),
       ],
     ),
   );
 
   Widget _patientAppPanel(DentColors d) {
-    final ent = ref.watch(entitlementsProvider);
-    if (!ent.clinicQr) return const SizedBox.shrink();
     final profile = ref.watch(clinicProfileProvider).value;
     final clinicCode = profile?.clinicId ?? '';
     return DentPanel(
@@ -827,7 +719,7 @@ class _S extends ConsumerState<SettingsScreen> {
               padding: const EdgeInsets.all(18),
               child: Text(
                 'Clinic not set up yet.',
-                style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+                style: TextStyle(color: d.text4, fontSize: 9.5.sp),
               ),
             )
           : Padding(
@@ -854,7 +746,7 @@ class _S extends ConsumerState<SettingsScreen> {
                     'CLINIC ID',
                     style: TextStyle(
                       color: d.text4,
-                      fontSize: 7.sp,
+                      fontSize: 8.5.sp,
                       fontWeight: FontWeight.w700,
                       letterSpacing: .8,
                     ),
@@ -877,6 +769,7 @@ class _S extends ConsumerState<SettingsScreen> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: d.text2,
                             side: BorderSide(color: d.line),
+                            minimumSize: const Size(0, 44),
                           ),
                           onPressed: () async {
                             await Clipboard.setData(
@@ -890,8 +783,11 @@ class _S extends ConsumerState<SettingsScreen> {
                               );
                             }
                           },
-                          icon: const Icon(Icons.copy_rounded, size: 15),
-                          label: const Text('Copy ID'),
+                          icon: const Icon(Icons.copy_rounded, size: 16),
+                          label: Text(
+                            'Copy ID',
+                            style: TextStyle(fontSize: 10.sp),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -900,6 +796,7 @@ class _S extends ConsumerState<SettingsScreen> {
                           style: FilledButton.styleFrom(
                             backgroundColor: d.ice,
                             foregroundColor: AppPalette.onAccent,
+                            minimumSize: const Size(0, 44),
                           ),
                           onPressed: () async {
                             try {
@@ -920,8 +817,11 @@ class _S extends ConsumerState<SettingsScreen> {
                               }
                             }
                           },
-                          icon: const Icon(Icons.print_rounded, size: 15),
-                          label: const Text('Print'),
+                          icon: const Icon(Icons.print_rounded, size: 16),
+                          label: Text(
+                            'Print',
+                            style: TextStyle(fontSize: 10.sp),
+                          ),
                         ),
                       ),
                     ],
@@ -945,70 +845,29 @@ class _S extends ConsumerState<SettingsScreen> {
               .read(themeModeProvider.notifier)
               .set(v ? ThemeMode.dark : ThemeMode.light),
         ),
-        const SizedBox(height: 18),
         const _IdleTimeoutRow(),
-        // Padding(
-        //   padding: const EdgeInsets.all(18),
-        //   child: Row(
-        //     children: [
-        //       Expanded(
-        //         child: Column(
-        //           crossAxisAlignment: CrossAxisAlignment.start,
-        //           children: [
-        //             Text(
-        //               'Accent Colour',
-        //               style: TextStyle(
-        //                 color: d.text1,
-        //                 fontSize: 9.sp,
-        //                 fontWeight: FontWeight.w600,
-        //               ),
-        //             ),
-        //             Text(
-        //               'Primary highlight',
-        //               style: TextStyle(color: d.text3, fontSize: 8.sp),
-        //             ),
-        //           ],
-        //         ),
-        //       ),
-        //       for (final col in [d.ice, d.teal, const Color(0xFF8B5CF6)])
-        //         Container(
-        //           width: 24,
-        //           height: 24,
-        //           margin: const EdgeInsets.only(left: 8),
-        //           decoration: BoxDecoration(
-        //             color: col,
-        //             borderRadius: BorderRadius.circular(7),
-        //           ),
-        //         ),
-        //     ],
-        //   ),
-        // ),
       ],
     ),
   );
 
   Widget _staffPanel(DentColors d) {
     final staff = ref.watch(staffProvider);
-    final ent = ref.watch(entitlementsProvider);
-    final premium = ent.tier == LicenseTier.premium;
     final maxUsers = ref.watch(maxUsersProvider);
     final count = ref.watch(totalStaffCountProvider).value ?? 0;
     final atLimit = count >= maxUsers;
     return DentPanel(
       title: 'Staff & Roles',
-      // subtitle: premium ? '$count / $maxUsers seats used' : 'Single-user plan',
       subtitle: '$count / $maxUsers seats used',
-      // check if count is max means all seats used null else show button
       trailing: atLimit
           ? null
           : OutlinedButton.icon(
-              onPressed: atLimit ? null : () => showStaffEditor(context),
+              onPressed: () => showStaffEditor(context),
               style: OutlinedButton.styleFrom(
                 foregroundColor: d.ice,
                 side: BorderSide(color: d.line),
               ),
               icon: const Icon(Icons.add_rounded, size: 16),
-              label: const Text('Add user'),
+              label: Text('Add user', style: TextStyle(fontSize: 9.5.sp)),
             ),
       child: staff.when(
         loading: () => const Padding(
@@ -1032,7 +891,7 @@ class _S extends ConsumerState<SettingsScreen> {
                   padding: const EdgeInsets.all(14),
                   child: Text(
                     'All $maxUsers seats are in use. Remove a user or upgrade to add more.',
-                    style: TextStyle(color: d.text4, fontSize: 8.sp),
+                    style: TextStyle(color: d.text4, fontSize: 9.sp),
                   ),
                 ),
             ],
@@ -1057,7 +916,7 @@ class _S extends ConsumerState<SettingsScreen> {
           side: BorderSide(color: d.line),
         ),
         icon: const Icon(Icons.add_rounded, size: 16),
-        label: const Text('Add branch'),
+        label: Text('Add branch', style: TextStyle(fontSize: 9.5.sp)),
       ),
       child: branches.when(
         loading: () => const Padding(
@@ -1075,7 +934,7 @@ class _S extends ConsumerState<SettingsScreen> {
                 padding: const EdgeInsets.all(18),
                 child: Text(
                   'No branches yet. Add your first location.',
-                  style: TextStyle(color: d.text4, fontSize: 8.5.sp),
+                  style: TextStyle(color: d.text4, fontSize: 9.5.sp),
                 ),
               ),
             for (final b in rows) _branchRow(d, b),
@@ -1084,7 +943,7 @@ class _S extends ConsumerState<SettingsScreen> {
                 padding: const EdgeInsets.all(14),
                 child: Text(
                   'Your plan allows $maxBranches branches. Upgrade to add more.',
-                  style: TextStyle(color: d.text4, fontSize: 8.sp),
+                  style: TextStyle(color: d.text4, fontSize: 9.sp),
                 ),
               ),
           ],
@@ -1120,18 +979,18 @@ class _S extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Icon(Icons.lock_outline_rounded, size: 12, color: d.text4),
+                  Icon(Icons.lock_outline_rounded, size: 13, color: d.text4),
                 ],
               ),
               Text(
                 sub,
-                style: TextStyle(color: d.text3, fontSize: 8.sp),
+                style: TextStyle(color: d.text3, fontSize: 9.sp),
               ),
             ],
           ),
         ),
         SizedBox(
-          width: 200,
+          width: 220,
           child: TextField(
             controller: c,
             enabled: false,
@@ -1182,7 +1041,7 @@ class _S extends ConsumerState<SettingsScreen> {
               ),
               Text(
                 sub,
-                style: TextStyle(color: d.text3, fontSize: 8.sp),
+                style: TextStyle(color: d.text3, fontSize: 9.sp),
               ),
             ],
           ),
@@ -1192,204 +1051,139 @@ class _S extends ConsumerState<SettingsScreen> {
     ),
   );
 
+  /// One row of the Data & Backup panel.
+  Widget _dataRow(
+    DentColors d, {
+    required String title,
+    required String sub,
+    required Widget action,
+    Color? titleColor,
+  }) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+    decoration: BoxDecoration(
+      border: Border(top: BorderSide(color: d.line)),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: titleColor ?? d.text1,
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                sub,
+                style: TextStyle(color: d.text3, fontSize: 9.sp),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        action,
+      ],
+    ),
+  );
+
   Widget _dataPanel(DentColors d) {
     final ent = ref.watch(entitlementsProvider);
     final canBackup = ref.watch(canProvider(Perm.manageBackup));
+    final label = TextStyle(fontSize: 9.5.sp);
 
     return DentPanel(
       title: 'Data & Backup',
       child: Column(
         children: [
-          // ── Auto Backup — forced off on offline installs ──
-          // _toggleRow(
-          //   d,
-          //   'Auto Backup',
-          //   ent.cloud
-          //       ? 'Encrypted local backup'
-          //       : 'Not available on offline installs',
-          //   ent.cloud,
-          //   (_) {},
-          // ),
-
-          // ── Cloud Sync ──
-          // if (ent.cloud && canBackup)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: d.line)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Cloud Sync',
-                        style: TextStyle(
-                          color: d.text1,
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        'Push all local data to Cloud',
-                        style: TextStyle(color: d.text3, fontSize: 9.sp),
-                      ),
-                    ],
-                  ),
+          // ── Cloud Sync — offline installs have no cloud to sync to ──
+          if (ent.cloud)
+            _dataRow(
+              d,
+              title: 'Cloud Sync',
+              sub: 'Push all local data to Cloud',
+              action: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: d.ice,
+                  foregroundColor: AppPalette.onAccent,
                 ),
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: d.ice,
-                    foregroundColor: AppPalette.onAccent,
-                  ),
-                  onPressed: () async {
-                    final msg = await syncNow(ref);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(msg)));
-                    }
-                  },
-                  icon: const Icon(Icons.cloud_sync_rounded, size: 16),
-                  label: const Text('Sync now'),
-                ),
-              ],
+                onPressed: () async {
+                  final msg = await syncNow(ref);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(msg)));
+                  }
+                },
+                icon: const Icon(Icons.cloud_sync_rounded, size: 16),
+                label: Text('Sync now', style: label),
+              ),
             ),
-          ),
 
           // ── Restore / Export ──
           if (ent.cloud && canBackup)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: d.line)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Restore / Export',
-                          style: TextStyle(
-                            color: d.text1,
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          'Export reports PDF or patient data CSV',
-                          style: TextStyle(color: d.text3, fontSize: 8.sp),
-                        ),
-                      ],
-                    ),
-                  ),
-                  OutlinedButton(
-                    onPressed: () => _showManageSheet(d),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: d.text2,
-                      side: BorderSide(color: d.line),
-                    ),
-                    child: const Text('Manage'),
-                  ),
-                ],
+            _dataRow(
+              d,
+              title: 'Restore / Export',
+              sub: 'Export reports PDF or patient data CSV',
+              action: OutlinedButton(
+                onPressed: () => _showManageSheet(d),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: d.text2,
+                  side: BorderSide(color: d.line),
+                ),
+                child: Text('Manage', style: label),
               ),
             ),
 
           // ── Restore from Cloud (DESTRUCTIVE) ──
           if (ent.cloud && canBackup)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: d.line)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Restore from Cloud',
-                          style: TextStyle(
-                            color: d.alert,
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'Overwrites ALL local data with the cloud version',
-                          style: TextStyle(color: d.text3, fontSize: 8.sp),
-                        ),
-                      ],
-                    ),
-                  ),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: d.alert,
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: () => _confirmRestore(d),
-                    icon: const Icon(Icons.cloud_download_rounded, size: 16),
-                    label: const Text('Restore'),
-                  ),
-                ],
+            _dataRow(
+              d,
+              title: 'Restore from Cloud',
+              titleColor: d.alert,
+              sub: 'Overwrites ALL local data with the cloud version',
+              action: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: d.alert,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => _confirmRestore(d),
+                icon: const Icon(Icons.cloud_download_rounded, size: 16),
+                label: Text('Restore', style: label),
               ),
             ),
 
           // ── Sign Out — always ──
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: d.line)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Sign Out',
-                        style: TextStyle(
-                          color: d.alert,
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        'Returns to the login screen',
-                        style: TextStyle(color: d.text3, fontSize: 8.sp),
-                      ),
-                    ],
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final ok = await showDentDialog(
-                      context,
-                      kind: DentDialogKind.warning,
-                      title: 'Sign out?',
-                      message:
-                          'You will be returned to the login screen. Local data stays safe.',
-                      confirmLabel: 'Sign out',
-                      cancelLabel: 'Cancel',
-                    );
-                    if (ok == true && context.mounted) {
-                      ref.read(authControllerProvider.notifier).logout();
-                    }
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: d.alert,
-                    side: BorderSide(color: d.alert.withValues(alpha: .4)),
-                  ),
-                  icon: const Icon(Icons.logout_rounded, size: 16),
-                  label: const Text('Sign out'),
-                ),
-              ],
+          _dataRow(
+            d,
+            title: 'Sign Out',
+            titleColor: d.alert,
+            sub: 'Returns to the login screen',
+            action: OutlinedButton.icon(
+              onPressed: () async {
+                final ok = await showDentDialog(
+                  context,
+                  kind: DentDialogKind.warning,
+                  title: 'Sign out?',
+                  message:
+                      'You will be returned to the login screen. Local data stays safe.',
+                  confirmLabel: 'Sign out',
+                  cancelLabel: 'Cancel',
+                );
+                if (ok == true && context.mounted) {
+                  ref.read(authControllerProvider.notifier).logout();
+                }
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: d.alert,
+                side: BorderSide(color: d.alert.withValues(alpha: .4)),
+              ),
+              icon: const Icon(Icons.logout_rounded, size: 16),
+              label: Text('Sign out', style: label),
             ),
           ),
         ],
@@ -1426,7 +1220,7 @@ class _S extends ConsumerState<SettingsScreen> {
                   u.fullName,
                   style: TextStyle(
                     color: d.text1,
-                    fontSize: 9.sp,
+                    fontSize: 10.sp,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1434,7 +1228,7 @@ class _S extends ConsumerState<SettingsScreen> {
                   u.role.isEmpty
                       ? ''
                       : u.role[0].toUpperCase() + u.role.substring(1),
-                  style: TextStyle(color: d.text3, fontSize: 8.sp),
+                  style: TextStyle(color: d.text3, fontSize: 9.sp),
                 ),
               ],
             ),
@@ -1446,15 +1240,17 @@ class _S extends ConsumerState<SettingsScreen> {
           // Owner can edit any non-owner user
           if (isOwnerViewing && u.role != 'owner')
             IconButton(
-              icon: Icon(Icons.edit_outlined, size: 16, color: d.text4),
+              tooltip: 'Edit',
+              icon: Icon(Icons.edit_outlined, size: 18, color: d.text3),
               onPressed: () => showStaffEditor(context, existing: u),
             ),
           if (u.role != 'owner')
             IconButton(
+              tooltip: 'Delete',
               icon: Icon(
                 Icons.delete_outline_rounded,
-                size: 16,
-                color: d.text4,
+                size: 18,
+                color: d.text3,
               ),
               onPressed: () async {
                 final ok = await showDentDialog(
@@ -1500,17 +1296,19 @@ class _S extends ConsumerState<SettingsScreen> {
               if (b.location.isNotEmpty)
                 Text(
                   b.location,
-                  style: TextStyle(color: d.text3, fontSize: 8.sp),
+                  style: TextStyle(color: d.text3, fontSize: 9.sp),
                 ),
             ],
           ),
         ),
         IconButton(
-          icon: Icon(Icons.edit_outlined, size: 16, color: d.text4),
+          tooltip: 'Edit',
+          icon: Icon(Icons.edit_outlined, size: 18, color: d.text3),
           onPressed: () => showBranchEditor(context, existing: b),
         ),
         IconButton(
-          icon: Icon(Icons.delete_outline_rounded, size: 16, color: d.text4),
+          tooltip: 'Delete',
+          icon: Icon(Icons.delete_outline_rounded, size: 18, color: d.text3),
           onPressed: () async {
             final ok = await showDentDialog(
               context,
@@ -1654,25 +1452,6 @@ class _ManageSheetState extends ConsumerState<_ManageSheet> {
             },
           ),
           const SizedBox(height: 12),
-
-          // Sync now
-          // _SheetTile(
-          //   d: d,
-          //   icon: Icons.cloud_sync_rounded,
-          //   iconColor: d.warn,
-          //   title: 'Sync to Cloud Now',
-          //   subtitle: 'Push all local changes to Supabase immediately',
-          //   loading: false,
-          //   onTap: () async {
-          //     Navigator.pop(context);
-          //     final msg = await syncNow(widget.parentRef);
-          //     if (context.mounted) {
-          //       ScaffoldMessenger.of(
-          //         context,
-          //       ).showSnackBar(SnackBar(content: Text(msg)));
-          //     }
-          //   },
-          // ),
           FilledButton.icon(
             onPressed: () async {
               final msg = await syncNow(ref);
@@ -1683,7 +1462,7 @@ class _ManageSheetState extends ConsumerState<_ManageSheet> {
               }
             },
             icon: const Icon(Icons.cloud_sync_rounded),
-            label: const Text('Sync now'),
+            label: Text('Sync now', style: TextStyle(fontSize: 10.sp)),
           ),
           const SizedBox(height: 20),
 
@@ -1694,7 +1473,7 @@ class _ManageSheetState extends ConsumerState<_ManageSheet> {
               side: BorderSide(color: d.line),
               minimumSize: const Size.fromHeight(44),
             ),
-            child: const Text('Close'),
+            child: Text('Close', style: TextStyle(fontSize: 10.sp)),
           ),
         ],
       ),
@@ -1758,19 +1537,19 @@ class _SheetTile extends StatelessWidget {
                       title,
                       style: TextStyle(
                         color: d.text1,
-                        fontSize: 9.5.sp,
+                        fontSize: 10.sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: TextStyle(color: d.text3, fontSize: 8.sp),
+                      style: TextStyle(color: d.text3, fontSize: 9.sp),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: d.text4, size: 18),
+              Icon(Icons.chevron_right_rounded, color: d.text4, size: 20),
             ],
           ),
         ),
@@ -1798,6 +1577,8 @@ void pushBranchLanguage(String branchUuid, String lang) {
   });
 }
 
+/// The one Sync now — used by this screen, the Manage sheet and
+/// quick_sync.dart (`syncInBackground`).
 Future<String> syncNow(WidgetRef ref) async {
   try {
     debugPrint('SYNC: signing in…');
@@ -1805,7 +1586,7 @@ Future<String> syncNow(WidgetRef ref) async {
     final clinicId = await ref.read(appDatabaseProvider).currentClinicId();
     debugPrint('SYNC: start for $clinicId');
     await ref.read(syncEngineProvider).syncAll(clinicId!);
-    await ref.read(appDatabaseProvider).recordSyncNow(); // ← add this
+    await ref.read(appDatabaseProvider).recordSyncNow();
     debugPrint('SYNC: done');
     return 'Synced';
   } catch (e) {

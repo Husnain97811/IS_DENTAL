@@ -1,7 +1,5 @@
-import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/views.dart';
-import '../../patients/data/photo_compare_image.dart';
 
 /// One before & after result the patient agreed to share.
 ///

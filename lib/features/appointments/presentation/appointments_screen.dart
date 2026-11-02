@@ -3,12 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:is_dental/core/constants/app_flags.dart';
 import 'package:is_dental/core/utils/run_once.dart';
+import 'package:is_dental/features/appointments/data/booking_conflicts.dart';
 import 'package:is_dental/features/appointments/presentation/widgets/appointment_actions_dialog.dart';
+import 'package:is_dental/features/calls/data/call_board.dart';
+import 'package:is_dental/features/calls/data/live_appointments.dart';
+import 'package:is_dental/features/calls/data/patient_call.dart';
+import 'package:is_dental/features/calls/presentation/call_patients_dialog.dart';
 import 'package:is_dental/features/prescriptions/presentation/widgets/prescription_editor.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/constants/views.dart';
 import 'widgets/appointment_tile.dart';
+import 'widgets/booking_conflict_banner.dart';
 import 'widgets/mini_calendar.dart';
 
 final billedAppointmentIdsProvider = StreamProvider<Set<int>>((ref) {
@@ -61,6 +67,35 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
     final day = ref.watch(selectedDateProvider);
     final apptsAsync = ref.watch(appointmentsForDayProvider);
     final dentistFilter = ref.watch(dentistFilterProvider);
+
+    // ── patient call: live calls for the "Called" tags, button by permission ──
+    final callPlan = ref.watch(
+      entitlementsProvider.select((e) => e.patientCall),
+    );
+    final canCall = ref.watch(canCallPatientsProvider);
+    final calls = callPlan
+        ? ref.watch(callBoardProvider.select((b) => b.calls))
+        : const <PatientCall>[];
+    final calledByAppt = liveCallsByAppointment(calls);
+    final onChairIds = {
+      for (final c in calls)
+        if (!c.undone) c.dentist: c.id, // sorted by seq → last call wins
+    }.values.toSet();
+
+    // ── warnings (read-only): double bookings on this day, across ALL
+    // branches, from today on; and appointments booked from the owner phone
+    final now = DateTime.now();
+    final dayAll =
+        ref.watch(allAppointmentsForDayProvider(day)).value ??
+        const <Appointment>[];
+    final clashes = conflictsById(
+      findConflictPairs([
+        for (final a in dayAll) ConflictItem.fromAppointment(a),
+      ], from: DateTime(now.year, now.month, now.day)),
+    );
+    final phoneBooked =
+        ref.watch(phoneBookedUuidsProvider).value ?? const <String>{};
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(26, 24, 26, 40),
       child: Column(
@@ -86,6 +121,30 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                 ),
               ),
 
+              if (canCall)
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: FilledButton.icon(
+                    onPressed: () => showCallPatients(context),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: d.ice,
+                      foregroundColor: AppPalette.onAccent,
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: const Icon(Icons.campaign_rounded, size: 17),
+                    label: Text(
+                      'Call patients',
+                      style: TextStyle(
+                        fontSize: 8.5.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
               Container(
                 height: 36,
                 margin: const EdgeInsets.only(right: 12),
@@ -133,6 +192,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
             ],
           ),
           SizedBox(height: 2.2.h),
+          const BookingConflictBanner(),
           LayoutBuilder(
             builder: (context, c) {
               final agenda = DentPanel(
@@ -181,6 +241,18 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                                             CrossAxisAlignment.stretch,
                                         children: [
                                           AppointmentTile(appt: a),
+                                          if (calledByAppt[a.uuid]
+                                              case final c?)
+                                            _CalledStrip(
+                                              call: c,
+                                              onChair: onChairIds.contains(
+                                                c.id,
+                                              ),
+                                            ),
+                                          if (clashes[a.id] case final k?)
+                                            _ConflictStrip(conflict: k),
+                                          if (phoneBooked.contains(a.uuid))
+                                            const _PhoneBookedStrip(),
                                           Divider(height: 1, color: d.line),
                                           Padding(
                                             padding: const EdgeInsets.fromLTRB(
@@ -291,6 +363,7 @@ class _ApptActions extends ConsumerWidget {
   // ── mark arrived ──
   Future<void> _confirmArrived(BuildContext context, WidgetRef ref) async {
     final d = context.dent;
+    final pushNow = appointmentPusher(ref);
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
@@ -318,6 +391,8 @@ class _ApptActions extends ConsumerWidget {
       await ref
           .read(appDatabaseProvider)
           .setAppointmentStatus(appt.id, AppointmentStatus.waiting.name);
+      // every computer's waiting list + the reception screen, right now
+      pushNow(appt.id);
     }
   }
 
@@ -328,6 +403,7 @@ class _ApptActions extends ConsumerWidget {
     bool canUndo,
   ) async {
     final d = context.dent;
+    final pushNow = appointmentPusher(ref);
     final choice = await showDialog<String>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
@@ -366,8 +442,10 @@ class _ApptActions extends ConsumerWidget {
     final db = ref.read(appDatabaseProvider);
     if (choice == 'complete') {
       await db.setAppointmentStatus(appt.id, AppointmentStatus.completed.name);
+      pushNow(appt.id);
     } else if (choice == 'undo') {
       await db.setAppointmentStatus(appt.id, AppointmentStatus.upcoming.name);
+      pushNow(appt.id);
     }
   }
 
@@ -375,6 +453,7 @@ class _ApptActions extends ConsumerWidget {
   /// A double click opens the invoice once — never two bills for one visit.
   Future<void> _bill(BuildContext context, WidgetRef ref) =>
       runOnce('bill:${appt.id}', () async {
+        final pushNow = appointmentPusher(ref);
         final created = await showInvoiceEditor(
           context,
           patientId: appt.patientId,
@@ -390,6 +469,7 @@ class _ApptActions extends ConsumerWidget {
             appt.id,
             AppointmentStatus.completed.name,
           );
+          pushNow(appt.id);
         }
       });
 
@@ -562,6 +642,115 @@ class _ApptActions extends ConsumerWidget {
           Expanded(child: buttons[i]),
         ],
       ],
+    );
+  }
+}
+
+/// "On chair · called 10:42 AM" under an appointment the doctor has
+/// called. Shows on every computer, live.
+class _CalledStrip extends StatelessWidget {
+  const _CalledStrip({required this.call, required this.onChair});
+  final PatientCall call;
+  final bool onChair;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = context.dent;
+    final c = onChair ? d.ice : d.tealDeep;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 7, 14, 7),
+      color: c.withValues(alpha: .07),
+      child: Row(
+        children: [
+          Icon(Icons.campaign_rounded, size: 15, color: c),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              onChair
+                  ? 'On chair  ·  called at ${callTime(call.calledAt)}'
+                  : 'Called at ${callTime(call.calledAt)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: c,
+                fontSize: 8.5.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Double-booked · Dr Ali also has Sara Khan at 5:00–5:30 PM". Shown on
+/// both clashing appointments until one is moved or cancelled.
+class _ConflictStrip extends StatelessWidget {
+  const _ConflictStrip({required this.conflict});
+  final BookingConflict conflict;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = context.dent;
+    final o = conflict.other;
+    final range = '${conflictTime(o.start)}–${conflictTime(o.end)}';
+    final text = conflict.sameDoctor
+        ? 'Double-booked  ·  ${o.dentist} also has ${o.patientName} at $range'
+        : 'Double-booked  ·  this patient is also with ${o.dentist} at $range';
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 7, 14, 7),
+      color: d.alert.withValues(alpha: .08),
+      child: Row(
+        children: [
+          Icon(Icons.event_busy_rounded, size: 15, color: d.alert),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              '$text  ·  reschedule one',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: d.alert,
+                fontSize: 8.5.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Booked from the owner phone" — the server records every phone booking.
+class _PhoneBookedStrip extends StatelessWidget {
+  const _PhoneBookedStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    final d = context.dent;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 7, 14, 7),
+      color: d.ice.withValues(alpha: .07),
+      child: Row(
+        children: [
+          Icon(Icons.phone_iphone_rounded, size: 15, color: d.ice),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              'Booked from the owner phone',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: d.ice,
+                fontSize: 8.5.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

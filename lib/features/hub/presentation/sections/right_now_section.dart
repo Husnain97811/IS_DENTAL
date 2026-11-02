@@ -3,6 +3,7 @@ import 'package:sizer/sizer.dart';
 import 'package:is_dental/core/constants/views.dart';
 
 import '../../data/hub_data.dart';
+import '../widgets/health_score.dart';
 import '../widgets/hub_ui.dart';
 
 /// Right now — today's pulse, what needs the owner, and the chairs.
@@ -37,6 +38,8 @@ class RightNowSection extends StatelessWidget {
               '${hubWeekday(now)} ${hubDate(now)} · what needs you and '
               'what is happening in the chairs',
         ),
+        HubHealthCard(scores: data.scores),
+        const SizedBox(height: 18),
         HubGrid(
           minWidth: 220,
           children: [

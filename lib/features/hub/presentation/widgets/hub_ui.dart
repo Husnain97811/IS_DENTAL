@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import 'package:is_dental/core/constants/views.dart';
@@ -11,11 +13,15 @@ class HubScope extends InheritedWidget {
     super.key,
     required this.hidden,
     required this.onGo,
+    this.onReload,
     required super.child,
   });
 
   final bool hidden;
   final void Function(HubGo go, {String? arg, String? label}) onGo;
+
+  /// Reloads the Hub's numbers (after a setting that changes them).
+  final VoidCallback? onReload;
 
   static HubScope of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<HubScope>()!;
@@ -632,4 +638,179 @@ class HubGoLink extends StatelessWidget {
       ),
     );
   }
+}
+
+/// "How we worked this out" — the plain-words method under a figure.
+/// When numbers are hidden and the text holds amounts, it says so instead
+/// of giving them away.
+class HubHow extends StatelessWidget {
+  const HubHow(this.text, {super.key, this.hasAmounts = true});
+  final String text;
+  final bool hasAmounts;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = context.dent;
+    final hidden = hasAmounts && HubScope.of(context).hidden;
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 18),
+        childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+        iconColor: d.text3,
+        collapsedIconColor: d.text3,
+        title: Text(
+          'How we worked this out',
+          style: TextStyle(
+            color: d.ice,
+            fontSize: 9.6.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              hidden ? 'Show numbers to read how this was worked out.' : text,
+              style: TextStyle(color: d.text2, fontSize: 9.6.sp, height: 1.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────── health score ─────────────────────────────
+
+/// Colour for a health score: green, ice, amber, red (grey when none).
+Color hubScoreTone(DentColors d, int? v) => v == null
+    ? d.text4
+    : v >= 85
+    ? d.ok
+    : v >= 70
+    ? d.ice
+    : v >= 50
+    ? d.warn
+    : d.alert;
+
+/// The score as a ring with the number in the middle.
+class HubScoreRing extends StatelessWidget {
+  const HubScoreRing({
+    super.key,
+    required this.value,
+    this.size = 120,
+    this.stroke,
+    this.caption,
+  });
+
+  /// 0–100, or null for "no score yet".
+  final int? value;
+  final double size;
+  final double? stroke;
+
+  /// Small line under the number ("of 100").
+  final String? caption;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = context.dent;
+    final tone = hubScoreTone(d, value);
+    final width = stroke ?? math.max(5.0, size * .085);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: (value ?? 0) / 100),
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.easeOutCubic,
+        builder: (context, t, _) => CustomPaint(
+          painter: _RingPainter(
+            fraction: t,
+            tone: tone,
+            track: d.line,
+            stroke: width,
+          ),
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.all(width * 1.6),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      value == null ? '--' : '${(t * 100).round()}',
+                      style: TextStyle(
+                        fontFamily: AppFonts.display,
+                        color: d.text1,
+                        fontSize: size * .3,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                    ),
+                    if (caption != null)
+                      Text(
+                        caption!,
+                        style: TextStyle(color: d.text3, fontSize: size * .1),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  _RingPainter({
+    required this.fraction,
+    required this.tone,
+    required this.track,
+    required this.stroke,
+  });
+
+  final double fraction, stroke;
+  final Color tone, track;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = (math.min(size.width, size.height) - stroke) / 2;
+    final c = size.center(Offset.zero);
+    final rect = Rect.fromCircle(center: c, radius: r);
+    canvas.drawCircle(
+      c,
+      r,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..color = track,
+    );
+    if (fraction <= 0) return;
+    canvas.drawArc(
+      rect,
+      -math.pi / 2,
+      2 * math.pi * fraction.clamp(0.0, 1.0),
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..shader = SweepGradient(
+          colors: [tone.withValues(alpha: .55), tone],
+          // the gradient starts at 12 o'clock, like the arc
+          transform: const GradientRotation(-math.pi / 2),
+        ).createShader(rect),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) =>
+      old.fraction != fraction ||
+      old.tone != tone ||
+      old.track != track ||
+      old.stroke != stroke;
 }

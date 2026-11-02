@@ -6,7 +6,9 @@ import 'package:is_dental/core/constants/views.dart';
 import 'package:is_dental/features/cash/data/cash_repository.dart';
 
 import 'hub_forecast.dart';
+import 'hub_score.dart';
 import 'hub_watch.dart';
+import 'hub_whatif.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  What the Detailed Reporting Hub shows. Everything is read from the local
@@ -224,8 +226,18 @@ enum HubGo {
   whatsapp,
   settings,
 
-  /// Stays in the Hub — opens the Watch list section.
+  // ── these stay in the Hub and open one of its sections ──
   watchList,
+  money,
+  whatsComing,
+  health;
+
+  /// Opens a Hub section rather than leaving the Hub.
+  bool get inHub =>
+      this == watchList ||
+      this == money ||
+      this == whatsComing ||
+      this == health;
 }
 
 class HubAlert {
@@ -279,9 +291,13 @@ class HubToday {
     required this.pendingRequests,
     required this.dayStart,
     required this.dayEnd,
+    this.tomorrow = const [],
   });
 
   final List<HubAppt> appts;
+
+  /// Tomorrow's bookings, earliest first (cancelled ones left out).
+  final List<HubAppt> tomorrow;
   final int collected, collectedCash, lastWeekSameTime;
   final int monthCollected, lastMonthToDate, monthExpenses;
   final int owedTotal, owedCount, owedOver60;
@@ -487,9 +503,17 @@ class HubData {
     required this.alerts,
     required this.forecast,
     required this.watch,
+    required this.scores,
+    required this.whatIf,
   });
 
   final DateTime loadedAt;
+
+  /// Clinic health score (always the last 30 days) and per-branch scores.
+  final HubScores scores;
+
+  /// The starting point for What if (next 30 days).
+  final HubWhatIfBase whatIf;
   final HubForecast forecast;
 
   /// For the chosen period.
@@ -521,6 +545,7 @@ const hubLoadSteps = [
   'Checking the watch list',
   'Comparing branches',
   'Checking computers, WhatsApp and licence',
+  'Scoring the clinic and preparing What if',
 ];
 
 /// Loads everything the Hub shows for [branchId] (null = all branches).
@@ -593,6 +618,42 @@ Future<HubData> loadHubData({
           .get();
   final appts = [
     for (final row in apptRows)
+      () {
+        final a = row.readTable(db.appointments);
+        final p = row.readTable(db.patients);
+        return HubAppt(
+          id: a.id,
+          patientId: a.patientId,
+          patient: p.fullName,
+          dentist: a.dentist.trim(),
+          procedure: a.procedure,
+          status: a.status,
+          startsAt: a.startsAt,
+          minutes: a.durationMin <= 0 ? 30 : a.durationMin,
+          billed: a.billed,
+        );
+      }(),
+  ];
+
+  final d2 = d1.add(const Duration(days: 1));
+  final tomorrowRows =
+      await (db.select(db.appointments).join([
+              innerJoin(
+                db.patients,
+                db.patients.id.equalsExp(db.appointments.patientId),
+              ),
+            ])
+            ..where(
+              db.appointments.isDeleted.equals(false) &
+                  db.appointments.status.equals('cancelled').not() &
+                  db.appointments.startsAt.isBiggerOrEqualValue(d1) &
+                  db.appointments.startsAt.isSmallerThanValue(d2) &
+                  inBranch(db.appointments.branchId),
+            )
+            ..orderBy([OrderingTerm.asc(db.appointments.startsAt)]))
+          .get();
+  final tomorrow = [
+    for (final row in tomorrowRows)
       () {
         final a = row.readTable(db.appointments);
         final p = row.readTable(db.patients);
@@ -704,6 +765,7 @@ Future<HubData> loadHubData({
     pendingRequests: pendingRequests,
     dayStart: open,
     dayEnd: close,
+    tomorrow: tomorrow,
   );
 
   // ── 2. money for the period ─────────────────────────────────────────────
@@ -1068,6 +1130,24 @@ Future<HubData> loadHubData({
 
   final unclosed = await cash.unclosedDays(before: d0, branchId: branchId);
 
+  // ── 8. health score and What if ─────────────────────────────────────────
+  onStep?.call(7);
+  final scores = await loadHubScores(
+    db: db,
+    allBranches: allBranches,
+    branchId: branchId,
+    forecast: forecast,
+    owed: [for (final o in owed) (branch: o.branch, due: o.due, days: o.days)],
+    checks: _checks(now, health, ent.cloud),
+  );
+  final whatIf = await loadHubWhatIf(
+    db: db,
+    cash: cash,
+    branchId: branchId,
+    forecast: forecast,
+    scores: scores,
+  );
+
   return HubData(
     loadedAt: DateTime.now(),
     today: today,
@@ -1079,6 +1159,8 @@ Future<HubData> loadHubData({
     health: health,
     forecast: forecast,
     watch: watch,
+    scores: scores,
+    whatIf: whatIf,
     alerts: _alerts(
       now: now,
       today: today,
@@ -1091,6 +1173,62 @@ Future<HubData> loadHubData({
       failedSignIns: failedWeek.length,
     ),
   );
+}
+
+/// The pass / fail items behind the score's "System" part.
+List<HubCheck> _checks(DateTime now, HubHealth h, bool cloud) {
+  final out = <HubCheck>[];
+  if (cloud) {
+    final last = h.lastSyncHere;
+    out.add(
+      HubCheck(
+        'this computer synced in the last 24 hours',
+        last != null && now.difference(last).inHours < 24,
+        HubGo.settings,
+      ),
+    );
+    out.add(HubCheck('every record synced', h.skipped == 0, HubGo.settings));
+  }
+  for (final d in h.devices) {
+    if (d.isThis) continue;
+    out.add(
+      HubCheck(
+        'computer ${d.letter} seen in the last 3 days',
+        d.lastSeen != null && now.difference(d.lastSeen!).inDays < 3,
+        HubGo.settings,
+      ),
+    );
+  }
+  for (final w in h.wa) {
+    if (!w.on) continue;
+    out.add(
+      HubCheck(
+        'WhatsApp connected at ${w.branch}',
+        w.connected,
+        HubGo.whatsapp,
+      ),
+    );
+    if (w.failed != null) {
+      out.add(
+        HubCheck(
+          'no failed WhatsApp messages at ${w.branch}',
+          w.failed == 0,
+          HubGo.whatsapp,
+        ),
+      );
+    }
+  }
+  final left = h.licenceDaysLeft;
+  if (left != null) {
+    out.add(
+      HubCheck(
+        'more than 14 days left on the licence',
+        left > 14,
+        HubGo.settings,
+      ),
+    );
+  }
+  return out;
 }
 
 String _n(int n, String one, [String? many]) =>

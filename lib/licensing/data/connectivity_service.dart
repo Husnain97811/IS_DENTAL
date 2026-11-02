@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../cloud/data/cloud_service.dart';
 import '../../cloud/data/sync_engine.dart';
@@ -34,6 +35,26 @@ class ConnectivityService {
   Future<void> seedContact() async {
     final now = await _clock.now();
     await _db.setSetting(_kLastContact, '${now.millisecondsSinceEpoch}');
+  }
+
+  /// The signed licence the licence tool saved on the clinic's cloud row,
+  /// or null (offline, no licence saved yet, or an older tool).
+  /// Verification happens in LicenseService.applyFromCloud — this only
+  /// fetches the text.
+  Future<String?> cloudLicence(String clinicId) async {
+    try {
+      await _cloud.ensureSignedIn();
+      final row = await Supabase.instance.client
+          .from('clinics')
+          .select('licence_blob')
+          .eq('id', clinicId)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 8));
+      final v = row?['licence_blob'];
+      return v is String && v.trim().isNotEmpty ? v : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<HeartbeatResult> heartbeat({
