@@ -244,15 +244,17 @@ class _CancelState extends ConsumerState<_CancelDialog> {
       await ref
           .read(appointmentRepositoryProvider)
           .cancel(a.id, reason: _reason.text.trim());
-      syncInBackground(ref);
+      if (!mounted) return;
+      // to the cloud now; no internet → red badge, sent later by itself
+      final sent = sendAppointmentNow(ref, context, appointmentId: a.id);
       if (_notify) {
         notifyAppointmentChange(
           ref,
           appointmentUuid: a.uuid,
           type: 'cancelled',
+          after: sent,
         );
       }
-      if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Appointment cancelled for ${a.patientName}.')),
@@ -542,15 +544,17 @@ class _ReState extends ConsumerState<_RescheduleDialog> {
       await ref
           .read(appointmentRepositoryProvider)
           .reschedule(id: a.id, startsAt: slot);
-      syncInBackground(ref);
+      if (!mounted) return;
+      // to the cloud now; no internet → red badge, sent later by itself
+      final sent = sendAppointmentNow(ref, context, appointmentId: a.id);
       if (_notify) {
         notifyAppointmentChange(
           ref,
           appointmentUuid: a.uuid,
           type: 'rescheduled',
+          after: sent,
         );
       }
-      if (!mounted) return;
       Navigator.pop(context);
 
       // follow the appointment to its new date

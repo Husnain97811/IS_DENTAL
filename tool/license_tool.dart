@@ -102,7 +102,7 @@ String _canonical(Map<String, dynamic> p) => jsonEncode({
 });
 
 /// Add-ons the tool may put on a licence. Must match LicenseFeature.all.
-const _knownFeatures = {'reception', 'ownerapp'};
+const _knownFeatures = {'reception', 'ownerapp', 'phonebook'};
 
 AsymmetricKeyPair _loadOrCreateKeys() {
   final f = File(_keyFile);
@@ -400,6 +400,13 @@ Future<void> _handleMint(HttpRequest req) async {
     return _json(req, {
       'ok': false,
       'error': 'The owner phone app needs a Standard or Premium Cloud licence.',
+    });
+  }
+  // Booking from the phone: any tier, Basic too — but it needs the cloud.
+  if (features.contains('phonebook') && cloudPackage != 'cloud') {
+    return _json(req, {
+      'ok': false,
+      'error': 'Phone booking needs a Cloud licence.',
     });
   }
 
@@ -880,6 +887,9 @@ const _html = r'''
         <label class="check" id="ownBox"><input type="checkbox" id="fOwnerApp">
           <span><b>Owner phone app</b> add-on
           <span class="muted">— Standard or Premium. Lets the owner connect up to 2 phones.</span></span></label>
+        <label class="check" id="bookBox"><input type="checkbox" id="fPhoneBook">
+          <span><b>Phone booking</b> add-on
+          <span class="muted">— any plan with Cloud, Basic too. Book appointments (and new patients) from a connected phone.</span></span></label>
 
         <div class="row3">
           <div><label>Branches</label><input id="maxBranches" type="number" min="1" value="1"></div>
@@ -1061,6 +1071,7 @@ function pickExisting(){
     $('maxDevices').value = c.maxDevices || 1;
     $('fReception').checked = (c.features||[]).includes('reception');
     $('fOwnerApp').checked = (c.features||[]).includes('ownerapp');
+    $('fPhoneBook').checked = (c.features||[]).includes('phonebook');
     checkAddon();
   }
 }
@@ -1076,6 +1087,11 @@ function checkAddon(){
   $('fOwnerApp').disabled = !own;
   if(!own) $('fOwnerApp').checked = false;
   $('ownBox').classList.toggle('off', !own);
+  // Phone booking: any tier, Cloud only.
+  const book = $('cloudPackage').value === 'cloud';
+  $('fPhoneBook').disabled = !book;
+  if(!book) $('fPhoneBook').checked = false;
+  $('bookBox').classList.toggle('off', !book);
 }
 $('tier').addEventListener('change', checkAddon);
 $('cloudPackage').addEventListener('change', checkAddon);
@@ -1111,7 +1127,8 @@ function render(){
                   : dl <= 30 ? `<span class="pill p-soon">${dl}d left</span>` : '';
         const cloud = c.cloudPackage==='none' ? `<span class="pill p-none">offline</span>` : '';
         const addon = ((c.features||[]).includes('reception') ? `<span class="pill p-addon">+reception</span>` : '')
-                    + ((c.features||[]).includes('ownerapp') ? `<span class="pill p-addon">+owner app</span>` : '');
+                    + ((c.features||[]).includes('ownerapp') ? `<span class="pill p-addon">+owner app</span>` : '')
+                    + ((c.features||[]).includes('phonebook') ? `<span class="pill p-addon">+phone booking</span>` : '');
         return `<div class="clinic" onclick="renewThis('${c.clinicId}')">
           <div class="top">
             <b>${esc(c.clinicName)}</b>
@@ -1178,6 +1195,8 @@ function preflight(){
       warn.push(`Reception screen &amp; patient call add-on removed.`);
     if(c && (c.features||[]).includes('ownerapp') && !$('fOwnerApp').checked)
       warn.push(`Owner phone app add-on removed — connected phones stop working.`);
+    if(c && (c.features||[]).includes('phonebook') && !$('fPhoneBook').checked)
+      warn.push(`Phone booking add-on removed — booking from connected phones stops.`);
     if(c && parseInt($('maxBranches').value) < (c.maxBranches||1))
       warn.push(`Branch limit drops from <b>${c.maxBranches}</b> to <b>${$('maxBranches').value}</b>.`);
     if(c && parseInt($('maxUsers').value) < (c.maxUsers||1))
@@ -1283,6 +1302,7 @@ async function mint(){
     features: [
       ...($('fReception').checked ? ['reception'] : []),
       ...($('fOwnerApp').checked ? ['ownerapp'] : []),
+      ...($('fPhoneBook').checked ? ['phonebook'] : []),
     ],
   };
   try{

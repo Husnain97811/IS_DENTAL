@@ -299,5 +299,13 @@ String hubEventLabel(String kind) => switch (kind) {
   'phone_wrong_number' => 'Wrong owner number typed on a phone',
   'phone_pin_locked' => 'Locked after wrong Hub PINs',
   'owner_phone_changed' => 'Changed the owner mobile number',
+  'hub_chairs' => "Changed a branch's chair count",
+  // from the owner phone
+  'appt_booked_phone' => 'Booked an appointment from a phone',
+  'user_added_phone' => 'Added a staff login from a phone',
+  'user_updated_phone' => 'Changed a staff login from a phone',
+  'user_deactivated_phone' => 'Deactivated a staff login from a phone',
+  'user_reactivated_phone' => 'Reactivated a staff login from a phone',
+  'patient_added_phone' => 'Added a new patient from a phone',
   _ => kind,
 };

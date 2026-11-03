@@ -138,14 +138,14 @@ class PhoneApiError implements Exception {
           ? 'Too many wrong PINs. Wait 15 minutes and try again.'
           : 'Too many wrong PINs. Try again after ${_hm(until!)}.',
     'no_pin' =>
-      'Set your Hub PIN first: open the Detailed Reporting Hub once and '
-          'create it. If you just set it, press Sync now and try again.',
+      'Set your PIN first (Set PIN, below). It is the same PIN that opens '
+          'the Detailed Reporting Hub.',
     'no_phone' => 'Add the owner mobile number first (above).',
     'limit' =>
       '${max ?? 2} phones are already connected. Disconnect one first.',
     'not_on_plan' =>
-      "The owner phone app isn't on this clinic's plan yet. "
-          'Contact Inover Studio to add it.',
+      "Connecting a phone isn't on this clinic's plan yet (the Owner phone "
+          'app or Phone booking add-on). Contact Inover Studio to add it.',
     'expired' => 'The licence has expired. Renew it to connect a phone.',
     'suspended' => "This clinic's subscription is suspended.",
     'bad_number' => 'Enter a Pakistani mobile number, like 0300 1234567.',
@@ -268,12 +268,14 @@ class OwnerPhonesApi {
       return await call();
     } on PhoneApiError catch (e) {
       if (e.code != 'wrong_pin' && e.code != 'no_pin') rethrow;
-      if (!await _pushPin(owner)) rethrow;
+      if (!await pushPin(owner)) rethrow;
       return await call();
     }
   }
 
-  Future<bool> _pushPin(User u) async {
+  /// Sends [u]'s PIN hash (never the digits) to the cloud. Only overwrites
+  /// an older cloud PIN, never a newer one set on another computer.
+  Future<bool> pushPin(User u) async {
     final hash = u.hubPinHash ?? '';
     if (u.uuid.isEmpty || hash.isEmpty) return false;
     try {

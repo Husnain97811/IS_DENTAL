@@ -3,13 +3,19 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
 import 'package:is_dental/core/constants/views.dart';
+import 'package:is_dental/features/hub/data/hub_pin.dart';
 import 'package:is_dental/features/hub/data/hub_security.dart';
 
 import '../data/owner_phones.dart';
 import 'pair_phone_dialog.dart';
 
 /// Settings → Connected phones. Owner only; shown when the licence has the
-/// "Owner phone app" add-on (Standard or Premium).
+/// "Owner phone app" add-on (Standard or Premium) or the "Phone booking"
+/// add-on (any plan, Basic too).
+///
+/// The phone is connected with the owner's Hub PIN. A Basic clinic has no
+/// Reporting Hub to create it in, so the PIN can be set right here too —
+/// it is the same PIN, stored the same way.
 class PhonesPanel extends ConsumerWidget {
   const PhonesPanel({super.key});
 
@@ -20,7 +26,7 @@ class PhonesPanel extends ConsumerWidget {
 
     return DentPanel(
       title: 'Connected phones',
-      subtitle: "The owner's phone · Hub on the go",
+      subtitle: "The owner's phone · Hub and booking on the go",
       trailing: IconButton(
         tooltip: 'Refresh',
         onPressed: () => ref.invalidate(phonesOverviewProvider),
@@ -149,6 +155,36 @@ class PhonesPanel extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
+              ],
+              if (o.onPlan && !o.hasPin) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: d.ice,
+                      side: BorderSide(color: d.ice.withValues(alpha: .5)),
+                      minimumSize: const Size(0, 44),
+                    ),
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      final done = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => const _SetPinDialog(),
+                      );
+                      if (done == true) {
+                        if (context.mounted) {
+                          ref.invalidate(phonesOverviewProvider);
+                        }
+                        messenger.showSnackBar(
+                          const SnackBar(content: Text('PIN saved.')),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.pin_rounded, size: 18),
+                    label: Text('Set PIN', style: TextStyle(fontSize: 10.sp)),
+                  ),
+                ),
+                const SizedBox(height: 12),
               ],
               Row(
                 children: [
@@ -535,6 +571,240 @@ class _PinActionDialogState extends ConsumerState<_PinActionDialog> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Creates the owner's PIN — the same PIN that opens the Detailed Reporting
+/// Hub (a PBKDF2 hash, never the digits) — and sends it to the cloud so a
+/// phone can be connected straight away. For a plan without the Hub
+/// (Basic + Phone booking), this is the only place to make it.
+///
+/// A PIN already set on this computer that hasn't reached the cloud yet is
+/// just sent up; it is never replaced from here.
+class _SetPinDialog extends ConsumerStatefulWidget {
+  const _SetPinDialog();
+  @override
+  ConsumerState<_SetPinDialog> createState() => _SetPinDialogState();
+}
+
+class _SetPinDialogState extends ConsumerState<_SetPinDialog> {
+  final _pin = TextEditingController();
+  final _again = TextEditingController();
+  bool _busy = false;
+  bool? _hasLocal; // null while checking
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _check();
+  }
+
+  Future<void> _check() async {
+    final session = ref.read(authControllerProvider);
+    final sec = ref.read(hubSecurityProvider);
+    final owner = session == null ? null : await sec.userFor(session);
+    if (!mounted) return;
+    setState(() => _hasLocal = owner != null && sec.hasPin(owner));
+  }
+
+  @override
+  void dispose() {
+    _pin.dispose();
+    _again.dispose();
+    super.dispose();
+  }
+
+  Future<void> _go() async {
+    final session = ref.read(authControllerProvider);
+    if (session == null || session.role != AppRole.owner) {
+      setState(() => _error = 'Only the owner can do this.');
+      return;
+    }
+    final sec = ref.read(hubSecurityProvider);
+    final api = ref.read(ownerPhonesApiProvider);
+    final pin = _pin.text.trim();
+    if (_hasLocal != true) {
+      final problem = HubPin.problem(pin);
+      if (problem != null) {
+        setState(() => _error = problem);
+        return;
+      }
+      if (pin != _again.text.trim()) {
+        _again.clear();
+        setState(() => _error = "The two PINs don't match.");
+        return;
+      }
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      var owner = await sec.userFor(session);
+      if (owner == null) throw StateError('no owner');
+      if (!sec.hasPin(owner)) {
+        await sec.setPin(owner, session, pin, kind: 'hub_pin_set');
+        owner = await sec.userFor(session); // with the new hash
+      }
+      if (owner == null || !await api.pushPin(owner)) {
+        if (!mounted) return;
+        setState(() {
+          _busy = false;
+          _hasLocal = true;
+          _error =
+              'Saved on this computer, but it could not reach the cloud. '
+              'Check the internet and press Send again.';
+        });
+        return;
+      }
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = PhoneApiError('server').message;
+      });
+    }
+  }
+
+  InputDecoration _deco(DentColors d, String label) => InputDecoration(
+    labelText: label,
+    hintText: '••••',
+    counterText: '',
+    labelStyle: TextStyle(color: d.text3, fontSize: 10.sp),
+    hintStyle: TextStyle(color: d.text4, fontSize: 10.sp),
+    filled: true,
+    fillColor: d.surface2,
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: d.line),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: d.ice, width: 1.6),
+    ),
+  );
+
+  Widget _field(
+    DentColors d,
+    TextEditingController c,
+    String label, {
+    bool autofocus = false,
+  }) => TextField(
+    controller: c,
+    autofocus: autofocus,
+    enabled: !_busy,
+    obscureText: true,
+    keyboardType: TextInputType.number,
+    maxLength: 6,
+    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+    style: TextStyle(color: d.text1, fontSize: 12.sp, letterSpacing: 6),
+    decoration: _deco(d, label),
+    onSubmitted: (_) => _busy ? null : _go(),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final d = context.dent;
+    final local = _hasLocal;
+    return Dialog(
+      backgroundColor: d.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: local == null
+              ? const SizedBox(
+                  height: 120,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      local ? 'Send your PIN' : 'Set your PIN',
+                      style: TextStyle(
+                        color: d.text1,
+                        fontSize: 12.5.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      local
+                          ? 'Your PIN is set on this computer but has not '
+                                'reached the cloud yet. Send it now to connect '
+                                'a phone.'
+                          : 'You type this PIN to connect a phone, and on the '
+                                'phone to open Owner mode. It is the same PIN '
+                                'as the Detailed Reporting Hub. 4 to 6 digits.',
+                      style: TextStyle(
+                        color: d.text2,
+                        fontSize: 10.sp,
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    if (!local) ...[
+                      _field(d, _pin, 'New PIN', autofocus: true),
+                      const SizedBox(height: 12),
+                      _field(d, _again, 'Type it again'),
+                    ],
+                    if (_error != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        _error!,
+                        style: TextStyle(
+                          color: d.alert,
+                          fontSize: 10.sp,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        const Spacer(),
+                        TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () => Navigator.of(context).pop(false),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(fontSize: 10.5.sp),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: d.ice,
+                            foregroundColor: AppPalette.onAccent,
+                            minimumSize: const Size(130, 46),
+                          ),
+                          onPressed: _busy ? null : _go,
+                          child: _busy
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                  ),
+                                )
+                              : Text(
+                                  local ? 'Send' : 'Save PIN',
+                                  style: TextStyle(fontSize: 10.5.sp),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
         ),
       ),
     );

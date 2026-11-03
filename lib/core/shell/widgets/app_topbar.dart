@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:is_dental/features/calls/data/call_board.dart';
 import 'package:is_dental/features/hub/presentation/hub_entry.dart';
 import '../../constants/views.dart';
 
@@ -346,6 +347,9 @@ class _AppTopbarState extends ConsumerState<AppTopbar> {
   Widget build(BuildContext context) {
     final d = context.dent;
     final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    // Keeps the live appointment channel running from start-up on every
+    // screen (every cloud plan). Listening never rebuilds the bar.
+    ref.listen(callBoardProvider.select((b) => b.live), (_, __) {});
 
     final patients =
         ref.watch(patientsStreamProvider).value ?? const <Patient>[];

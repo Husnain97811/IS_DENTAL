@@ -16,7 +16,11 @@ class LicenseFeature {
   /// ticked in the licence tool at renewal.
   static const ownerApp = 'ownerapp';
 
-  static const all = {reception, ownerApp};
+  /// Booking from a connected phone (new patients too). Any plan — Basic
+  /// too — with the cloud; ticked in the licence tool at renewal.
+  static const phoneBooking = 'phonebook';
+
+  static const all = {reception, ownerApp, phoneBooking};
 }
 
 class License {

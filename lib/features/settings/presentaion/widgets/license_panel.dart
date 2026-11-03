@@ -47,13 +47,14 @@ class _S extends ConsumerState<LicencePanel> {
               'Plan',
               '${ent.tierLabel == 'Basic' ? "Basic" : ent.tierLabel}${ent.cloud ? " · Cloud" : " · Offline"}',
             ),
-            if (ent.patientCallAddOn || ent.ownerPhone)
+            if (ent.patientCallAddOn || ent.ownerPhone || ent.phoneBooking)
               _row(
                 d,
                 'Add-ons',
                 [
                   if (ent.patientCallAddOn) 'Reception screen & patient call',
                   if (ent.ownerPhone) 'Owner phone app',
+                  if (ent.phoneBooking) 'Phone booking',
                 ].join(' · '),
               ),
             _rowCopy(d, 'Clinic ID', lic.clinicId),

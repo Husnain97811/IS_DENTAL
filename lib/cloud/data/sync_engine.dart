@@ -13,6 +13,25 @@ class SyncEngine {
   final AppDatabase _db;
   final SupabaseClient _sb = Supabase.instance.client;
 
+  // ── one sync at a time ───────────────────────────────────────────────
+  // The full sync, the quick appointment sync and a restore all read and
+  // write the same tables and cursors. Two at once could save the same row
+  // twice (one copy then fails and shows as skipped) or move a cursor
+  // backwards, so they wait for each other here.
+  //
+  // A request that arrives while a run of the same kind is still WAITING
+  // joins that run: it hasn't started yet, so it will see the new change
+  // anyway. This also stops ten quick saves from queueing ten full syncs.
+  Future<void> _queue = Future<void>.value();
+  Future<void>? _fullWaiting;
+  Future<void>? _apptWaiting;
+
+  Future<void> _serial(Future<void> Function() job) {
+    final run = _queue.then((_) => job());
+    _queue = run.catchError((Object _) {});
+    return run;
+  }
+
   Future<String> syncNow(WidgetRef ref) async {
     try {
       debugPrint('SYNC: signing in…');
@@ -28,7 +47,83 @@ class SyncEngine {
     }
   }
 
-  Future<void> syncAll(String clinicId) async {
+  /// Everything, both ways. Waits for any other sync on this computer
+  /// to finish first (see [_serial]).
+  Future<void> syncAll(String clinicId) {
+    final waiting = _fullWaiting;
+    if (waiting != null) return waiting;
+    late final Future<void> run;
+    run = _serial(() {
+      // started: a request from now on needs a fresh run
+      if (identical(_fullWaiting, run)) _fullWaiting = null;
+      return _syncAllNow(clinicId);
+    });
+    _fullWaiting = run;
+    return run;
+  }
+
+  /// Logins, patients, appointments and the activity record only, both
+  /// ways — a second or two instead of the whole sync. Runs when the live
+  /// channel (re)connects, when the internet comes back, when a login
+  /// changes on another computer or the owner phone, and when an
+  /// appointment arrives live that this computer can't show yet (its
+  /// patient is new here). Same code and cursors as [syncAll], never at
+  /// the same time.
+  Future<void> syncAppointmentsNow(String clinicId) {
+    final waiting = _apptWaiting;
+    if (waiting != null) return waiting;
+    late final Future<void> run;
+    run = _serial(() async {
+      if (identical(_apptWaiting, run)) _apptWaiting = null;
+      Future<void> step(String name, Future<void> Function() f) async {
+        try {
+          await f();
+        } catch (e) {
+          debugPrint('SYNC[quick $name] failed: $e');
+        }
+      }
+
+      // a login added on the owner phone can sign in here within seconds
+      await step('users', () => _syncUsers(clinicId));
+      // patients first: an appointment is only saved here once its
+      // patient is
+      await step('patients', () => _syncPatients(clinicId));
+      await step('appointments', () => _syncAppointments(clinicId));
+      // brings the "Booked from the owner phone" line with it
+      await step('activity', () => _syncActivity(clinicId));
+    });
+    _apptWaiting = run;
+    return run;
+  }
+
+  /// A patient registered here a moment ago may not be in the cloud yet.
+  /// Sends ONLY that patient's row (not their chart or plans) when the
+  /// cloud doesn't have them, so their appointment can go up right after.
+  /// A patient the cloud already has is never sent from here — that would
+  /// risk replacing a newer copy. Moves no cursor: the next full sync
+  /// still sends everything about them. Throws when offline.
+  Future<void> ensurePatientInCloud(int patientId, String clinicId) async {
+    final p = await (_db.select(
+      _db.patients,
+    )..where((t) => t.id.equals(patientId))).getSingleOrNull();
+    if (p == null) return;
+    // sent before and not changed since → certainly in the cloud
+    if (!p.updatedAt.isAfter(await _cur('push_patients'))) return;
+    final there = await _sb
+        .from('patients')
+        .select('uuid')
+        .eq('clinic_id', clinicId)
+        .eq('uuid', p.uuid)
+        .maybeSingle()
+        .timeout(const Duration(seconds: 8));
+    if (there != null) return;
+    await _sb
+        .from('patients')
+        .upsert(_patientRow(p, clinicId), onConflict: 'uuid')
+        .timeout(const Duration(seconds: 8));
+  }
+
+  Future<void> _syncAllNow(String clinicId) async {
     _skipped.clear();
     Future<void> step(String name, Future<void> Function() f) async {
       try {
@@ -91,7 +186,10 @@ class SyncEngine {
   /// the cloud. Forces cloud to win — ignores the LWW timestamp guard.
   /// Any local changes not yet pushed are LOST. Use only to recover from a
   /// bad local state by restoring the last cloud version.
-  Future<void> restoreFromCloud(String clinicId) async {
+  Future<void> restoreFromCloud(String clinicId) =>
+      _serial(() => _restoreNow(clinicId));
+
+  Future<void> _restoreNow(String clinicId) async {
     // Everything below is about to be emptied and refilled from the cloud.
     // From this point on this install must never create factory defaults —
     // an empty table means "not pulled yet", not "new clinic".
@@ -792,27 +890,7 @@ class SyncEngine {
     )..where((t) => t.updatedAt.isBiggerThanValue(since))).get();
     if (changed.isNotEmpty) {
       await _sb.from('patients').upsert([
-        for (final p in changed)
-          {
-            'uuid': p.uuid,
-            'clinic_id': clinicId,
-            'branch_id': p.branchId,
-            'code': p.code,
-            'full_name': p.fullName,
-            'gender': p.gender,
-            'age': p.age,
-            'phone': p.phone,
-            'cnic': p.cnic,
-            'allergies': p.allergies,
-            'insurance': p.insurance,
-            'last_visit': _iso(p.lastVisit),
-            'visit_count': p.visitCount,
-            'balance': p.balance,
-            'status': p.status,
-            'treatment_summary': p.treatmentSummary,
-            'is_deleted': p.isDeleted,
-            'updated_at': _iso(p.updatedAt),
-          },
+        for (final p in changed) _patientRow(p, clinicId),
       ], onConflict: 'uuid');
       for (final p in changed) await _pushPatientChildren(p, clinicId);
       await _setCur('push_patients', _max(changed.map((e) => e.updatedAt)));
@@ -863,6 +941,29 @@ class SyncEngine {
       });
     }
   }
+
+  /// One patient as the cloud stores it. The full sync and the instant
+  /// send ([ensurePatientInCloud]) use exactly these fields.
+  Map<String, dynamic> _patientRow(PatientRow p, String clinicId) => {
+    'uuid': p.uuid,
+    'clinic_id': clinicId,
+    'branch_id': p.branchId,
+    'code': p.code,
+    'full_name': p.fullName,
+    'gender': p.gender,
+    'age': p.age,
+    'phone': p.phone,
+    'cnic': p.cnic,
+    'allergies': p.allergies,
+    'insurance': p.insurance,
+    'last_visit': _iso(p.lastVisit),
+    'visit_count': p.visitCount,
+    'balance': p.balance,
+    'status': p.status,
+    'treatment_summary': p.treatmentSummary,
+    'is_deleted': p.isDeleted,
+    'updated_at': _iso(p.updatedAt),
+  };
 
   Future<void> _pushPatientChildren(PatientRow p, String clinicId) async {
     final teeth = await (_db.select(
@@ -2620,7 +2721,9 @@ class SyncEngine {
             'password_hash': usr.passwordHash,
             'role': usr.role,
             'email': usr.email,
-            'phone': usr.phone,
+            // the cloud column is a NUMBER: "0300 1234567" would be refused
+            // and take every other login in this batch down with it
+            'phone': _phoneDigits(usr.phone),
             'hub_pin_hash': usr.hubPinHash,
             'hub_pin_set_at': _iso(usr.hubPinSetAt),
             'is_deleted': usr.isDeleted,
@@ -2659,7 +2762,9 @@ class SyncEngine {
                 passwordHash: Value(r['password_hash'] ?? ''),
                 role: Value(r['role'] ?? 'receptionist'),
                 email: Value(r['email']),
-                phone: Value(r['phone']),
+                // arrives as a number — a number in a text column used to
+                // stop this login from ever reaching this computer
+                phone: Value(_phoneText(r['phone'])),
                 // Only when the cloud row has the column — a row from a
                 // database without it must never wipe a PIN set here.
                 hubPinHash: r.containsKey('hub_pin_hash')
@@ -2679,6 +2784,25 @@ class SyncEngine {
         if (u.isAfter(pullSince)) await _setCur('pull_users', u);
       });
     }
+  }
+
+  /// A login's phone for the cloud's NUMBER column: digits only, or null.
+  String? _phoneDigits(String? phone) {
+    final d = (phone ?? '').replaceAll(RegExp(r'\D'), '');
+    return d.isEmpty ? null : d;
+  }
+
+  /// A login's phone from the cloud (a number: 0300 1234567 is stored as
+  /// 3001234567) as text again, with a Pakistani mobile's leading 0 back.
+  String? _phoneText(Object? v) {
+    if (v == null) return null;
+    var s = (v is num ? v.toStringAsFixed(0) : '$v').replaceAll(
+      RegExp(r'\D'),
+      '',
+    );
+    if (s.isEmpty) return null;
+    if (s.length == 10 && s.startsWith('3')) s = '0$s';
+    return s;
   }
 
   Future<void> _syncPermissions(String clinicId) async {

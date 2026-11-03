@@ -12,6 +12,7 @@ import '../../../treatments/presentation/treatments_controller.dart';
 import '../../application/book_with_new_patient.dart';
 import '../appointments_controller.dart';
 import 'patient_picker_field.dart';
+import '../../../../cloud/data/quick_sync.dart';
 
 Future<void> showAppointmentEditor(BuildContext context, {int? patientId}) {
   return showDialog(
@@ -151,6 +152,11 @@ class _AppointmentEditorState extends ConsumerState<_AppointmentEditor> {
     }
 
     if (!mounted) return;
+    // To the cloud now — a new patient first, then the appointment — so the
+    // other computers, the owner phone and the patient app see it within
+    // seconds. No internet: a red badge shows for 2 seconds and the booking
+    // goes up by itself when the internet is back. Never blocks.
+    sendAppointmentNow(ref, context, bookedAt: slot, dentist: dentist);
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

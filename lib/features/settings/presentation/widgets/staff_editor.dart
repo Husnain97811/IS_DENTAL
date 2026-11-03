@@ -3,7 +3,6 @@ import 'package:bcrypt/bcrypt.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:is_dental/features/settings/domain/entitlements.dart';
 import 'package:sizer/sizer.dart';
 import '../../../../core/constants/views.dart';
 import '../../../../core/widgets/dent_field.dart';

@@ -5,13 +5,14 @@ import 'package:is_dental/core/constants/views.dart';
 
 import 'patient_call.dart';
 
-/// Appointment changes that must reach every computer at once — Mark
-/// arrived, Complete, Undo arrival — instead of on the next scheduled sync.
+/// Appointment changes that must reach every computer at once — booked,
+/// rescheduled, cancelled, Mark arrived, Complete, Undo arrival — instead
+/// of on the next scheduled sync. On every cloud plan.
 ///
 /// [push] sends one row straight away; [apply] takes a row that arrived
-/// live from another computer. Both use exactly the fields and the
-/// last-write-wins rule of SyncEngine._syncAppointments, so the scheduled
-/// sync and the live path can never disagree.
+/// live from another computer or the owner phone. Both use exactly the
+/// fields and the last-write-wins rule of SyncEngine._syncAppointments, so
+/// the scheduled sync and the live path can never disagree.
 class LiveAppointments {
   LiveAppointments(this._db);
   final AppDatabase _db;
@@ -54,29 +55,62 @@ class LiveAppointments {
     }
   }
 
-  /// A row another computer just saved. Skipped when this computer's copy
-  /// is as new or newer, or when the patient hasn't synced here yet (the
-  /// scheduled sync brings both). The sync cursor is not moved, so the
-  /// scheduled pull still sees the row.
-  Future<void> apply(Map<String, dynamic> r, String clinicId) async {
+  /// The appointment just booked on this computer: [dentist] at
+  /// [startsAt], the newest one if (after an offline clash) there are two.
+  Future<int?> justBooked({
+    required DateTime startsAt,
+    required String dentist,
+  }) async =>
+      (await (_db.select(_db.appointments)
+                ..where(
+                  (t) =>
+                      t.startsAt.equals(startsAt) &
+                      t.dentist.equals(dentist) &
+                      t.isDeleted.equals(false),
+                )
+                ..orderBy([(t) => OrderingTerm.desc(t.id)])
+                ..limit(1))
+              .getSingleOrNull())
+          ?.id;
+
+  /// The local patient id of an appointment.
+  Future<int?> patientOf(int appointmentId) async => (await (_db.select(
+    _db.appointments,
+  )..where((t) => t.id.equals(appointmentId))).getSingleOrNull())?.patientId;
+
+  /// A row another computer (or the owner phone) just saved. Skipped when
+  /// this computer's copy is as new or newer. The sync cursor is not moved,
+  /// so the scheduled pull still sees the row.
+  ///
+  /// Returns true when a quick catch-up is worth running
+  /// (SyncEngine.syncAppointmentsNow):
+  ///  • the patient isn't on this computer yet (registered a moment ago on
+  ///    another one) — the catch-up brings the patient, then the row;
+  ///  • the appointment is new here — the catch-up brings its activity
+  ///    line ("Booked from the owner phone").
+  /// This computer's own changes come back as echoes that are already
+  /// here, so they never start a catch-up.
+  Future<bool> apply(Map<String, dynamic> r, String clinicId) async {
     try {
-      if (r['clinic_id'] != clinicId) return;
+      if (r['clinic_id'] != clinicId) return false;
       final uuid = r['uuid'] as String?;
       final updated = DateTime.tryParse('${r['updated_at']}');
       final starts = DateTime.tryParse('${r['starts_at']}');
-      if (uuid == null || updated == null || starts == null) return;
+      if (uuid == null || updated == null || starts == null) return false;
 
       final pid =
           (await (_db.select(_db.patients)
                     ..where((t) => t.uuid.equals('${r['patient_uuid']}')))
                   .getSingleOrNull())
               ?.id;
-      if (pid == null) return;
+      if (pid == null) return true;
 
       final existing = await (_db.select(
         _db.appointments,
       )..where((t) => t.uuid.equals(uuid))).getSingleOrNull();
-      if (existing != null && !updated.isAfter(existing.updatedAt)) return;
+      if (existing != null && !updated.isAfter(existing.updatedAt)) {
+        return false;
+      }
 
       await _db
           .into(_db.appointments)
@@ -99,8 +133,10 @@ class LiveAppointments {
               updatedAt: Value(updated),
             ),
           );
+      return existing == null;
     } catch (_) {
       // a bad row must never break the live channel
+      return false;
     }
   }
 

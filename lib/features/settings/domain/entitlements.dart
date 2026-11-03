@@ -86,6 +86,14 @@ class Entitlements {
   /// cloud licence with the "Owner phone app" add-on ticked at renewal.
   bool get ownerPhone => standard && features.contains(LicenseFeature.ownerApp);
 
+  /// Booking from a connected phone — any plan, Basic too, with the cloud
+  /// and the "Phone booking" add-on.
+  bool get phoneBooking =>
+      cloud && features.contains(LicenseFeature.phoneBooking);
+
+  /// May phones be connected at all? (Settings → Connected phones)
+  bool get pairPhone => ownerPhone || phoneBooking;
+
   // ── Tier-only (works offline) ──
   bool get unlimitedXrays => tier != LicenseTier.basic;
 

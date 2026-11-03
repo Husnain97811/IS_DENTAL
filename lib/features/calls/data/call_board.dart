@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:is_dental/core/constants/views.dart';
+import 'package:is_dental/cloud/data/sync_engine.dart';
 
 import 'live_appointments.dart';
 import 'patient_call.dart';
@@ -59,16 +60,21 @@ class CallBoard {
 }
 
 /// Keeps one live channel per computer for today's calls AND appointment
-/// changes, so Mark arrived on one PC shows in the waiting list on every
-/// other PC within a second or two.
+/// changes, so a booking or Mark arrived on one PC (or a booking from the
+/// owner phone) shows on every other PC within a second or two.
 ///
-/// Runs only on a plan with patient call. Starts when first watched (the
-/// Appointments screen does, and it stays alive in the shell) and catches
-/// up with a full reload every time the channel (re)connects, so nothing
-/// pressed while a computer was offline is missed.
+/// Logins changed on another computer or the owner phone arrive the same
+/// way, so a new staff member can sign in within seconds.
+///
+/// Runs on EVERY cloud plan — appointments travel through it on Basic too;
+/// patient calls only exist on a plan with patient call. Started from the
+/// top bar, so it runs from start-up on every screen. Every time the
+/// channel (re)connects or the internet comes back it catches up: today's
+/// calls, plus a quick patients + appointments sync, so nothing changed
+/// while a computer was offline is missed.
 class CallBoardController extends Notifier<CallBoard> {
   RealtimeChannel? _ch;
-  Timer? _ping, _dayTimer;
+  Timer? _ping, _dayTimer, _catchUp;
   String? _clinicId;
   int _gen = 0;
 
@@ -76,7 +82,8 @@ class CallBoardController extends Notifier<CallBoard> {
 
   @override
   CallBoard build() {
-    final on = ref.watch(entitlementsProvider.select((e) => e.patientCall));
+    // every cloud plan: appointments must be live on Basic too
+    final on = ref.watch(entitlementsProvider.select((e) => e.sync));
     final g = ++_gen;
     ref.onDispose(() => _stop(g));
     if (on) Future.microtask(() => _start(g));
@@ -143,7 +150,22 @@ class CallBoardController extends Notifier<CallBoard> {
           filter: filter,
           callback: (p) {
             if (!_alive(g) || p.newRecord.isEmpty) return;
-            unawaited(live.apply(p.newRecord, cid));
+            unawaited(
+              live.apply(p.newRecord, cid).then((more) {
+                if (more) _catchUpSoon(g);
+              }),
+            );
+          },
+        )
+        // a login added or changed on another computer or the owner phone:
+        // fetch it now, so that person can sign in here straight away
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'users',
+          filter: filter,
+          callback: (_) {
+            if (_alive(g)) _catchUpSoon(g);
           },
         )
         .subscribe((status, error) {
@@ -151,8 +173,27 @@ class CallBoardController extends Notifier<CallBoard> {
           final up = status == RealtimeSubscribeStatus.subscribed;
           _set(g, (s) => s.copyWith(live: up));
           // reconnected → fetch whatever was pressed while we were away
-          if (up) unawaited(_reload(g));
+          if (up) {
+            unawaited(_reload(g));
+            _catchUpSoon(g);
+          }
         });
+  }
+
+  /// A quick patients + appointments sync in a moment. Several reasons
+  /// close together (five bookings arriving at once) make ONE run.
+  void _catchUpSoon(int g) {
+    if (!_alive(g) || (_catchUp?.isActive ?? false)) return;
+    _catchUp = Timer(const Duration(seconds: 2), () {
+      final cid = _clinicId;
+      if (!_alive(g) || cid == null) return;
+      unawaited(
+        ref
+            .read(syncEngineProvider)
+            .syncAppointmentsNow(cid)
+            .catchError((Object _) {}),
+      );
+    });
   }
 
   void _merge(int g, PatientCall c) {
@@ -168,6 +209,12 @@ class CallBoardController extends Notifier<CallBoard> {
   Future<void> _reload(int g) async {
     final cid = _clinicId;
     if (cid == null || !_alive(g)) return;
+    // No patient call on this plan (Basic, or Standard without reception):
+    // the channel is here for appointments only, there are no calls to load.
+    if (!ref.read(entitlementsProvider).patientCall) {
+      _set(g, (s) => s.copyWith(ready: true));
+      return;
+    }
     final day = state.day;
     try {
       final rows = await _sb
@@ -205,7 +252,11 @@ class CallBoardController extends Notifier<CallBoard> {
     if (!_alive(g)) return;
     final wasDown = !state.reachable;
     _set(g, (s) => s.copyWith(reachable: ok));
-    if (ok && wasDown) unawaited(_reload(g));
+    if (ok && wasDown) {
+      // internet back → send what was booked offline, fetch what we missed
+      unawaited(_reload(g));
+      _catchUpSoon(g);
+    }
   }
 
   void _stop(int g) {
@@ -213,8 +264,10 @@ class CallBoardController extends Notifier<CallBoard> {
     if (g == _gen) _gen++;
     _ping?.cancel();
     _dayTimer?.cancel();
+    _catchUp?.cancel();
     _ping = null;
     _dayTimer = null;
+    _catchUp = null;
     final ch = _ch;
     _ch = null;
     if (ch != null) {

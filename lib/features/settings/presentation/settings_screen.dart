@@ -291,7 +291,7 @@ class _S extends ConsumerState<SettingsScreen> {
       if (!isOwner) _myProfileCard(d, session),
       _profilePanel(d),
       if (isOwner) const LicencePanel(),
-      if (isOwner && ent.ownerPhone) const PhonesPanel(),
+      if (isOwner && ent.pairPhone) const PhonesPanel(),
       if (isOwner && ent.patientCall) const ReceptionPanel(),
       if (ent.clinicQr) _patientAppPanel(d),
       _appearancePanel(d, isDark),
