@@ -744,7 +744,7 @@ class _PhoneBookedStrip extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: d.ice,
-                fontSize: 8.5.sp,
+                fontSize: 10.sp,
                 fontWeight: FontWeight.w700,
               ),
             ),

@@ -6,7 +6,7 @@
 /// a clinic's files safe is the clinic's own Google sign-in plus the
 /// DentOS encryption.
 class DriveConfig {
-  static const clientId = 'PASTE_CLIENT_ID.apps.googleusercontent.com';
+  static const clientId = 'PASTE_CLIENT_ID.apps..com';
   static const clientSecret = 'PASTE_CLIENT_SECRET';
 
   /// Only files DentOS itself creates — never the rest of the clinic's

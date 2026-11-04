@@ -136,9 +136,24 @@
     "maxBranches": 2,
     "maxUsers": 4,
     "firstIssuedAt": "2026-09-19T15:53:33.192763",
-    "lastIssuedAt": "2026-11-01T11:14:39.119351",
-    "expiresAt": "2027-11-01T11:14:39.119351",
+    "lastIssuedAt": "2026-11-04T09:58:05.540874",
+    "expiresAt": "2027-11-04T09:58:05.540874",
     "history": [
+      {
+        "issuedAt": "2026-11-04T09:58:05.540874",
+        "expiresAt": "2027-11-04T09:58:05.540874",
+        "tier": "standard",
+        "cloudPackage": "cloud",
+        "maxBranches": 2,
+        "maxUsers": 4,
+        "maxDevices": 4,
+        "features": [
+          "ownerapp",
+          "phonebook",
+          "reception"
+        ],
+        "kind": "renewal"
+      },
       {
         "issuedAt": "2026-11-01T11:14:39.119351",
         "expiresAt": "2027-11-01T11:14:39.119351",
@@ -317,6 +332,7 @@
     "maxDevices": 4,
     "features": [
       "ownerapp",
+      "phonebook",
       "reception"
     ]
   },
