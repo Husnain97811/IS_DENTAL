@@ -5,6 +5,8 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:sizer/sizer.dart';
 
+// signOutNoticeProvider (auth_controller.dart) comes through views.dart
+import '../constants/views.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
 import '../theme/dent_colors.dart';
@@ -51,11 +53,106 @@ class AuthShell extends ConsumerWidget {
               padding: const EdgeInsets.all(28.8),
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: maxWidth),
-                child: _Glass(child: child),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // "You have been logged out" — when this computer signed
+                    // someone out by itself (login deactivated, password
+                    // changed). Hidden otherwise.
+                    const _SignOutNotice(),
+                    _Glass(child: child),
+                  ],
+                ),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SignOutNotice extends ConsumerWidget {
+  const _SignOutNotice();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final message = ref.watch(signOutNoticeProvider);
+    if (message == null) return const SizedBox.shrink();
+    const red = Color(0xFFE5383B);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.8),
+      child: Semantics(
+        liveRegion: true,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20.4),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(19.2, 16.8, 9.6, 16.8),
+              decoration: BoxDecoration(
+                color: red.withValues(alpha: .16),
+                borderRadius: BorderRadius.circular(20.4),
+                border: Border.all(color: red.withValues(alpha: .55)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 43.2,
+                    height: 43.2,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.logout_rounded,
+                      color: Colors.white,
+                      size: 22.8,
+                    ),
+                  ),
+                  const SizedBox(width: 14.4),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'You have been logged out',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12.6.sp,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 3.6),
+                        Text(
+                          message,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: .85),
+                            fontSize: 10.8.sp,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () =>
+                        ref.read(signOutNoticeProvider.notifier).state = null,
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 20.4,
+                      color: Colors.white.withValues(alpha: .75),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

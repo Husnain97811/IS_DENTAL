@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' show TableUpdateQuery;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:is_dental/core/constants/views.dart';
@@ -75,6 +77,7 @@ class CallBoard {
 class CallBoardController extends Notifier<CallBoard> {
   RealtimeChannel? _ch;
   Timer? _ping, _dayTimer, _catchUp;
+  StreamSubscription<Object?>? _localUsers;
   String? _clinicId;
   int _gen = 0;
 
@@ -111,6 +114,12 @@ class CallBoardController extends Notifier<CallBoard> {
     if (!_alive(g)) return;
 
     _subscribe(g);
+    // A login added, changed or deactivated on THIS computer goes up at
+    // once (not at the 15-minute sync), so the person is signed out on the
+    // other computers within seconds.
+    _localUsers = db
+        .tableUpdates(TableUpdateQuery.onTable(db.users))
+        .listen((_) => _catchUpSoon(g, after: _soon));
     _ping = Timer.periodic(const Duration(seconds: 20), (_) => _checkOnline(g));
     _dayTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       final today = callDay(DateTime.now());
@@ -165,7 +174,7 @@ class CallBoardController extends Notifier<CallBoard> {
           table: 'users',
           filter: filter,
           callback: (_) {
-            if (_alive(g)) _catchUpSoon(g);
+            if (_alive(g)) _catchUpSoon(g, after: _soon);
           },
         )
         .subscribe((status, error) {
@@ -180,11 +189,14 @@ class CallBoardController extends Notifier<CallBoard> {
         });
   }
 
-  /// A quick patients + appointments sync in a moment. Several reasons
-  /// close together (five bookings arriving at once) make ONE run.
-  void _catchUpSoon(int g) {
+  /// Logins: sooner than other catch-ups — signing someone out can't wait.
+  static const _soon = Duration(milliseconds: 400);
+
+  /// A quick logins + patients + appointments sync in a moment. Several
+  /// reasons close together (five bookings arriving at once) make ONE run.
+  void _catchUpSoon(int g, {Duration after = const Duration(seconds: 2)}) {
     if (!_alive(g) || (_catchUp?.isActive ?? false)) return;
-    _catchUp = Timer(const Duration(seconds: 2), () {
+    _catchUp = Timer(after, () {
       final cid = _clinicId;
       if (!_alive(g) || cid == null) return;
       unawaited(
@@ -265,6 +277,8 @@ class CallBoardController extends Notifier<CallBoard> {
     _ping?.cancel();
     _dayTimer?.cancel();
     _catchUp?.cancel();
+    unawaited(_localUsers?.cancel());
+    _localUsers = null;
     _ping = null;
     _dayTimer = null;
     _catchUp = null;

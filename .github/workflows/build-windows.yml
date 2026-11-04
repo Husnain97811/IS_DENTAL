@@ -65,12 +65,18 @@ jobs:
           DRIVE_CLIENT_ID: ${{ secrets.DRIVE_CLIENT_ID }}
           DRIVE_CLIENT_SECRET: ${{ secrets.DRIVE_CLIENT_SECRET }}
         run: |
-          if (-not $env:DRIVE_CLIENT_ID -or -not $env:DRIVE_CLIENT_SECRET) { throw "Add DRIVE_CLIENT_ID and DRIVE_CLIENT_SECRET under GitHub Settings > Secrets and variables > Actions" }
+          $id = "$env:DRIVE_CLIENT_ID".Trim()
+          $secret = "$env:DRIVE_CLIENT_SECRET".Trim()
+          if (-not $id -or -not $secret) { throw "Add DRIVE_CLIENT_ID and DRIVE_CLIENT_SECRET under GitHub Settings > Secrets and variables > Actions" }
           $src = 'lib/features/drive/data/drive_config.example.dart'
           $out = 'lib/features/drive/data/drive_config.dart'
           if (-not (Test-Path $src)) { throw "$src is missing - commit the example file" }
-          $text = (Get-Content $src -Raw).Replace('PASTE_CLIENT_ID.apps.googleusercontent.com', $env:DRIVE_CLIENT_ID).Replace("'PASTE_CLIENT_SECRET'", "'$env:DRIVE_CLIENT_SECRET'")
-          if ($text -match 'PASTE_CLIENT') { throw "Drive config was not filled in - check the example file's placeholders" }
+          $text = Get-Content $src -Raw
+          # Whatever placeholder the example holds, put the real values in.
+          $text = $text -replace "static\s+const\s+(?:String\s+)?clientId\s*=\s*(['`"])[^'`"]*\1", { "static const clientId = '$id'" }
+          $text = $text -replace "static\s+const\s+(?:String\s+)?clientSecret\s*=\s*(['`"])[^'`"]*\1", { "static const clientSecret = '$secret'" }
+          if (-not $text.Contains("clientId = '$id'")) { throw "No 'static const clientId = ...' line found in $src" }
+          if (-not $text.Contains("clientSecret = '$secret'")) { throw "No 'static const clientSecret = ...' line found in $src" }
           Set-Content -Path $out -Value $text -NoNewline
           Write-Host "Drive config created."
 
