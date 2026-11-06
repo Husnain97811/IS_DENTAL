@@ -57,6 +57,17 @@ class _S extends ConsumerState<LicencePanel> {
                   if (ent.phoneBooking) 'Phone booking',
                 ].join(' · '),
               ),
+            if (ent.extraNames.isNotEmpty)
+              _row(d, 'Extras', ent.extraNames.join(' · ')),
+            if (ent.switchedOffNames.isNotEmpty)
+              _row(d, 'Switched off', ent.switchedOffNames.join(' · ')),
+            if (ent.viewOnly)
+              _row(
+                d,
+                'Payment overdue',
+                'View only — new appointments, patients and invoices are paused',
+                warn: true,
+              ),
             _rowCopy(d, 'Clinic ID', lic.clinicId),
             _row(d, 'Branches', '${lic.maxBranches} allowed'),
             _row(d, 'Staff logins', '${lic.maxUsers} allowed'),

@@ -18,6 +18,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   /// 0 = Overview, 1 = Insights.
   int _tab = 0;
+  bool _insightsHidden = false;
 
   // What the plan includes — set in build, read by the card builders.
   bool _insightsOk = false; // Insights tab + "at a glance" card
@@ -162,6 +163,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final ent = ref.watch(entitlementsProvider);
     _insightsOk = ent.insights;
     _statsOk = ent.practiceStats;
+    // switched off for this clinic → no Insights tab at all
+    _insightsHidden = ent.switchedOff(LicenseFeature.insights);
+    if (_insightsHidden && _tab == 1) _tab = 0;
     final async = _range == null
         ? ref.watch(reportsSummaryProvider)
         : ref.watch(
@@ -249,12 +253,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final title = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SegmentedControl(
-          items: const ['Overview', 'Insights'],
-          selected: _tab,
-          onChanged: (i) => setState(() => _tab = i),
-        ),
-        const SizedBox(height: 10),
+        if (!_insightsHidden) ...[
+          SegmentedControl(
+            items: const ['Overview', 'Insights'],
+            selected: _tab,
+            onChanged: (i) => setState(() => _tab = i),
+          ),
+          const SizedBox(height: 10),
+        ],
         // Text(
         //   'Reports & Analytics',
         //   style: Theme.of(context).textTheme.displayLarge,
@@ -347,6 +353,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           )
         else
           const PlanLocked.compact(
+            switchKey: LicenseFeature.insights,
             feature: 'Insights at a glance',
             icon: Icons.insights_rounded,
             pitch:

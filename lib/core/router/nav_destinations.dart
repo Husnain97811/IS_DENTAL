@@ -176,6 +176,9 @@ bool navLocked(String route, Entitlements ent) => switch (route) {
 bool navAllowed(String route, Entitlements ent, bool Function(String) can) {
   final licensed = switch (route) {
     AppRoutes.whatsapp => ent.whatsapp,
+    // switched off by Inover Studio → gone from the menu (a Basic clinic
+    // still sees it with a lock — that one is an upgrade, see navLocked)
+    AppRoutes.showcase => !ent.switchedOff(LicenseFeature.photos),
     _ => true,
   };
   if (!licensed) return false;

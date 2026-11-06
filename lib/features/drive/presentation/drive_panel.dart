@@ -29,7 +29,9 @@ class _DrivePanelState extends ConsumerState<DrivePanel> {
         session?.role == AppRole.owner ||
         ref.watch(canProvider(Perm.manageBackup));
     final ent = ref.watch(entitlementsProvider);
-    if (!allowed || !ent.sync) return const SizedBox.shrink();
+    // Google Drive backup switched off for this clinic → no panel at all
+    if (!allowed || !ent.sync || !ent.driveBackup)
+      return const SizedBox.shrink();
     final s = ref.watch(driveSyncProvider);
 
     return DentPanel(

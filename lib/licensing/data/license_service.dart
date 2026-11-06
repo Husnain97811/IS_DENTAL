@@ -150,8 +150,11 @@ class LicenseService {
         !lic.issuedAt.isAfter(current.issuedAt)) {
       return false;
     }
-    if ((await _clock.now()).isAfter(lic.expiresAt)) return false;
-
+    // An already-expired licence is applied too when it is NEWER than this
+    // computer's (checked above): that is Inover Studio ending or shortening
+    // the licence on purpose, and the computer must follow it. An old
+    // licence replayed from the cloud is still refused by the issue-date
+    // check, so nothing can be rolled back.
     await _clock.healTo(lic.issuedAt);
     await _db.setSetting(_kLicense, jsonEncode(lic.toJson()));
     await syncProfileTier(lic);

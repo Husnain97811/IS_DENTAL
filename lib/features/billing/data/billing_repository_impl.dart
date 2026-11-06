@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import '../../../core/db/app_database.dart';
 import '../../../core/utils/uuids.dart';
+import '../../../licensing/data/view_only.dart';
 import '../domain/billing_repository.dart';
 import '../domain/invoice.dart';
 
@@ -57,6 +58,8 @@ class BillingRepositoryImpl implements BillingRepository {
     required int adjustment,
     required List<({String description, int amount})> items,
   }) async {
+    // Payment overdue → no NEW invoices (payments on existing ones still work)
+    await ensureNotViewOnly(_db);
     final clinicId = await _db.currentClinicId() ?? '';
     final subtotal = items.fold<int>(0, (s, e) => s + e.amount);
     final invId = await _db

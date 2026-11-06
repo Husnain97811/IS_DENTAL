@@ -607,26 +607,26 @@ class _PairPhoneDialogState extends ConsumerState<_PairPhoneDialog> {
         _instruction(d, '2', 'Tap Connect to clinic and scan this code.'),
         _instruction(d, '3', 'Type the owner mobile number when asked.'),
         // Developer builds only: the QR text for tool/phone_pair_sim.dart.
-        if (kDebugMode && t != null && !_busy)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                await Clipboard.setData(ClipboardData(text: t.qrData));
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('Copied for the phone simulator.'),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.bug_report_outlined, size: 16),
-              label: Text(
-                'Copy for simulator (debug only)',
-                style: TextStyle(fontSize: 9.5.sp),
-              ),
-            ),
-          ),
+        // if (kDebugMode && t != null && !_busy)
+        //   Align(
+        //     alignment: Alignment.centerLeft,
+        //     child: TextButton.icon(
+        //       onPressed: () async {
+        //         final messenger = ScaffoldMessenger.of(context);
+        //         await Clipboard.setData(ClipboardData(text: t.qrData));
+        //         messenger.showSnackBar(
+        //           const SnackBar(
+        //             content: Text('Copied for the phone simulator.'),
+        //           ),
+        //         );
+        //       },
+        //       icon: const Icon(Icons.bug_report_outlined, size: 16),
+        //       // label: Text(
+        //       //   'Copy for simulator (debug only)',
+        //       //   style: TextStyle(fontSize: 9.5.sp),
+        //       // ),
+        //     ),
+        //   ),
         if (triesLeft < 3) ...[
           const SizedBox(height: 10),
           _errorBox(

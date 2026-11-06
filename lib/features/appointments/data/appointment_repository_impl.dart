@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import '../../../core/db/app_database.dart';
 import '../../../core/utils/uuids.dart';
+import '../../../licensing/data/view_only.dart';
 import '../domain/appointment.dart';
 import '../domain/appointment_repository.dart';
 
@@ -223,6 +224,8 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
     required DateTime startsAt,
     int durationMin = 45,
   }) async {
+    // Payment overdue → no NEW appointments (moving or cancelling still works)
+    await ensureNotViewOnly(_db);
     final clinicId = await _db.currentClinicId() ?? '';
     await _db
         .into(_db.appointments)

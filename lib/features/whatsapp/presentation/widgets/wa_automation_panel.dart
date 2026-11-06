@@ -6,6 +6,10 @@ import '../../data/wa_outbox.dart';
 
 /// Shown inside a branch's WhatsApp card when QR is connected:
 /// prescription auto-send, weekly owner summary, and the message log.
+///
+/// Prescriptions and the weekly summary only appear when the clinic has
+/// them (Standard and up, or ticked as an extra in the licence). A Basic
+/// clinic with only reminders sees just the message log.
 class WaAutomationPanel extends ConsumerStatefulWidget {
   const WaAutomationPanel({
     super.key,
@@ -32,6 +36,7 @@ class _WaAutomationPanelState extends ConsumerState<WaAutomationPanel> {
   Widget build(BuildContext context) {
     final d = context.dent;
     final canEdit = ref.watch(canProvider(Perm.manageWhatsapp));
+    final ent = ref.watch(entitlementsProvider);
     final async = ref.watch(waBranchSettingsProvider(widget.branchUuid));
     final s = async.value;
     if (s != null && !_loaded) {
@@ -66,62 +71,66 @@ class _WaAutomationPanelState extends ConsumerState<WaAutomationPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── prescriptions ──
-        _row(
-          d,
-          icon: Icons.medication_rounded,
-          tone: _rxAuto ? d.teal : d.text4,
-          text: _title(
+        // ── prescriptions (only when the clinic has them) ──
+        if (ent.rxOnWhatsapp) ...[
+          _row(
             d,
-            'Send prescriptions on WhatsApp',
-            'The PDF goes to the patient automatically when a new prescription is saved',
-          ),
-          trailing: Switch(
-            value: _rxAuto,
-            activeColor: d.teal,
-            onChanged: !canEdit || _saving || s == null
-                ? null
-                : (v) {
-                    setState(() => _rxAuto = v);
-                    _save(phone: _savedPhone);
-                  },
-          ),
-        ),
-        _divider(d),
-
-        // ── weekly summary ──
-        LayoutBuilder(
-          builder: (context, c) {
-            final field = _summaryField(d, canEdit, s != null, phoneChanged);
-            final title = _title(
+            icon: Icons.medication_rounded,
+            tone: _rxAuto ? d.teal : d.text4,
+            text: _title(
               d,
-              'Weekly summary to owner',
-              summaryOn
-                  ? 'Every Sunday ~7 PM to ${_display(_savedPhone)}'
-                  : 'Off · add a number to get visits, money in, expenses and still owed every Sunday ~7 PM',
-            );
-            // side by side when there's room, the number under the text when not
-            if (c.maxWidth >= 720) {
+              'Send prescriptions on WhatsApp',
+              'The PDF goes to the patient automatically when a new prescription is saved',
+            ),
+            trailing: Switch(
+              value: _rxAuto,
+              activeColor: d.teal,
+              onChanged: !canEdit || _saving || s == null
+                  ? null
+                  : (v) {
+                      setState(() => _rxAuto = v);
+                      _save(phone: _savedPhone);
+                    },
+            ),
+          ),
+          _divider(d),
+        ],
+
+        // ── weekly summary (only when the clinic has it) ──
+        if (ent.weeklyReport) ...[
+          LayoutBuilder(
+            builder: (context, c) {
+              final field = _summaryField(d, canEdit, s != null, phoneChanged);
+              final title = _title(
+                d,
+                'Weekly summary to owner',
+                summaryOn
+                    ? 'Every Sunday ~7 PM to ${_display(_savedPhone)}'
+                    : 'Off · add a number to get visits, money in, expenses and still owed every Sunday ~7 PM',
+              );
+              // side by side when there's room, the number under the text when not
+              if (c.maxWidth >= 720) {
+                return _row(
+                  d,
+                  icon: Icons.insights_rounded,
+                  tone: summaryOn ? d.ice : d.text4,
+                  text: title,
+                  trailing: field,
+                );
+              }
               return _row(
                 d,
                 icon: Icons.insights_rounded,
                 tone: summaryOn ? d.ice : d.text4,
-                text: title,
-                trailing: field,
+                text: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [title, const SizedBox(height: 10), field],
+                ),
               );
-            }
-            return _row(
-              d,
-              icon: Icons.insights_rounded,
-              tone: summaryOn ? d.ice : d.text4,
-              text: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [title, const SizedBox(height: 10), field],
-              ),
-            );
-          },
-        ),
-        _divider(d),
+            },
+          ),
+          _divider(d),
+        ],
 
         // ── log ──
         _row(

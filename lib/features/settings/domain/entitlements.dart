@@ -3,14 +3,19 @@ import 'package:is_dental/core/constants/views.dart';
 
 /// What this installation is allowed to do.
 ///
-/// Two independent gates:
+/// Three things decide it:
 ///  • cloudPackage — `none` means no backend exists, so every cloud feature
 ///    is impossible and the tier is meaningless (treated as basic).
 ///  • tier — only meaningful when cloud is on.
+///  • feature switches — Inover Studio can switch a feature OFF for one
+///    clinic ('no:reminders'), or give it as an EXTRA to a plan without it
+///    ('reminders'). Ticked in the licence tool, signed into the licence,
+///    so a clinic can't change them. See [LicenseFeature].
 ///
 /// Screens never check the tier themselves — they ask for a feature here
 /// (`ent.showcase`, `ent.insights` …), so moving a feature between plans is
-/// a one-line change in this file.
+/// a one-line change in this file. The server applies the SAME rules before
+/// it sends any WhatsApp message.
 class Entitlements {
   const Entitlements({
     required this.cloud,
@@ -25,7 +30,7 @@ class Entitlements {
   final int maxBranches;
   final int maxUsers;
 
-  /// Signed add-ons from the licence ([LicenseFeature]).
+  /// Signed add-ons and feature switches from the licence ([LicenseFeature]).
   final Set<String> features;
 
   bool get _standardUp =>
@@ -36,6 +41,20 @@ class Entitlements {
   /// Standard or Premium, on a cloud licence.
   bool get standard => cloud && _standardUp;
 
+  /// A switchable feature: what the plan includes ([plan]), unless it was
+  /// switched off for this clinic, or given as an extra. An extra that needs
+  /// the cloud only works on a cloud licence.
+  bool _switch(String key, {required bool plan, bool needsCloud = true}) {
+    if (features.contains('${LicenseFeature.off}$key')) return false;
+    if (plan) return true;
+    return features.contains(key) && (cloud || !needsCloud);
+  }
+
+  /// Was this feature switched off by Inover Studio (rather than simply not
+  /// in the plan)? Screens hide it instead of showing an upgrade offer.
+  bool switchedOff(String key) =>
+      features.contains('${LicenseFeature.off}$key');
+
   // ── Basic (cloud) ──
   bool get sync => cloud;
   bool get restoreFromCloud => cloud;
@@ -45,29 +64,62 @@ class Entitlements {
   bool get bookingRequests => standard;
   bool get patientQr => standard;
   bool get clinicQr => standard;
-  bool get reminders => standard;
-  bool get whatsapp => standard;
+
+  // ── WhatsApp — switchable per clinic ──
+
+  /// Automatic appointment reminders (day before, 2 hours before, follow-up).
+  bool get reminders => _switch(LicenseFeature.reminders, plan: standard);
 
   /// Prescription PDFs to the patient on WhatsApp — automatic and Send/Resend.
-  bool get rxOnWhatsapp => whatsapp;
+  bool get rxOnWhatsapp => _switch(LicenseFeature.rxWhatsapp, plan: standard);
+
+  /// The Sunday report to the owner's WhatsApp.
+  bool get weeklyReport => _switch(LicenseFeature.weeklyReport, plan: standard);
+
+  /// "Your appointment was moved / cancelled" WhatsApp to the patient.
+  bool get apptChangeMessages =>
+      _switch(LicenseFeature.apptChange, plan: standard);
+
+  /// WhatsApp settings (connect a number, language, …): shown while ANY
+  /// WhatsApp feature is on.
+  bool get whatsapp =>
+      reminders || rxOnWhatsapp || weeklyReport || apptChangeMessages;
+
+  /// Messages a day per WhatsApp number on Basic (every patient message
+  /// counts). Null = no plan limit (the server still keeps a safety limit).
+  int? get whatsappDailyLimit => standard ? null : 20;
+
+  // ── Reports and extras — switchable per clinic ──
 
   /// Reports → Insights tab and the "Insights at a glance" card.
-  bool get insights => standard;
+  bool get insights => _switch(LicenseFeature.insights, plan: standard);
 
   /// Reports overview: Still owed to you, Patients seen, Procedures done.
-  bool get practiceStats => standard;
+  /// Same switch as [insights].
+  bool get practiceStats => insights;
 
   /// Before & After photos on the patient file.
-  bool get beforeAfterPhotos => standard;
+  bool get beforeAfterPhotos => _switch(LicenseFeature.photos, plan: standard);
 
-  /// Smile Showcase screen.
-  bool get showcase => standard;
+  /// Smile Showcase screen. Same switch as [beforeAfterPhotos].
+  bool get showcase => beforeAfterPhotos;
 
-  /// Detailed Reporting Hub — Standard and Premium only.
-  bool get reportingHub => standard;
+  /// Detailed Reporting Hub.
+  bool get reportingHub => _switch(LicenseFeature.reportingHub, plan: standard);
 
   /// Expenses → Dentist payouts.
-  bool get dentistPayouts => standard;
+  bool get dentistPayouts =>
+      _switch(LicenseFeature.dentistPayouts, plan: standard);
+
+  /// Google Drive backup — every plan, offline too.
+  bool get driveBackup =>
+      _switch(LicenseFeature.driveBackup, plan: true, needsCloud: false);
+
+  // ── Payment overdue ──
+
+  /// "View only": everything can be opened and printed, but no new
+  /// appointments, patients or invoices. Works offline too.
+  bool get viewOnly => features.contains(LicenseFeature.viewOnly);
 
   // ── Premium only ──
   bool get offers => _premium;
@@ -93,6 +145,22 @@ class Entitlements {
 
   /// May phones be connected at all? (Settings → Connected phones)
   bool get pairPhone => ownerPhone || phoneBooking;
+
+  // ── For the Licence card ──
+
+  /// Plain names of the features Inover Studio switched off.
+  List<String> get switchedOffNames => [
+    for (final e in LicenseFeature.switchNames.entries)
+      if (switchedOff(e.key)) e.value,
+  ];
+
+  /// Plain names of the features given as extras on top of the plan.
+  List<String> get extraNames => [
+    for (final e in LicenseFeature.switchNames.entries)
+      if (features.contains(e.key) &&
+          (cloud || e.key == LicenseFeature.driveBackup))
+        e.value,
+  ];
 
   // ── Tier-only (works offline) ──
   bool get unlimitedXrays => tier != LicenseTier.basic;
@@ -125,6 +193,8 @@ final entitlementsProvider = Provider<Entitlements>((ref) {
     tier: cloud ? lic.tier : LicenseTier.basic,
     maxBranches: lic.maxBranches,
     maxUsers: lic.maxUsers,
-    features: cloud ? lic.features.toSet() : const <String>{},
+    // Kept on offline licences too: "view only" and the Drive switch work
+    // offline. Every add-on and cloud switch checks [cloud] itself.
+    features: lic.features.toSet(),
   );
 });

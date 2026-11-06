@@ -274,6 +274,9 @@ class DriveSyncController extends Notifier<DriveSyncState> {
     if (_running) return;
     final g = _gen;
     if (!state.connected) return;
+    // switched off in the licence → no background uploads or downloads
+    // (the clinic's Google connection is kept, so switching back on resumes)
+    if (!ref.read(driveAvailableProvider)) return;
     _running = true;
     final db = ref.read(appDatabaseProvider);
     final vault = ref.read(xrayVaultProvider);
@@ -553,9 +556,10 @@ final driveSyncProvider = NotifierProvider<DriveSyncController, DriveSyncState>(
 );
 
 /// Drive is available on cloud plans (the keys travel through DentOS
-/// cloud) when this DentOS build has Google sign-in set up.
+/// cloud) when this DentOS build has Google sign-in set up, and Inover
+/// Studio hasn't switched Google Drive backup off for the clinic.
 final driveAvailableProvider = Provider<bool>(
   (ref) =>
       DriveConfig.configured &&
-      ref.watch(entitlementsProvider.select((e) => e.sync)),
+      ref.watch(entitlementsProvider.select((e) => e.sync && e.driveBackup)),
 );

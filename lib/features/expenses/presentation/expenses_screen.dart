@@ -66,6 +66,14 @@ class ExpensesScreen extends ConsumerWidget {
         ref.watch(canProvider(Perm.viewExpenses)) &&
         ref.watch(canProvider(Perm.viewFinancials));
     if (!canPayouts) return const _ExpensesList();
+    // Dentist payouts switched off for this clinic → no tabs, just expenses
+    if (ref.watch(
+      entitlementsProvider.select(
+        (e) => e.switchedOff(LicenseFeature.dentistPayouts),
+      ),
+    )) {
+      return const _ExpensesList();
+    }
 
     final tab = ref.watch(expensesTabProvider);
     // read here, not inside the LayoutBuilder below

@@ -335,13 +335,15 @@ class _BranchWaCard extends ConsumerWidget {
 
           // ── automation ──
           _sectionLabel(d, 'AUTOMATION'),
+          // what this clinic's licence allows (Basic limit, switched off)
+          const _PlanLimitsNote(),
           if (b.qrConnected) ...[
             _languageRow(context, ref, d, b),
             Divider(height: 1, indent: 70, endIndent: 18, color: d.line),
             // prescriptions on WhatsApp · weekly summary · message log
             WaAutomationPanel(branchUuid: b.uuid, branchName: b.name),
           ] else
-            _automationHint(d),
+            _automationHint(d, ref.watch(entitlementsProvider)),
           const SizedBox(height: 6),
         ],
       ),
@@ -355,7 +357,7 @@ class _BranchWaCard extends ConsumerWidget {
   };
 
   /// What the Automation group holds, until QR is connected.
-  Widget _automationHint(DentColors d) => Padding(
+  Widget _automationHint(DentColors d, Entitlements ent) => Padding(
     padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
     child: Container(
       padding: const EdgeInsets.all(14),
@@ -382,8 +384,16 @@ class _BranchWaCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Reminder language, prescriptions on WhatsApp, the weekly '
-                  'owner summary and the message log.',
+                  // only what this clinic actually has
+                  [
+                            'Reminder language',
+                            if (ent.rxOnWhatsapp) 'prescriptions on WhatsApp',
+                            if (ent.weeklyReport) 'the weekly owner summary',
+                            'the message log',
+                          ]
+                          .join(', ')
+                          .replaceFirst(RegExp(r', (?=[^,]*$)'), ' and ') +
+                      '.',
                   style: TextStyle(color: d.text3, fontSize: 10.sp),
                 ),
               ],
@@ -1162,5 +1172,36 @@ class _InboxSection extends ConsumerWidget {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m';
     if (diff.inHours < 24) return '${diff.inHours}h';
     return '${diff.inDays}d';
+  }
+}
+
+/// Basic plan only: one short line with the daily message limit. Nothing
+/// about features the clinic doesn't have — those are simply not shown.
+/// (The server applies the limit before sending anything.)
+class _PlanLimitsNote extends ConsumerWidget {
+  const _PlanLimitsNote();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final d = context.dent;
+    final limit = ref.watch(
+      entitlementsProvider.select((e) => e.whatsappDailyLimit),
+    );
+    if (limit == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 2, 18, 8),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline_rounded, size: 12.sp, color: d.text4),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Up to $limit WhatsApp messages a day on your plan.',
+              style: TextStyle(color: d.text3, fontSize: 10.sp),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

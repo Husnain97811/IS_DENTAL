@@ -62,17 +62,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           };
           if (!authed) return loc == '/login' ? null : '/login';
 
-          // ── licence gating ──
-          final lic = ls.license;
-          final cloud = lic?.cloudPackage == CloudPackage.cloud;
-          final std =
-              cloud &&
-              (lic!.tier == LicenseTier.standard ||
-                  lic.tier == LicenseTier.premium);
-          if (!std && loc.startsWith(AppRoutes.whatsapp)) {
+          // ── licence gating — the same rules as the menu (entitlements):
+          // the plan, plus extras and switches from the licence tool ──
+          final ent = ref.read(entitlementsProvider);
+          if (!ent.whatsapp && loc.startsWith(AppRoutes.whatsapp)) {
             return AppRoutes.dashboard;
           }
-          if (!std && loc.startsWith('${AppRoutes.dashboard}/requests')) {
+          if (!ent.bookingRequests &&
+              loc.startsWith('${AppRoutes.dashboard}/requests')) {
             return AppRoutes.dashboard;
           }
           if (loc.startsWith(kHubRoute)) {

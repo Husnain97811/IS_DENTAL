@@ -197,6 +197,41 @@ class PhonesPanel extends ConsumerWidget {
                     ),
                   ),
                   const Spacer(),
+                  // the PIN exists → it can be changed (login password first)
+                  if (o.onPlan && o.hasPin) ...[
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: d.text2,
+                        minimumSize: const Size(0, 46),
+                      ),
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final done = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => const _ChangePinDialog(),
+                        );
+                        if (done == true) {
+                          if (context.mounted) {
+                            ref.invalidate(phonesOverviewProvider);
+                          }
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'PIN changed — use the new PIN on the phone '
+                                'and in the Hub.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.password_rounded, size: 18),
+                      label: Text(
+                        'Change PIN',
+                        style: TextStyle(fontSize: 10.sp),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
                       backgroundColor: d.ice,
@@ -805,6 +840,223 @@ class _SetPinDialogState extends ConsumerState<_SetPinDialog> {
                     ),
                   ],
                 ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Changes the owner's PIN — the one PIN that connects a phone, unlocks
+/// Owner mode on it, and opens the Reporting Hub. Asks for the owner's LOGIN
+/// PASSWORD first (works even when the old PIN is forgotten), with the same
+/// 5-tries lockout as the Hub. The new PIN reaches the cloud at once, so the
+/// connected phones need the NEW PIN from their next unlock.
+class _ChangePinDialog extends ConsumerStatefulWidget {
+  const _ChangePinDialog();
+  @override
+  ConsumerState<_ChangePinDialog> createState() => _ChangePinDialogState();
+}
+
+class _ChangePinDialogState extends ConsumerState<_ChangePinDialog> {
+  final _password = TextEditingController();
+  final _pin = TextEditingController();
+  final _again = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _password.dispose();
+    _pin.dispose();
+    _again.dispose();
+    super.dispose();
+  }
+
+  Future<void> _go() async {
+    final session = ref.read(authControllerProvider);
+    if (session == null || session.role != AppRole.owner) {
+      setState(() => _error = 'Only the owner can change the PIN.');
+      return;
+    }
+    final pin = _pin.text.trim();
+    final problem = HubPin.problem(pin);
+    if (problem != null) {
+      setState(() => _error = problem);
+      return;
+    }
+    if (pin != _again.text.trim()) {
+      _again.clear();
+      setState(() => _error = "The two PINs don't match.");
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final sec = ref.read(hubSecurityProvider);
+    final api = ref.read(ownerPhonesApiProvider);
+    try {
+      final owner = await sec.userFor(session);
+      if (owner == null) throw StateError('no owner');
+      final c = await sec.checkPassword(owner, session, _password.text);
+      if (!c.ok) {
+        _password.clear();
+        if (!mounted) return;
+        setState(() {
+          _busy = false;
+          _error = c.result == HubCheckResult.locked
+              ? 'Too many wrong tries — wait 5 minutes and try again.'
+              : 'Wrong password. ${c.triesLeft} '
+                    '${c.triesLeft == 1 ? 'try' : 'tries'} left.';
+        });
+        return;
+      }
+      await sec.setPin(owner, session, pin, kind: 'hub_pin_changed');
+      final fresh = await sec.userFor(session); // with the new hash
+      final sent = fresh != null && await api.pushPin(fresh);
+      if (!mounted) return;
+      if (!sent) {
+        setState(() {
+          _busy = false;
+          _error =
+              'Changed on this computer, but it could not reach the cloud '
+              'yet — the phones keep the old PIN until it does. Check the '
+              'internet and press Sync now.';
+        });
+        return;
+      }
+      Navigator.of(context).pop(true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = PhoneApiError('server').message;
+      });
+    }
+  }
+
+  InputDecoration _deco(DentColors d, String label, {String hint = '••••'}) =>
+      InputDecoration(
+        labelText: label,
+        hintText: hint,
+        counterText: '',
+        labelStyle: TextStyle(color: d.text3, fontSize: 10.sp),
+        hintStyle: TextStyle(color: d.text4, fontSize: 10.sp),
+        filled: true,
+        fillColor: d.surface2,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: d.line),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: d.ice, width: 1.6),
+        ),
+      );
+
+  Widget _pinField(DentColors d, TextEditingController c, String label) =>
+      TextField(
+        controller: c,
+        enabled: !_busy,
+        obscureText: true,
+        keyboardType: TextInputType.number,
+        maxLength: 6,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        style: TextStyle(color: d.text1, fontSize: 12.sp, letterSpacing: 6),
+        decoration: _deco(d, label),
+        onSubmitted: (_) => _busy ? null : _go(),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final d = context.dent;
+    return Dialog(
+      backgroundColor: d.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Change your PIN',
+                style: TextStyle(
+                  color: d.text1,
+                  fontSize: 12.5.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'The same PIN connects a phone, unlocks Owner mode on it and '
+                'opens the Reporting Hub. Connected phones stay connected — '
+                'they just need the new PIN from now on.',
+                style: TextStyle(color: d.text2, fontSize: 10.sp, height: 1.45),
+              ),
+              const SizedBox(height: 18),
+              TextField(
+                controller: _password,
+                enabled: !_busy,
+                obscureText: true,
+                autofocus: true,
+                style: TextStyle(color: d.text1, fontSize: 11.sp),
+                decoration: _deco(
+                  d,
+                  'Your login password',
+                  hint: 'the password you sign in with',
+                ),
+              ),
+              const SizedBox(height: 12),
+              _pinField(d, _pin, 'New PIN (4–6 digits)'),
+              const SizedBox(height: 12),
+              _pinField(d, _again, 'Type the new PIN again'),
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _error!,
+                  style: TextStyle(
+                    color: d.alert,
+                    fontSize: 10.sp,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  const Spacer(),
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => Navigator.of(context).pop(false),
+                    child: Text('Cancel', style: TextStyle(fontSize: 10.5.sp)),
+                  ),
+                  const SizedBox(width: 10),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: d.ice,
+                      foregroundColor: AppPalette.onAccent,
+                      minimumSize: const Size(130, 46),
+                    ),
+                    onPressed: _busy ? null : _go,
+                    child: _busy
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2.2),
+                          )
+                        : Text(
+                            'Change PIN',
+                            style: TextStyle(fontSize: 10.5.sp),
+                          ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

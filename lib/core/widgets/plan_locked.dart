@@ -15,6 +15,7 @@ class PlanLocked extends ConsumerWidget {
     required this.pitch,
     this.icon = Icons.workspace_premium_rounded,
     this.points = const [],
+    this.switchKey,
   }) : compact = false;
 
   const PlanLocked.compact({
@@ -22,6 +23,7 @@ class PlanLocked extends ConsumerWidget {
     required this.feature,
     required this.pitch,
     this.icon = Icons.workspace_premium_rounded,
+    this.switchKey,
   }) : points = const [],
        compact = true;
 
@@ -30,12 +32,21 @@ class PlanLocked extends ConsumerWidget {
   final List<String> points;
   final bool compact;
 
+  /// The licence switch behind this feature ([LicenseFeature]). When Inover
+  /// Studio switched it OFF for this clinic, there's nothing to upgrade to —
+  /// the feature is simply hidden instead of showing a plan offer.
+  final String? switchKey;
+
   static const plans = 'Standard & Premium';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final d = context.dent;
-    final current = ref.watch(entitlementsProvider).tierLabel;
+    final ent = ref.watch(entitlementsProvider);
+    if (switchKey != null && ent.switchedOff(switchKey!)) {
+      return const SizedBox.shrink();
+    }
+    final current = ent.tierLabel;
     return compact ? _compact(d) : _full(d, current);
   }
 

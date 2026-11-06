@@ -20,7 +20,39 @@ class LicenseFeature {
   /// too — with the cloud; ticked in the licence tool at renewal.
   static const phoneBooking = 'phonebook';
 
-  static const all = {reception, ownerApp, phoneBooking};
+  // ── Feature switches (licence tool → "Feature switches") ──
+  // Plan default = Standard and Premium have them, Basic doesn't (Drive:
+  // every plan). 'reminders' = an extra, 'no:reminders' = switched off.
+  static const reminders = 'reminders';
+  static const rxWhatsapp = 'rxwa';
+  static const weeklyReport = 'weekly';
+  static const apptChange = 'apptchange';
+  static const reportingHub = 'hub';
+  static const insights = 'insights';
+  static const dentistPayouts = 'payouts';
+  static const photos = 'photos';
+  static const driveBackup = 'drive';
+
+  /// Put in front of a switch to turn it OFF: 'no:reminders'.
+  static const off = 'no:';
+
+  /// "Payment overdue": open and print everything, add nothing new.
+  static const viewOnly = 'viewonly';
+
+  /// Plain names, for the Licence card.
+  static const switchNames = {
+    reminders: 'Automatic reminders',
+    rxWhatsapp: 'Prescriptions on WhatsApp',
+    weeklyReport: 'Weekly report',
+    apptChange: '"Appointment changed" messages',
+    reportingHub: 'Reporting Hub',
+    insights: 'Insights & stats',
+    dentistPayouts: 'Dentist payouts',
+    photos: 'Before/after & Showcase',
+    driveBackup: 'Google Drive backup',
+  };
+
+  static const all = {reception, ownerApp, phoneBooking, viewOnly};
 }
 
 class License {

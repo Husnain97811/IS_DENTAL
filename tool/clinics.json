@@ -1,144 +1,198 @@
 [
   {
-    "clinicId": "MICROSOFT-ISL-515159",
-    "clinicName": "Microsoft Certification",
-    "city": "Islamabad",
-    "email": "dummy@gmail.com",
-    "tier": "basic",
-    "cloudPackage": "none",
-    "maxBranches": 1,
-    "maxUsers": 3,
-    "maxDevices": 1,
-    "firstIssuedAt": "2026-10-13T23:53:39.168086",
-    "lastIssuedAt": "2026-10-13T23:53:39.168086",
-    "expiresAt": "2026-10-23T23:53:39.168086",
-    "history": [
-      {
-        "issuedAt": "2026-10-13T23:53:39.168086",
-        "expiresAt": "2026-10-23T23:53:39.168086",
-        "tier": "basic",
-        "cloudPackage": "none",
-        "maxBranches": 1,
-        "maxUsers": 3,
-        "maxDevices": 1,
-        "kind": "new"
-      }
-    ]
-  },
-  {
-    "clinicId": "MICROSOFT-ISL-516342",
-    "clinicName": "Microsoft Certification",
-    "city": "Islamabad",
-    "email": "dummy@gmail.com",
-    "tier": "basic",
-    "cloudPackage": "none",
-    "maxBranches": 1,
-    "maxUsers": 3,
-    "maxDevices": 1,
-    "firstIssuedAt": "2026-10-13T23:36:10.952210",
-    "lastIssuedAt": "2026-10-13T23:36:10.952210",
-    "expiresAt": "2027-10-13T23:36:10.952210",
-    "history": [
-      {
-        "issuedAt": "2026-10-13T23:36:10.952210",
-        "expiresAt": "2027-10-13T23:36:10.952210",
-        "tier": "basic",
-        "cloudPackage": "none",
-        "maxBranches": 1,
-        "maxUsers": 3,
-        "maxDevices": 1,
-        "kind": "new"
-      }
-    ]
-  },
-  {
-    "clinicId": "EMAN-ISL-440203",
-    "clinicName": "eman laptaop",
-    "city": "Islamabad",
-    "email": "hussnainahmed977777@gmail.com",
-    "tier": "basic",
-    "cloudPackage": "cloud",
-    "maxBranches": 1,
-    "maxUsers": 3,
-    "firstIssuedAt": "2026-10-08T18:54:33.305869",
-    "lastIssuedAt": "2026-10-08T18:54:33.305869",
-    "expiresAt": "2027-10-08T18:54:33.305869",
-    "history": [
-      {
-        "issuedAt": "2026-10-08T18:54:33.305869",
-        "expiresAt": "2027-10-08T18:54:33.305869",
-        "tier": "basic",
-        "cloudPackage": "cloud",
-        "maxBranches": 1,
-        "maxUsers": 3,
-        "kind": "new"
-      }
-    ]
-  },
-  {
-    "clinicId": "MI-ISL-359249",
-    "clinicName": "MI MEDICAL DENTAL & AESTHETICS",
-    "city": "Islamabad",
-    "email": "heye.muqeet.dev@gmail.com",
-    "tier": "basic",
-    "cloudPackage": "cloud",
-    "maxBranches": 2,
-    "maxUsers": 3,
-    "firstIssuedAt": "2026-10-03T23:06:44.888140",
-    "lastIssuedAt": "2026-10-07T10:27:46.243448",
-    "expiresAt": "2026-11-03T10:27:46.243448",
-    "history": [
-      {
-        "issuedAt": "2026-10-07T10:27:46.243448",
-        "expiresAt": "2026-11-03T10:27:46.243448",
-        "tier": "basic",
-        "cloudPackage": "cloud",
-        "maxBranches": 2,
-        "maxUsers": 3,
-        "kind": "renewal"
-      },
-      {
-        "issuedAt": "2026-10-04T00:00:27.639086",
-        "expiresAt": "2026-11-03T00:00:27.639086",
-        "tier": "basic",
-        "cloudPackage": "cloud",
-        "maxBranches": 2,
-        "maxUsers": 3,
-        "kind": "renewal"
-      },
-      {
-        "issuedAt": "2026-10-04T00:00:12.637103",
-        "expiresAt": "2026-11-03T00:00:12.637103",
-        "tier": "basic",
-        "cloudPackage": "cloud",
-        "maxBranches": 1,
-        "maxUsers": 3,
-        "kind": "renewal"
-      },
-      {
-        "issuedAt": "2026-10-03T23:06:44.888140",
-        "expiresAt": "2026-11-02T23:06:44.888140",
-        "tier": "basic",
-        "cloudPackage": "cloud",
-        "maxBranches": 1,
-        "maxUsers": 2,
-        "kind": "new"
-      }
-    ]
-  },
-  {
     "clinicId": "HUSNAIN-ISL-179286",
     "clinicName": "Husnain Ahmed",
     "city": "Islamabad",
     "email": "hussnainahmed97@gmail.com",
-    "tier": "standard",
+    "tier": "basic",
     "cloudPackage": "cloud",
-    "maxBranches": 2,
-    "maxUsers": 4,
+    "maxBranches": 1,
+    "maxUsers": 2,
     "firstIssuedAt": "2026-09-19T15:53:33.192763",
-    "lastIssuedAt": "2026-11-04T09:58:05.540874",
-    "expiresAt": "2027-11-04T09:58:05.540874",
+    "lastIssuedAt": "2026-11-06T16:04:48.266397",
+    "expiresAt": "2027-11-01T16:04:48.266397",
     "history": [
+      {
+        "issuedAt": "2026-11-06T16:04:48.266397",
+        "expiresAt": "2027-11-01T16:04:48.266397",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "maxDevices": 25,
+        "features": [
+          "phonebook",
+          "reminders",
+          "viewonly",
+          "weekly"
+        ],
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-11-06T15:52:06.934971",
+        "expiresAt": "2027-11-01T15:52:06.934971",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "maxDevices": 25,
+        "features": [
+          "phonebook",
+          "reminders",
+          "viewonly"
+        ],
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-11-06T15:51:50.281975",
+        "expiresAt": "2027-11-01T15:51:50.281975",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "maxDevices": 25,
+        "features": [
+          "phonebook",
+          "viewonly"
+        ],
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-11-06T15:50:41.472137",
+        "expiresAt": "2027-11-01T15:50:41.472137",
+        "tier": "standard",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "maxDevices": 25,
+        "features": [
+          "phonebook",
+          "viewonly"
+        ],
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-11-06T15:27:24.600396",
+        "expiresAt": "2027-11-01T15:27:24.600396",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "maxDevices": 25,
+        "features": [
+          "no:drive",
+          "phonebook",
+          "reminders",
+          "viewonly"
+        ],
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-11-06T15:26:56.377383",
+        "expiresAt": "2027-11-01T15:26:56.377383",
+        "tier": "standard",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "maxDevices": 25,
+        "features": [
+          "phonebook",
+          "viewonly"
+        ],
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-11-06T15:25:33.827562",
+        "expiresAt": "2027-11-01T15:25:33.827562",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "maxDevices": 25,
+        "features": [
+          "no:drive",
+          "phonebook",
+          "reminders",
+          "viewonly"
+        ],
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-11-06T15:25:16.132510",
+        "expiresAt": "2026-11-05T15:25:16.132510",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "maxDevices": 25,
+        "features": [
+          "no:drive",
+          "phonebook",
+          "reminders",
+          "viewonly"
+        ],
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-11-06T15:24:54.808258",
+        "expiresAt": "2026-11-08T15:24:54.808258",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "maxDevices": 25,
+        "features": [
+          "no:drive",
+          "phonebook",
+          "reminders",
+          "viewonly"
+        ],
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-11-06T15:23:21.231708",
+        "expiresAt": "2026-11-05T15:23:21.231708",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "maxDevices": 25,
+        "features": [
+          "no:drive",
+          "phonebook",
+          "reminders",
+          "viewonly"
+        ],
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-11-06T14:59:48.246192",
+        "expiresAt": "2026-11-05T14:59:48.246192",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "maxDevices": 25,
+        "features": [
+          "no:drive",
+          "phonebook",
+          "reminders"
+        ],
+        "kind": "renewal"
+      },
+      {
+        "issuedAt": "2026-11-06T12:47:03.450771",
+        "expiresAt": "2027-11-06T12:47:03.450771",
+        "tier": "basic",
+        "cloudPackage": "cloud",
+        "maxBranches": 1,
+        "maxUsers": 2,
+        "maxDevices": 25,
+        "features": [
+          "phonebook"
+        ],
+        "kind": "renewal"
+      },
       {
         "issuedAt": "2026-11-04T09:58:05.540874",
         "expiresAt": "2027-11-04T09:58:05.540874",
@@ -329,25 +383,12 @@
         "kind": "new"
       }
     ],
-    "maxDevices": 4,
+    "maxDevices": 25,
     "features": [
-      "ownerapp",
       "phonebook",
-      "reception"
+      "reminders",
+      "viewonly",
+      "weekly"
     ]
-  },
-  {
-    "clinicId": "SMILE-ISL-987463",
-    "clinicName": "Smile Craft Dental Clinic",
-    "city": "Islamabad",
-    "email": "",
-    "tier": "premium",
-    "cloudPackage": "cloud",
-    "maxBranches": 1,
-    "maxUsers": 2,
-    "firstIssuedAt": "2026-09-18T12:37:10.540",
-    "lastIssuedAt": "2026-09-18T12:37:10.540",
-    "expiresAt": "2026-10-18T12:37:10.540",
-    "history": []
   }
 ]

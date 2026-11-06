@@ -307,5 +307,6 @@ String hubEventLabel(String kind) => switch (kind) {
   'user_deactivated_phone' => 'Deactivated a staff login from a phone',
   'user_reactivated_phone' => 'Reactivated a staff login from a phone',
   'patient_added_phone' => 'Added a new patient from a phone',
+  'forced_sign_out' => 'Signed out — login deactivated or password changed',
   _ => kind,
 };

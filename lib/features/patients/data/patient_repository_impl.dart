@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import '../../../core/db/app_database.dart';
 import '../../../core/utils/uuids.dart';
+import '../../../licensing/data/view_only.dart';
 import '../domain/patient.dart';
 import '../domain/patient_repository.dart';
 import '../domain/tooth_record.dart';
@@ -26,6 +27,8 @@ class PatientRepositoryImpl implements PatientRepository {
 
   @override
   Future<void> upsertPatient(Patient p) async {
+    // Payment overdue → no NEW patients (editing an existing one still works)
+    if (p.id == 0) await ensureNotViewOnly(_db);
     final clinicId = await _db.currentClinicId() ?? '';
     final Value<String?> stampBranch = p.id == 0
         ? Value(await _db.currentBranchId())

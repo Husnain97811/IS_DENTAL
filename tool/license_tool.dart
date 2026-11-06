@@ -102,7 +102,31 @@ String _canonical(Map<String, dynamic> p) => jsonEncode({
 });
 
 /// Add-ons the tool may put on a licence. Must match LicenseFeature.all.
-const _knownFeatures = {'reception', 'ownerapp', 'phonebook'};
+/// Features switched per clinic in the "Feature switches" box. Standard and
+/// Premium include them, Basic doesn't — except Google Drive backup, which
+/// every plan has. Stored in the signed `features` list ONLY when the clinic
+/// differs from its plan: 'reminders' = an extra on a plan without it,
+/// 'no:reminders' = switched off. Old PCs accept such a licence unchanged
+/// (they just don't apply the switches until they update).
+const _switches = {
+  'reminders', 'rxwa', 'weekly', 'apptchange', // WhatsApp — need the cloud
+  'hub', 'insights', 'payouts', 'photos', // extras — need the cloud
+  'drive', // every plan, offline too
+};
+const _offlineSwitches = {'drive'};
+
+/// "Payment overdue": the clinic can open and print everything, but can't
+/// add new appointments, patients or invoices.
+const _viewOnly = 'viewonly';
+
+final _knownFeatures = {
+  'reception',
+  'ownerapp',
+  'phonebook',
+  _viewOnly,
+  ..._switches,
+  for (final s in _switches) 'no:$s',
+};
 
 AsymmetricKeyPair _loadOrCreateKeys() {
   final f = File(_keyFile);
@@ -409,6 +433,29 @@ Future<void> _handleMint(HttpRequest req) async {
       'error': 'Phone booking needs a Cloud licence.',
     });
   }
+  // Feature switches: an extra that needs the cloud can't go on an offline
+  // licence.
+  final offlineExtras = features
+      .where((f) => _switches.contains(f) && !_offlineSwitches.contains(f))
+      .toList();
+  if (offlineExtras.isNotEmpty && cloudPackage != 'cloud') {
+    return _json(req, {
+      'ok': false,
+      'error': 'These need a Cloud licence: ${offlineExtras.join(', ')}.',
+    });
+  }
+  // Keep only what DIFFERS from the plan: an extra the plan already has, or
+  // switching off something the plan doesn't have, means nothing.
+  bool planHas(String sw) =>
+      _offlineSwitches.contains(sw) ||
+      (cloudPackage == 'cloud' && tier != 'basic');
+  features.removeWhere(
+    (f) =>
+        (_switches.contains(f) && planHas(f)) ||
+        (f.startsWith('no:') &&
+            _switches.contains(f.substring(3)) &&
+            !planHas(f.substring(3))),
+  );
 
   if (clinicName.isEmpty) {
     return _json(req, {'ok': false, 'error': 'Clinic name is required.'});
@@ -791,6 +838,16 @@ const _html = r'''
   label.check input{width:18px;height:18px;margin-top:1px;flex:none}
   label.check .muted{color:var(--t4)}
   label.check.off{opacity:.45;cursor:not-allowed}
+  .switches{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:6px 0 14px}
+  .switches .sw-head{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+  .switches .sw-head .muted{color:var(--t4);font-size:12px}
+  .sw-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 16px}
+  @media (max-width:640px){.sw-grid{grid-template-columns:1fr}}
+  .sw-grid label.check .tag{font-size:11px;margin-left:4px;padding:1px 6px;border-radius:8px}
+  .sw-grid .tag.extra{background:rgba(46,160,90,.15);color:#2ea05a}
+  .sw-grid .tag.offt{background:rgba(229,56,59,.15);color:#e5383b}
+  label.check.overdue{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+  label.check.overdue b{color:#e5383b}
   .p-addon{background:rgba(124,58,237,.14);color:#6d28d9}
   .list{max-height:560px;overflow-y:auto}
   .clinic{padding:13px 18px;border-bottom:1px solid var(--line);cursor:pointer}
@@ -890,6 +947,15 @@ const _html = r'''
         <label class="check" id="bookBox"><input type="checkbox" id="fPhoneBook">
           <span><b>Phone booking</b> add-on
           <span class="muted">— any plan with Cloud, Basic too. Book appointments (and new patients) from a connected phone.</span></span></label>
+
+        <div class="switches" id="swBox">
+          <div class="sw-head"><b>Feature switches</b>
+            <span class="muted">Ticked = the clinic has it. Starts at what the plan includes — untick to take it away, tick to give it as an extra.</span></div>
+          <div class="sw-grid" id="swGrid"></div>
+          <label class="check overdue"><input type="checkbox" id="fViewOnly">
+            <span><b>Payment overdue — view only</b>
+            <span class="muted">— the clinic can still open and print everything, but can't add new appointments, patients or invoices until you untick this.</span></span></label>
+        </div>
 
         <div class="row3">
           <div><label>Branches</label><input id="maxBranches" type="number" min="1" value="1"></div>
@@ -1072,7 +1138,9 @@ function pickExisting(){
     $('fReception').checked = (c.features||[]).includes('reception');
     $('fOwnerApp').checked = (c.features||[]).includes('ownerapp');
     $('fPhoneBook').checked = (c.features||[]).includes('phonebook');
+    $('fViewOnly').checked = (c.features||[]).includes('viewonly');
     checkAddon();
+    fillSwitches(c.features||[]);
   }
 }
 
@@ -1095,6 +1163,64 @@ function checkAddon(){
 }
 $('tier').addEventListener('change', checkAddon);
 $('cloudPackage').addEventListener('change', checkAddon);
+
+// ── Feature switches — the same rules as the PC (entitlements.dart) ──
+const SWITCHES = [
+  ['reminders', 'Automatic appointment reminders', true],
+  ['rxwa', 'Prescriptions on WhatsApp', true],
+  ['weekly', 'Weekly report to the owner', true],
+  ['apptchange', '“Appointment changed” messages', true],
+  ['hub', 'Detailed Reporting Hub', true],
+  ['insights', 'Insights & practice stats', true],
+  ['payouts', 'Dentist payouts', true],
+  ['photos', 'Before/after photos & Showcase', true],
+  ['drive', 'Google Drive backup', false],   // every plan, offline too
+];
+function planHas(key){
+  const sw = SWITCHES.find(s=>s[0]===key);
+  if(!sw[2]) return true;
+  return $('cloudPackage').value === 'cloud' && $('tier').value !== 'basic';
+}
+function swTag(key){
+  const el = $('sw_'+key), d = planHas(key);
+  const tag = el.parentElement.querySelector('.tag');
+  tag.className = 'tag' + (el.checked && !d ? ' extra' : !el.checked && d ? ' offt' : '');
+  tag.textContent = el.checked && !d ? 'extra' : !el.checked && d ? 'off' : '';
+}
+function buildSwitches(){
+  $('swGrid').innerHTML = SWITCHES.map(([k, label]) =>
+    `<label class="check" id="swl_${k}"><input type="checkbox" id="sw_${k}"><span>${label}<span class="tag"></span></span></label>`).join('');
+  for(const [k] of SWITCHES) $('sw_'+k).addEventListener('change', ()=>swTag(k));
+}
+/** Plan defaults, then the clinic's own extras / switched-off features. */
+function fillSwitches(features){
+  const cloud = $('cloudPackage').value === 'cloud';
+  for(const [k, , needsCloud] of SWITCHES){
+    const el = $('sw_'+k);
+    el.disabled = needsCloud && !cloud;
+    el.parentElement.classList.toggle('off', el.disabled);
+    el.checked = features.includes('no:'+k) ? false : (planHas(k) || features.includes(k));
+    if(el.disabled) el.checked = false;
+    swTag(k);
+  }
+}
+/** Only what differs from the plan goes into the licence. */
+function switchFeatures(){
+  const out = [];
+  for(const [k] of SWITCHES){
+    const el = $('sw_'+k);
+    if(el.disabled) continue;
+    if(el.checked && !planHas(k)) out.push(k);
+    if(!el.checked && planHas(k)) out.push('no:'+k);
+  }
+  if($('fViewOnly').checked) out.push('viewonly');
+  return out;
+}
+buildSwitches();
+fillSwitches([]);
+// a new tier or package starts again from that plan's defaults
+$('tier').addEventListener('change', ()=>fillSwitches([]));
+$('cloudPackage').addEventListener('change', ()=>fillSwitches([]));
 
 function checkDevices(){
   const n = parseInt($('maxDevices').value||'1',10);
@@ -1128,7 +1254,12 @@ function render(){
         const cloud = c.cloudPackage==='none' ? `<span class="pill p-none">offline</span>` : '';
         const addon = ((c.features||[]).includes('reception') ? `<span class="pill p-addon">+reception</span>` : '')
                     + ((c.features||[]).includes('ownerapp') ? `<span class="pill p-addon">+owner app</span>` : '')
-                    + ((c.features||[]).includes('phonebook') ? `<span class="pill p-addon">+phone booking</span>` : '');
+                    + ((c.features||[]).includes('phonebook') ? `<span class="pill p-addon">+phone booking</span>` : '')
+                    + (() => { const f = c.features||[];
+                        const ex = f.filter(x=>SWITCHES.some(s=>s[0]===x)).length, off = f.filter(x=>x.startsWith('no:')).length;
+                        return (ex ? `<span class="pill p-addon">+${ex} extra</span>` : '')
+                             + (off ? `<span class="pill p-addon">${off} off</span>` : '')
+                             + (f.includes('viewonly') ? `<span class="pill p-exp">VIEW ONLY</span>` : ''); })();
         return `<div class="clinic" onclick="renewThis('${c.clinicId}')">
           <div class="top">
             <b>${esc(c.clinicName)}</b>
@@ -1197,6 +1328,11 @@ function preflight(){
       warn.push(`Owner phone app add-on removed — connected phones stop working.`);
     if(c && (c.features||[]).includes('phonebook') && !$('fPhoneBook').checked)
       warn.push(`Phone booking add-on removed — booking from connected phones stops.`);
+    const turnedOff = SWITCHES.filter(([k])=>{ const el=$('sw_'+k); return !el.disabled && !el.checked && planHas(k)
+      && !(c && (c.features||[]).includes('no:'+k)); }).map(s=>s[1]);
+    if(turnedOff.length) warn.push(`Switched off: <b>${turnedOff.join(', ')}</b>.`);
+    if($('fViewOnly').checked && !(c && (c.features||[]).includes('viewonly')))
+      warn.push(`<b>Payment overdue</b> — the clinic becomes view only (no new appointments, patients or invoices).`);
     if(c && parseInt($('maxBranches').value) < (c.maxBranches||1))
       warn.push(`Branch limit drops from <b>${c.maxBranches}</b> to <b>${$('maxBranches').value}</b>.`);
     if(c && parseInt($('maxUsers').value) < (c.maxUsers||1))
@@ -1303,6 +1439,7 @@ async function mint(){
       ...($('fReception').checked ? ['reception'] : []),
       ...($('fOwnerApp').checked ? ['ownerapp'] : []),
       ...($('fPhoneBook').checked ? ['phonebook'] : []),
+      ...switchFeatures(),
     ],
   };
   try{
