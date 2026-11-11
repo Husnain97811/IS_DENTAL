@@ -1,19 +1,19 @@
 {
   "clinicId": "HUSNAIN-ISL-179286",
   "clinicName": "Husnain Ahmed",
-  "tier": "basic",
+  "tier": "standard",
   "cloudPackage": "cloud",
-  "maxBranches": 1,
-  "maxUsers": 2,
-  "issuedAt": "2026-11-06T11:04:48.266397Z",
-  "expiresAt": "2027-11-01T11:04:48.266397Z",
+  "maxBranches": 2,
+  "maxUsers": 4,
+  "issuedAt": "2026-11-11T16:51:58.116501Z",
+  "expiresAt": "2027-11-11T16:51:58.116501Z",
   "machineFingerprint": "ANY",
   "features": [
+    "ownerapp",
     "phonebook",
-    "reminders",
-    "viewonly",
-    "weekly"
+    "reception",
+    "viewonly"
   ],
-  "signature": "VzeMtozeI1x7iQ8GXZXLNwrxD+G5H6jWTKfv7FnVEr2oHEeqxwV5e7mtF6ukeJ5t9gwAfQQEMhWGW31fOHGNUhcatAKy4kXNaF6adSPvlFJMrZ/6dWYjOyDA52JBUbYB1lq8faRIMHKKTdXO/hoOfXel0R3dgzz6S4+c0OqGnGQkPy7Hgd8vQ5RkfOcI0SASysc1ScOsTVF54La6wNFmUe0F7s9u5NWVG++YFXOxwnt7A/e4Z3KGWFHUnpW8n5tEeoqDwQOCfyBjPIUcOOzt2JnSrmvAfaH7sR/5U9iyxpQxDocHVbqSKjbsKwqz57EvsmTOx/ICiv+dGwiCSapJwQ==",
-  "maxDevices": 25
+  "signature": "NKUV7xz3JaLpxdVsnlpfEM6yUZymsyPI3mG9M8z9Vu1RER5GrjMzK2I8Y8ymjR6IHNIKrHQU4wzlVwJmazE/Dta4zxnY/Y8BrSEFe6gwuREV+Msv9KWGqn17NF8mZ9onxYjY4NMj3eOYF2dxJZJAsVAjJUrE5ys+uPVv2UOZPg39H/iHM5v1e5iUbgdfJ7r8BeCZl+HbM1HSNau5AnFRXyTueIpq98KPLYGp3FMFQPCIu8bKx6XwfWfkvNx4xNVnryjbNu2e15bgfO/LZe7TWBsW8lY28/omJzAgznKQMR7cGmDHNJk2TCVrS/NIyEBArzK8C+qhwKnIKWZmm8+FIg==",
+  "maxDevices": 2
 }

@@ -101,6 +101,10 @@ class LicenseService {
       return (ok: false, error: 'Invalid license format.');
     }
     if (!_verifier.verify(lic)) {
+      // ignore: avoid_print
+      print(
+        'LICENCE CHECK raw=${raw.length} chars\nAPP TEXT: ${lic.canonicalPayload()}\nSIG: ${lic.signature.length} chars',
+      );
       return (ok: false, error: 'License signature is not valid.');
     }
     if (DateTime.now().isAfter(lic.expiresAt)) {

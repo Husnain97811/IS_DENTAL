@@ -638,7 +638,7 @@ class _SetupWizardState extends ConsumerState<SetupWizard> {
                 }),
           child: Text(
             "I don't have the cloud password",
-            style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700),
+            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700),
           ),
         ),
       ] else ...[

@@ -1,0 +1,18 @@
+{
+  "clinicId": "SERENE-ISL-621155",
+  "clinicName": "Serene Dental Care Consultants",
+  "tier": "basic",
+  "cloudPackage": "cloud",
+  "maxBranches": 1,
+  "maxUsers": 3,
+  "issuedAt": "2026-11-06T14:49:24.673126Z",
+  "expiresAt": "2026-11-10T14:49:24.673126Z",
+  "machineFingerprint": "ANY",
+  "features": [
+    "no:drive",
+    "phonebook",
+    "reminders"
+  ],
+  "signature": "UqARLL5OFdqEWe10vw1GR5AdUwn5iHfn4x8KudDg4xGKJ8Yi8clqguh7z7c2ho1PLJ8E/bPyMtJ/gH0AdsFlanOwwB9tZMYFEC/h8jGFHMIa34LxBAvL5mcyOkxDMel0+g+jHoHk33nprSTm4BiwVq7qPG8LzucFi3PF+Dgasqa8b4y9UF9shJXYPpZGdynFt3+kzF0AvWEMLpc9wiPPPAajtLsWnBP4Uf0Db+elEQFVxekuZFhXek1sjU3F4acKvZoIepmuZntq9qseWz8mexGWJ6OPGt5W2oaCaBcmcZrI1G7Dxm/GD4pA0t50Sn6fFOxJtNeGi4dftY53oVY+RQ==",
+  "maxDevices": 2
+}

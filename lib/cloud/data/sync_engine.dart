@@ -377,7 +377,9 @@ class SyncEngine {
               passwordHash: Value(r['password_hash'] ?? ''),
               role: Value(r['role'] ?? 'receptionist'),
               email: Value(r['email']),
-              phone: Value(r['phone']),
+              // arrives as a number (3001234567) — turn it back into text,
+              // or this one login stops every login reaching the new PC
+              phone: Value(_phoneText(r['phone'])),
               hubPinHash: Value(r['hub_pin_hash']),
               hubPinSetAt: Value(
                 r['hub_pin_set_at'] == null

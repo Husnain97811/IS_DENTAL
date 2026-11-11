@@ -44,11 +44,19 @@ class LicenseVerifier {
           PublicKeyParameter<RSAPublicKey>(RSAPublicKey(_modulus, _exponent)),
         );
       final msg = Uint8List.fromList(utf8.encode(lic.canonicalPayload()));
-      return signer.verifySignature(
+      final ok = signer.verifySignature(
         msg,
         RSASignature(base64.decode(lic.signature)),
       );
-    } catch (_) {
+      // ignore: avoid_print
+      if (!ok)
+        print(
+          'LICENCE VERIFY false\nAPP TEXT: ${lic.canonicalPayload()}\nSIG: ${lic.signature.length} chars, starts ${lic.signature.substring(0, 12)}',
+        );
+      return ok;
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('LICENCE VERIFY error: $e\n$st');
       return false;
     }
   }
